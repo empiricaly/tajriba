@@ -1,0 +1,37 @@
+"User is a user that has priviledged access to the data."
+type User implements Node {
+  "id is the unique globally identifier for the record."
+  id: ID!
+
+  "createdAt is the time of creation of the record."
+  createdAt: DateTime!
+
+  "username is the login name of the user."
+  username: String!
+
+  "name is the display name of the user."
+  name: String!
+}
+
+"LoginInput is the input for login()"
+input LoginInput {
+  "username is the user identifier string."
+  username: String!
+
+  "password of the user."
+  password: String!
+}
+
+"LoginPayload is returned by login()"
+type LoginPayload {
+  "user is the logged in User."
+  user: User!
+
+  "sessionToken is the session token to be used for authenticated requets."
+  sessionToken: String!
+}
+
+extend type Mutation {
+  "login signs in a user."
+  login(input: LoginInput!): LoginPayload!
+}

@@ -1,0 +1,4 @@
+overrides:
+  - files: "*.graphqls"
+    options:
+      printWidth: 120

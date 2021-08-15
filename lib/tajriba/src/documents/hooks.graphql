@@ -1,0 +1,41 @@
+fragment onEventFields on OnEventPayload {
+  eventID
+  eventType
+  node {
+    __typename
+    id
+    ... on Participant {
+      ...participantFields
+    }
+    ... on Attribute {
+      ...attributeFields
+    }
+    ... on Step {
+      ...stepFields
+    }
+    ... on Group {
+      ...groupFields
+    }
+    ... on Scope {
+      ...scopeFields
+    }
+    ... on Transition {
+      ...transitionFields
+    }
+    ... on Link {
+      ...linkFields
+    }
+  }
+}
+
+subscription OnEvent($input: OnEventInput) {
+  onEvent(input: $input) {
+    ...onEventFields
+  }
+}
+
+subscription OnAnyEvent($input: OnAnyEventInput) {
+  onAnyEvent(input: $input) {
+    ...onEventFields
+  }
+}

@@ -1,0 +1,18 @@
+"DateTime is an int64 Date + Time value given in Epoch with ns precision."
+scalar DateTime
+
+scalar Cursor
+
+"Node is an interface allowing simple querying of any node"
+interface Node {
+  """
+  id is the unique globally identifier for the record.
+  """
+  id: ID!
+}
+
+schema {
+  query: Query
+  mutation: Mutation
+  subscription: Subscription
+}

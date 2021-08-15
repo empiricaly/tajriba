@@ -1,0 +1,56 @@
+type Group implements Node {
+  "id is the unique globally identifier for the record."
+  id: ID!
+
+  "createdAt is the time of creation of the record."
+  createdAt: DateTime!
+
+  "createdBy returns the Actor that created the record."
+  createdBy: Actor!
+
+  """
+  links returns Participant linking and unlinking with this Node.
+  """
+  links(after: Cursor, first: Int, before: Cursor, last: Int): LinkConnection
+}
+
+"""
+AddGroupInput creates a new Group.
+"""
+input AddGroupInput {
+  """
+  participantIDs are the IDs of the Participants to link with the Group.
+  """
+  participantIDs: [ID!]!
+}
+
+"""
+AddGroupPayload is the return payload for the addGroup mutation.
+"""
+type AddGroupPayload {
+  """
+  group that the participant is added to.
+  """
+  group: Group!
+}
+
+extend type Query {
+  "groups returns all groups"
+  groups(after: Cursor, first: Int, before: Cursor, last: Int): GroupConnection @hasRole(role: ADMIN)
+}
+
+extend type Mutation {
+  "addGroups creates new Groups."
+  addGroups(input: [AddGroupInput!]!): [AddGroupPayload!]! @hasRole(role: ADMIN)
+}
+
+type GroupEdge {
+  node: Group
+  cursor: Cursor!
+}
+
+type GroupConnection {
+  totalCount: Int!
+  pageInfo: PageInfo!
+  edges: [GroupEdge]
+}

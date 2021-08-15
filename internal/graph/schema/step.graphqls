@@ -1,0 +1,113 @@
+"State of Step"
+enum State {
+  "CREATED is when the Step has been created but hasn't started yet."
+  CREATED
+
+  "RUNNING is when the Step is currently in progress."
+  RUNNING
+
+  "PAUSED is when the Step has started but its timer was stopped."
+  PAUSED
+
+  "ENDED is when the Step has finished without issues."
+  ENDED
+
+  """
+  TERMINATED is when the Step has been manually terminated. This could happen
+  before or during execution.
+  """
+  TERMINATED
+
+  "ERROR is when the Step has failed (due to an unrecoverable error)."
+  FAILED
+}
+
+"""
+Step is a span of time.
+"""
+type Step implements Node {
+  "id is the unique globally identifier for the record."
+  id: ID!
+
+  "createdAt is the time of creation of the record."
+  createdAt: DateTime!
+
+  "createdBy returns the Actor that created the record."
+  createdBy: Actor!
+
+  """
+  duration is the duration in seconds of the Step should last before ending.
+  """
+  duration: Int!
+
+  "state is the stage the Step currently is in"
+  state: State!
+
+  "startedAt is the time at which the Step started."
+  startedAt: DateTime
+
+  "endedAt is the time at which the Step ended."
+  endedAt: DateTime
+
+  """
+  transitions lists of States changes of the Step.
+  """
+  transitions(after: Cursor, first: Int, before: Cursor, last: Int): TransitionConnection
+
+  """
+  links returns Participant linking and unlinking with this Node.
+  """
+  links(after: Cursor, first: Int, before: Cursor, last: Int): LinkConnection
+}
+
+"""
+AddStepInput creates a new Step.
+"""
+input AddStepInput {
+  """
+  duration is the duration in seconds of the Step should last before ending.
+  """
+  duration: Int!
+}
+
+"""
+AddStepPayload is the return payload for the addStep mutation.
+"""
+type AddStepPayload {
+  """
+  step that the participant is added to.
+  """
+  step: Step!
+}
+
+extend type Query {
+  "steps returns all steps"
+  steps(after: Cursor, first: Int, before: Cursor, last: Int): StepConnection @hasRole(role: ADMIN)
+}
+
+extend type Mutation {
+  "addSteps creates new Steps."
+  addSteps(input: [AddStepInput!]!): [AddStepPayload!]! @hasRole(role: ADMIN)
+}
+
+type StepEdge {
+  node: Step
+  cursor: Cursor!
+}
+
+type StepConnection {
+  totalCount: Int!
+  pageInfo: PageInfo!
+  edges: [StepEdge]
+}
+
+input StepOrder {
+  direction: OrderDirection!
+  field: StepOrderField
+}
+
+enum StepOrderField {
+  CREATED_AT
+  STARTED_AT
+  DURATION
+}

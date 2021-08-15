@@ -1,0 +1,23 @@
+fragment transitionFields on Transition {
+  __typename
+  id
+  createdAt
+  createdBy {
+    ...actorFields
+  }
+  from
+  to
+  node {
+    ... on Step {
+      ...stepFields
+    }
+  }
+}
+
+mutation Transition($input: TransitionInput!) {
+  transition(input: $input) {
+    transition {
+      ...transitionFields
+    }
+  }
+}

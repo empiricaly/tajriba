@@ -1,0 +1,17 @@
+fragment userFields on User {
+  __typename
+  id
+  createdAt
+  username
+  name
+}
+
+mutation Login($input: LoginInput!) {
+  login(input: $input) {
+    user {
+      ...userFields
+    }
+
+    sessionToken
+  }
+}

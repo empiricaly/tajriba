@@ -1,0 +1,142 @@
+type Scope implements Node {
+  "id is the unique globally identifier for the record."
+  id: ID!
+
+  "createdAt is the time of creation of the record."
+  createdAt: DateTime!
+
+  "createdBy returns the Actor that created the record."
+  createdBy: Actor!
+
+  "name is the *unique* name of the Scope."
+  name: String!
+
+  "attributes returns all custom data that has been set on the Scope."
+  attributes(
+    """
+    deleted will return only deleted attributes if false, by default only
+    non-deleted attributes are returned.
+    """
+    deleted: Boolean = false
+    after: Cursor
+    first: Int
+    before: Cursor
+    last: Int
+  ): AttributeConnection
+
+  """
+  links returns Participant linking and unlinking with this Node. A single
+  Particpant might be linked and unlinked multiple times, and
+  so a Participant might have multiple Links on a Node.
+  """
+  links(after: Cursor, first: Int, before: Cursor, last: Int): LinkConnection
+}
+
+"""
+AddScopeInput creates a new Scope.
+"""
+input AddScopeInput {
+  """
+  name is the *unique* name of the Scope. If a scope with the same name already
+  exists, it will return an "already exists" error.
+  """
+  name: String!
+
+  """
+  attributes to be attached to the Scope at creation.
+  """
+  attributes: [SetAttributeInput!]
+}
+
+"""
+AddScopePayload is the return payload for the addScope mutation.
+"""
+type AddScopePayload {
+  """
+  scope that the participant is added to.
+  """
+  scope: Scope!
+}
+
+"""
+ScopedAttributesInput subscribes to attributes in matching scopes. Either name,
+keys or kvs exclusively can be provided.
+"""
+input ScopedAttributesInput {
+  """
+  name of the matching Scope.
+  """
+  name: String
+
+  """
+  keys to Attributes in matching Scope.
+  """
+  keys: [String!]
+
+  """
+  kvs to Attributes in matching Scope.
+  """
+  kvs: [KV!]
+}
+
+"""
+ScopedAttributesPayload is the return payload for the addScope mutation.
+"""
+type ScopedAttributesPayload {
+  """
+  scope that the participant is added to. Attribute may be null only if the
+  subscription did not match any Scopes and done must be published.
+  """
+  attribute: Attribute
+
+  """
+  done indicates that the state has finished synchorizing.
+  """
+  done: Boolean!
+
+  """
+  isNew returns true if the Attribute for key and nodeID was just created.
+  """
+  isNew: Boolean!
+}
+
+input KV {
+  key: String!
+  val: String!
+}
+
+extend type Query {
+  """
+  scopes returns all scopes
+  If filter is provided it will return scopes matching any
+  ScopedAttributesInput.
+  """
+  scopes(filter: [ScopedAttributesInput!], after: Cursor, first: Int, before: Cursor, last: Int): ScopeConnection
+    @hasRole(role: ADMIN)
+}
+
+extend type Mutation {
+  "addScopes creates a new Scope."
+  addScopes(input: [AddScopeInput!]!): [AddScopePayload!]! @hasRole(role: ADMIN)
+}
+
+extend type Subscription {
+  """
+  scopedAttributes returns Attributes for Scopes matching the keys or KVs input.
+  keys or KVs (only one) must be provided. All Attributes in Scopes matching
+  will be returned initially, then any update to Attributes within the matching
+  Scopes.
+  """
+  scopedAttributes(input: [ScopedAttributesInput!]!): ScopedAttributesPayload! @hasRole(role: ADMIN)
+}
+
+type ScopeEdge {
+  node: Scope
+  cursor: Cursor!
+}
+
+type ScopeConnection {
+  totalCount: Int!
+  pageInfo: PageInfo!
+  edges: [ScopeEdge]
+}

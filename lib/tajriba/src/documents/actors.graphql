@@ -1,0 +1,15 @@
+fragment actorFields on Actor {
+  ... on User {
+    id
+    username
+    name
+  }
+  ... on Service {
+    id
+    name
+  }
+  ... on Participant {
+    id
+    identifier
+  }
+}

@@ -1,0 +1,63 @@
+fragment scopeFields on Scope {
+  __typename
+  id
+  name
+  createdAt
+  createdBy {
+    ...actorFields
+  }
+}
+
+mutation AddScopes($input: [AddScopeInput!]!) {
+  addScopes(input: $input) {
+    scope {
+      ...scopeFields
+    }
+  }
+}
+
+query Scopes(
+  $filter: [ScopedAttributesInput!]
+  $after: Cursor
+  $first: Int
+  $before: Cursor
+  $last: Int
+) {
+  scopes(
+    filter: $filter
+    after: $after
+    first: $first
+    before: $before
+    last: $last
+  ) {
+    edges {
+      node {
+        ...scopeFields
+        # attributes {
+        #   edges {
+        #     node {
+        #       ...attributeFields
+        #     }
+        #   }
+        # }
+      }
+    }
+    totalCount
+    pageInfo {
+      hasNextPage
+      hasPreviousPage
+      startCursor
+      endCursor
+    }
+  }
+}
+
+subscription ScopedAttributes($input: [ScopedAttributesInput!]!) {
+  scopedAttributes(input: $input) {
+    attribute {
+      ...attributeFields
+    }
+    isNew
+    done
+  }
+}

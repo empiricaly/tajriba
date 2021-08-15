@@ -1,0 +1,6 @@
+.DS_Store
+*.db
+.tajriba.yaml
+.tajriba.toml
+.tajriba.json
+internal/vendored/transport

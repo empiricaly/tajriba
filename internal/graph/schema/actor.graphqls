@@ -1,0 +1,11 @@
+union Actor = User | Service | Participant
+
+enum Role {
+  "ADMIN is priviledged access for Users and Services."
+  ADMIN
+
+  "PARTICIPANT is access tailored for Participants' needs."
+  PARTICIPANT
+}
+
+directive @hasRole(role: Role!) on FIELD_DEFINITION

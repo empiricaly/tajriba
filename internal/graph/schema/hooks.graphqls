@@ -1,0 +1,68 @@
+"""
+EventType holds types of event that can trigger hooks.
+"""
+enum EventType {
+  STEP_ADD
+
+  SCOPE_ADD
+
+  GROUP_ADD
+
+  TRANSITION_ADD
+
+  PARTICIPANT_ADD
+  PARTICIPANT_CONNECT
+  PARTICIPANT_DISCONNECT
+
+  LINK_ADD
+
+  ATTRIBUTE_UPDATE
+}
+
+"OnEventInput is the input for the onEvent subscription."
+input OnEventInput {
+  "eventsTypes speficies which events to listen to."
+  eventTypes: [EventType!]!
+
+  """
+  nodeID is an optional node ID of the node to listen to. If nodeID is
+  specified, nodeType must also be given.
+  """
+  nodeID: ID
+}
+
+"OnEventPayload is the payload for the on[Any]Event subscriptions."
+type OnEventPayload {
+  """
+  eventID is a unique identifier for the current event. Each OnEventPayload for
+  a single client will have a different eventID. eventID will be the same for
+  different clients on the same event.
+  """
+  eventID: ID!
+
+  "eventType is the type of the current event."
+  eventType: EventType!
+
+  "node is the node that triggered the event"
+  node: Node!
+}
+
+"OnAnyEventInput is the input for the onAnyEvent subscription."
+input OnAnyEventInput {
+  """
+  nodeID is an optional node ID of the node to listen to. If nodeID is
+  specified, nodeType must also be given.
+  """
+  nodeID: ID
+}
+
+extend type Subscription {
+  """
+  onEvent attaches hooks to specified events. Optionally, a nodeType and nodeID
+  can be specified to only look at events for a particular record.
+  """
+  onEvent(input: OnEventInput): OnEventPayload @hasRole(role: ADMIN)
+
+  "onAnyEvent works like onEvent, except all events are subscribed to."
+  onAnyEvent(input: OnAnyEventInput): OnEventPayload @hasRole(role: ADMIN)
+}

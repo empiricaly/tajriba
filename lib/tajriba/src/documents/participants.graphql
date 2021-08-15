@@ -1,0 +1,33 @@
+fragment participantFields on Participant {
+  __typename
+  id
+  createdAt
+  identifier
+}
+
+query Participants($after: Cursor, $first: Int, $before: Cursor, $last: Int) {
+  participants(after: $after, first: $first, before: $before, last: $last) {
+    edges {
+      node {
+        ...participantFields
+      }
+    }
+    totalCount
+    pageInfo {
+      hasNextPage
+      hasPreviousPage
+      startCursor
+      endCursor
+    }
+  }
+}
+
+mutation AddParticipant($input: AddParticipantInput!) {
+  addParticipant(input: $input) {
+    participant {
+      ...participantFields
+    }
+
+    sessionToken
+  }
+}

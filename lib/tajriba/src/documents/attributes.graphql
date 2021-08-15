@@ -1,0 +1,33 @@
+fragment attributeFields on Attribute {
+  __typename
+  id
+  createdAt
+  createdBy {
+    ...actorFields
+  }
+  private
+  protected
+  immutable
+  deletedAt
+  key
+  val
+  index
+  version
+  vector
+  node {
+    id
+  }
+}
+
+mutation SetAttributes($input: [SetAttributeInput!]!) {
+  setAttributes(input: $input) {
+    attribute {
+      id
+      index
+      createdAt
+      createdBy {
+        ...actorFields
+      }
+    }
+  }
+}

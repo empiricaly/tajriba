@@ -1,0 +1,161 @@
+"""
+Attribute is a single piece of custom data set on a Node. Attributes
+with the same key can be grouped into an array through the use of a unique
+index field within that key's scope.
+"""
+type Attribute implements Node {
+  "id is the unique globally identifier for the record."
+  id: ID!
+
+  "createdAt is the time of creation of the record."
+  createdAt: DateTime!
+
+  "createdBy is the Actor that created the record."
+  createdBy: Actor!
+
+  """
+  private indicates whether the Attribute shouldn't be visible to Participants
+  in the scope.
+  private must be set on the Attribute at creation.
+  """
+  private: Boolean!
+
+  """
+  protected indicates the Attribute cannot be modified by other Participants. A
+  Participant can only set protected Records on their Participant record.
+  Users and Services can update protected Attributes.
+  protected must be set on the Attribute at creation.
+  """
+  protected: Boolean!
+
+  """
+  immutable indicates the Attribute can never be changed by any Actor.
+  immutable must be set on the Attribute at creation.
+  """
+  immutable: Boolean!
+
+  """
+  deletedAt is the time when the Attribute was deleted. If null, the Attribute
+  was not deleted.
+  """
+  deletedAt: DateTime
+
+  "key identifies the unique key of the Attribute."
+  key: String!
+
+  """
+  val is the value of the Attribute. If val is not returned, it is considered to
+  be explicitely `null`.
+  """
+  val: String
+
+  "index of the Attribute if the value is a vector."
+  index: Int
+
+  "vector returns true if the value is a vector."
+  vector: Boolean!
+
+  "version is the version number of this Attribute, starting at 1."
+  version: Int
+
+  "versions returns previous versions for the Attribute."
+  versions(after: Cursor, first: Int, before: Cursor, last: Int): AttributeConnection
+
+  "current is true if the Attribute is the current version of the value for key."
+  current: Boolean!
+
+  """
+  Object associated with Attribute.
+  """
+  node: Node!
+}
+
+"""
+SetAttributeInput sets an Attribute on a Node.
+"""
+input SetAttributeInput {
+  """
+  key identifies the unique key of the Attribute.
+  """
+  key: String!
+
+  """
+  val is the value of the Attribute. It can be any JSON encodable value. If
+  value is not defined, value is assumed to be `null`.
+  """
+  val: String
+
+  """
+  index of value if Attribute is a vector. An Attribute cannot mutate between
+  vector and non-vector formats.
+  """
+  index: Int
+
+  """
+  vector indicates the Attribute is a vector.
+  """
+  vector: Boolean
+
+  """
+  append allows appending to a vector without specifying the index.
+  """
+  append: Boolean
+
+  """
+  private indicates whether the Attribute shouldn't be visible to Participants
+  in the scope.
+  private must be set on the Attribute at creation.
+  Defaults to false and does need to be sent on subsequent updates.
+  """
+  private: Boolean
+
+  """
+  protected indicates the Attribute cannot be modified by other Participants. A
+  Participant can only set protected Records on their Participant record.
+  Users and Services can update protected Attributes.
+  protected must be set on the Attribute at creation.
+  Defaults to false and does need to be sent on subsequent updates.
+  """
+  protected: Boolean
+
+  """
+  immutable indicates the Attribute can never be changed by any Actor.
+  immutable must be set on the Attribute at creation.
+  Defaults to false and does need to be sent on subsequent updates.
+  """
+  immutable: Boolean
+
+  """
+  ID of object on which to update the value. NodeID is required if attribute is
+  not created with addScope().
+  """
+  nodeID: ID
+}
+
+"""
+SetAttributePayload is the return payload for the setAttribute mutation.
+"""
+type SetAttributePayload {
+  """
+  attribute is the Attribute updated.
+  """
+  attribute: Attribute!
+}
+
+extend type Mutation {
+  """
+  Create or update an Attribute on a Node.
+  """
+  setAttributes(input: [SetAttributeInput!]!): [SetAttributePayload!]!
+}
+
+type AttributeEdge {
+  node: Attribute
+  cursor: Cursor!
+}
+
+type AttributeConnection {
+  totalCount: Int!
+  pageInfo: PageInfo!
+  edges: [AttributeEdge]
+}

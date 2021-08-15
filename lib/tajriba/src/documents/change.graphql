@@ -1,0 +1,33 @@
+subscription Changes {
+  changes {
+    done
+    removed
+    change {
+      __typename
+      ... on ScopeChange {
+        id
+        name
+      }
+      ... on StepChange {
+        id
+        since
+        remaining
+        ellapsed
+        running
+      }
+      ... on AttributeChange {
+        id
+        nodeID
+        deleted
+        isNew
+        index
+        vector
+        key
+        val
+      }
+      ... on ParticipantChange {
+        id
+      }
+    }
+  }
+}

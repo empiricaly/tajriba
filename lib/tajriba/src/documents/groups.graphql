@@ -1,0 +1,33 @@
+fragment groupFields on Group {
+  __typename
+  id
+  createdAt
+  createdBy {
+    ...actorFields
+  }
+}
+
+mutation AddGroups($input: [AddGroupInput!]!) {
+  addGroups(input: $input) {
+    group {
+      id
+    }
+  }
+}
+
+query Groups($after: Cursor, $first: Int, $before: Cursor, $last: Int) {
+  groups(after: $after, first: $first, before: $before, last: $last) {
+    edges {
+      node {
+        ...groupFields
+      }
+    }
+    totalCount
+    pageInfo {
+      hasNextPage
+      hasPreviousPage
+      startCursor
+      endCursor
+    }
+  }
+}

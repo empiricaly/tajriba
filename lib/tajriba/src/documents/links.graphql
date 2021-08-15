@@ -1,0 +1,26 @@
+mutation Link($input: LinkInput!) {
+  link(input: $input) {
+    nodes {
+      id
+    }
+    participants {
+      id
+    }
+  }
+}
+
+fragment linkFields on Link {
+  __typename
+  id
+  createdAt
+  createdBy {
+    ...actorFields
+  }
+  link
+  participant {
+    id
+  }
+  node {
+    id
+  }
+}

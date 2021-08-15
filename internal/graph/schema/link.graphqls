@@ -1,0 +1,80 @@
+"""
+Link records a Participant linking or unlinking with a Node.
+"""
+type Link implements Node {
+  "id is the unique globally identifier for the record."
+  id: ID!
+
+  "createdAt is the time of creation of the record."
+  createdAt: DateTime!
+
+  "createdBy is the Actor that created the record."
+  createdBy: Actor!
+
+  """
+  link indicates whether the Participant was linked or unlinked with the Node.
+  """
+  link: Boolean!
+
+  "participant that is assigned to "
+  participant: Participant!
+
+  "node the Participant is assigned to."
+  node: Node!
+}
+
+"""
+LinkInput links or unlinks Participants with a Node.
+"""
+input LinkInput {
+  """
+  nodeIDs are the IDs of the Nodes that the Participants should be added to.
+  """
+  nodeIDs: [ID!]!
+
+  """
+  participantIDs are the IDs of the Participants that should be added to the
+  Nodes.
+  """
+  participantIDs: [ID!]!
+
+  """
+  link indicates whether the Participant was linked or unlinked with the Node.
+  WARNING: UNLINKING NOT CURRENTLY SUPPORTED, link must be true.
+  """
+  link: Boolean!
+}
+
+"""
+LinkPayload is the return payload for the assignParticipants
+mutation.
+"""
+type LinkPayload {
+  """
+  nodes the participants are added to.
+  """
+  nodes: [Node!]!
+
+  """
+  participants that are added to the Node.
+  """
+  participants: [Participant!]!
+}
+
+extend type Mutation {
+  """
+  link links or unlinks Participants to Nodes.
+  """
+  link(input: LinkInput!): LinkPayload! @hasRole(role: ADMIN)
+}
+
+type LinkEdge {
+  node: Link
+  cursor: Cursor!
+}
+
+type LinkConnection {
+  totalCount: Int!
+  pageInfo: PageInfo!
+  edges: [LinkEdge]
+}

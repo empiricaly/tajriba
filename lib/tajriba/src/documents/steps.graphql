@@ -1,0 +1,37 @@
+fragment stepFields on Step {
+  __typename
+  id
+  createdAt
+  createdBy {
+    ...actorFields
+  }
+  duration
+  startedAt
+  endedAt
+  state
+}
+
+mutation AddSteps($input: [AddStepInput!]!) {
+  addSteps(input: $input) {
+    step {
+      ...stepFields
+    }
+  }
+}
+
+query Steps($after: Cursor, $first: Int, $before: Cursor, $last: Int) {
+  steps(after: $after, first: $first, before: $before, last: $last) {
+    edges {
+      node {
+        ...stepFields
+      }
+    }
+    totalCount
+    pageInfo {
+      hasNextPage
+      hasPreviousPage
+      startCursor
+      endCursor
+    }
+  }
+}

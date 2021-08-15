@@ -1,0 +1,79 @@
+"""
+A Transition records a State change.
+"""
+type Transition implements Node {
+  "id is the unique globally identifier for the record."
+  id: ID!
+
+  "createdAt is the time of creation of the record."
+  createdAt: DateTime! @hasRole(role: ADMIN)
+
+  "createdBy is the Actor that created the record."
+  createdBy: Actor!
+
+  """
+  from is the State in which the Node was before the State change.
+  """
+  from: State!
+
+  """
+  to is the State in which the Node was after the State change.
+  """
+  to: State!
+
+  "node is the Node that experienced this Transition."
+  node: Node!
+}
+
+"""
+TransitionInput transitions a Node.
+"""
+input TransitionInput {
+  """
+  nodeID is the ID of the Node to transition.
+  """
+  nodeID: ID!
+
+  """
+  from is the current State of the Node. To avoid concurrency or repeat errors,
+  from is required, and the transition will not happen if the from State does
+  not correspond to the Node's current State.
+  """
+  from: State!
+
+  """
+  to is the desired State of the Step.
+  """
+  to: State!
+
+  """
+  cause is an optional open string explaining the reason for the transition.
+  """
+  cause: String
+}
+
+"""
+TransitionPayload is the return payload for the transition() mutation.
+"""
+type TransitionPayload {
+  "transition is the created Transition."
+  transition: Transition!
+}
+
+extend type Mutation {
+  """
+  transition transition a Node from a state to another state.
+  """
+  transition(input: TransitionInput!): TransitionPayload! @hasRole(role: ADMIN)
+}
+
+type TransitionEdge {
+  node: Transition
+  cursor: Cursor!
+}
+
+type TransitionConnection {
+  totalCount: Int!
+  pageInfo: PageInfo!
+  edges: [TransitionEdge]
+}

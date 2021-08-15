@@ -1,0 +1,86 @@
+extend type Subscription {
+  """
+  changes returns the changes relevant to the Participant, including changes to
+  the Step they are Participating in, Atrributes they have access that are
+  added, updated, or going in and out of scope, etc.
+  """
+  changes: ChangePayload! @hasRole(role: PARTICIPANT)
+}
+
+type ChangePayload {
+  "change is the Change."
+  change: Change!
+
+  "removed indicates whether the record was removed from scope."
+  removed: Boolean!
+
+  """
+  done indicates that the state has finished synchorizing.
+  """
+  done: Boolean!
+}
+
+union Change = StepChange | AttributeChange | ParticipantChange | ScopeChange
+
+type StepChange {
+  """
+  id is the identifier for the Step.
+  """
+  id: ID!
+
+  "since is the time from which the counter should count."
+  since: DateTime
+
+  """
+  remaining is the duration left in seconds of the Step should last before
+  ending, from `since`.
+  """
+  remaining: Int
+
+  """
+  ellapsed indicates the time in seconds ellapsed since the start of the Step.
+  """
+  ellapsed: Int
+
+  "running indicates whether the Step is running."
+  running: Boolean!
+}
+
+type ScopeChange {
+  "id is the identifier for the Scope."
+  id: ID!
+
+  "name is the name of the Scope."
+  name: String!
+}
+
+type AttributeChange {
+  "id is the identifier for the Attribute."
+  id: ID!
+
+  "nodeID is the identifier for the Attribute's Node."
+  nodeID: ID!
+
+  "deleted is true with the attribute was deleted."
+  deleted: Boolean!
+
+  "isNew is true if the Attribute was just created."
+  isNew: Boolean!
+
+  "index is the index of the attribute if the value is a vector."
+  index: Int
+
+  "vector indicates whether the value is a vector."
+  vector: Boolean!
+
+  "key is the attribute key being updated."
+  key: String!
+
+  "value is the value of the updated attribute."
+  val: String
+}
+
+type ParticipantChange {
+  "id is the identifier for the Participant."
+  id: ID!
+}

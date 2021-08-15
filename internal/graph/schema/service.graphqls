@@ -1,0 +1,33 @@
+type Service {
+  "id is the unique globally identifier for the record."
+  id: ID!
+
+  "createdAt is the time of creation of the record."
+  createdAt: DateTime!
+
+  "name is the name of the service gave itself."
+  name: String!
+}
+
+"RegisterServiceInput is the input for registerService()"
+input RegisterServiceInput {
+  "name is the name of the service to register."
+  name: String!
+
+  "token is the Service Registration token."
+  token: String!
+}
+
+"RegisterServicePayload is returned by registerService()"
+type RegisterServicePayload {
+  "service is newly created Service."
+  service: Service!
+
+  "sessionToken is the session token to be used for authenticated requets."
+  sessionToken: String!
+}
+
+extend type Mutation {
+  "registerService registers a new Service."
+  registerService(input: RegisterServiceInput!): RegisterServicePayload!
+}

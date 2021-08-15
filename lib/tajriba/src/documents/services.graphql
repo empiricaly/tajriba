@@ -1,0 +1,16 @@
+fragment serviceFields on Service {
+  __typename
+  id
+  createdAt
+  name
+}
+
+mutation RegisterService($input: RegisterServiceInput!) {
+  registerService(input: $input) {
+    service {
+      ...serviceFields
+    }
+
+    sessionToken
+  }
+}

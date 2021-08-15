@@ -1,0 +1,67 @@
+"Participant is an entity participating in Steps."
+type Participant implements Node {
+  "id is the unique globally identifier for the record."
+  id: ID!
+
+  "createdAt is the time of creation of the record."
+  createdAt: DateTime!
+
+  """
+  identifier is the unique identifier for the Pariticipant. This is different
+  from the id field, which is the database internal identifier. The identifier
+  is how a participant "logs into" the system.
+  """
+  identifier: ID!
+
+  """
+  links returns Participant linking and unlinking with Nodes. A single
+  Particpant might be linked and unlinked multiple times, and
+  so a Participant might have multiple Links on a single Node.
+  """
+  links(after: Cursor, first: Int, before: Cursor, last: Int): LinkConnection @hasRole(role: ADMIN)
+}
+
+"""
+AddParticipantInput finds or creates a Participant by Unique Identifier.
+"""
+input AddParticipantInput {
+  """
+  identifier is the unique identifier for the Pariticipant. The identifier
+  is how a participant "logs into" the system.
+  """
+  identifier: ID!
+}
+
+"""
+AddParticipantPayload is the return payload for the addParticipant mutation.
+"""
+type AddParticipantPayload {
+  """
+  participant is the created Participants.
+  """
+  participant: Participant!
+
+  "sessionToken is the session token to be used for authenticated requets."
+  sessionToken: String!
+}
+
+extend type Query {
+  "participants returns all Participants in the system."
+  participants(after: Cursor, first: Int, before: Cursor, last: Int): ParticipantConnection @hasRole(role: ADMIN)
+}
+
+extend type Mutation {
+  "addParticipant finds or creates a Participant by Unique Identifier."
+  addParticipant(input: AddParticipantInput!): AddParticipantPayload!
+}
+
+type ParticipantEdge {
+  node: Participant
+  cursor: Cursor!
+}
+
+type ParticipantConnection {
+  totalCount: Int!
+  pageInfo: PageInfo!
+  edges: [ParticipantEdge]
+}
