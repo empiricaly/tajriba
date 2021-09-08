@@ -38,6 +38,7 @@ func (r *Runtime) pushStep(ctx context.Context, step *models.Step) error {
 		c = &models.StepChange{
 			ID:        step.ID,
 			Since:     &last.CreatedAt,
+			State:     step.State,
 			Remaining: &r,
 			Ellapsed:  &e,
 			Running:   true,
@@ -45,11 +46,12 @@ func (r *Runtime) pushStep(ctx context.Context, step *models.Step) error {
 	} else {
 		c = &models.StepChange{
 			ID:      step.ID,
+			State:   step.State,
 			Running: false,
 		}
 	}
 
-	active := activeLinks(step.Links)
+	active := activeNodeLinks(step.Links)
 	for _, link := range active {
 		for _, sub := range r.changesSubs[link.ParticipantID] {
 			sub.c <- &mgen.ChangePayload{
@@ -78,13 +80,14 @@ func (r *Runtime) pushAttributesForChanges(ctx context.Context, attrs []*models.
 				Key:     attr.Key,
 				Val:     attr.Val,
 				Index:   attr.Index,
+				Version: attr.Version,
 				Deleted: attr.DeletedAt != nil,
 				IsNew:   attr.Version == 1,
 				Vector:  attr.Vector,
 			},
 		}
 
-		active := activeLinks(scope.Links)
+		active := activeNodeLinks(scope.Links)
 		for _, link := range active {
 			changes[link.ParticipantID] = append(changes[link.ParticipantID], ac)
 		}
@@ -118,6 +121,7 @@ func (r *Runtime) pushLinks(ctx context.Context, links []*models.Link) error {
 				Change: &models.ScopeChange{
 					ID:   v.ID,
 					Name: v.Name,
+					Kind: v.Kind,
 				},
 			}
 			changes[pID] = append(changes[pID], ac)
@@ -130,6 +134,7 @@ func (r *Runtime) pushLinks(ctx context.Context, links []*models.Link) error {
 						NodeID:  v.ID,
 						Key:     attr.Key,
 						Val:     attr.Val,
+						Version: attr.Version,
 						Index:   attr.Index,
 						Deleted: attr.DeletedAt != nil,
 						Vector:  attr.Vector,
@@ -155,6 +160,7 @@ func (r *Runtime) pushLinks(ctx context.Context, links []*models.Link) error {
 				Removed: !link.Link,
 				Change: &models.StepChange{
 					ID:        v.ID,
+					State:     v.State,
 					Since:     &last.CreatedAt,
 					Remaining: &r,
 					Ellapsed:  &e,
@@ -163,7 +169,7 @@ func (r *Runtime) pushLinks(ctx context.Context, links []*models.Link) error {
 			})
 		case *models.Group:
 			removed := !link.Link
-			active := activeLinks(v.Links)
+			active := activeNodeLinks(v.Links)
 
 			for _, link := range active {
 				if link.ParticipantID == pID {
@@ -282,8 +288,6 @@ func (r *Runtime) SubChanges(ctx context.Context) (<-chan *mgen.ChangePayload, e
 	go func() {
 		r.Lock()
 
-		r.propagateHook(ctx, mgen.EventTypeParticipantConnect, p.ID, p)
-
 		c := &changesSub{
 			p:            p,
 			c:            pchan,
@@ -292,18 +296,22 @@ func (r *Runtime) SubChanges(ctx context.Context) (<-chan *mgen.ChangePayload, e
 
 		r.changesSubs[p.ID] = append(r.changesSubs[p.ID], c)
 
-		err := r.pushLinks(ctx, activeLinks(p.Links))
+		if len(r.changesSubs[p.ID]) == 1 {
+			r.propagateHook(ctx, mgen.EventTypeParticipantConnect, p.ID, p)
+		}
+
+		err := r.pushLinks(ctx, activeParticipantLinks(p.Links))
 
 		r.Unlock()
 
 		if err != nil {
 			log.Error().Err(err).Str("participantId", p.ID).Msg("runtime: failed initial push")
 		} else {
+			// Wait for end of connection
 			<-ctx.Done()
+
 			r.Lock()
 			defer r.Unlock()
-
-			r.propagateHook(ctx, mgen.EventTypeParticipantDisconnect, p.ID, p)
 		}
 
 		close(c.c)
@@ -321,6 +329,7 @@ func (r *Runtime) SubChanges(ctx context.Context) (<-chan *mgen.ChangePayload, e
 
 		if len(r.changesSubs[p.ID]) == 0 {
 			delete(r.changesSubs, p.ID)
+			r.propagateHook(ctx, mgen.EventTypeParticipantDisconnect, p.ID, p)
 		}
 	}()
 

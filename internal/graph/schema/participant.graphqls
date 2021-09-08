@@ -56,12 +56,12 @@ extend type Mutation {
 }
 
 type ParticipantEdge {
-  node: Participant
+  node: Participant!
   cursor: Cursor!
 }
 
 type ParticipantConnection {
   totalCount: Int!
   pageInfo: PageInfo!
-  edges: [ParticipantEdge]
+  edges: [ParticipantEdge!]!
 }

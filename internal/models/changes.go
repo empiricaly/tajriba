@@ -14,6 +14,8 @@ func (ParticipantChange) IsChange() {}
 type StepChange struct {
 	// id is the unique globally identifier for the Step.
 	ID string `json:"id"`
+	// state is the stage the Step currently is in
+	State State `json:"-"`
 	// since is the time from which the counter should count.
 	Since *time.Time `json:"since"`
 	// remaining is the duration left in seconds of the Step should last before
@@ -40,6 +42,8 @@ type AttributeChange struct {
 	Index *int `json:"index"`
 	// vector indicates whether the value is a vector.
 	Vector bool `json:"vector"`
+	// version is the version number of this Attribute, starting at 1.
+	Version int `json:"version"`
 	// key is the attribute key being updated.
 	Key string `json:"key"`
 	// value is the value of the updated attribute.
@@ -52,7 +56,9 @@ type ScopeChange struct {
 	// id is the unique globally identifier for the Scope.
 	ID string `json:"id"`
 	// name is the name of the Scope.
-	Name string `json:"name"`
+	Name *string `json:"name"`
+	// kind is the kind of the Scope.
+	Kind *string `json:"kind"`
 }
 
 func (ScopeChange) IsChange() {}

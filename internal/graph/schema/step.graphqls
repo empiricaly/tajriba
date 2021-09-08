@@ -52,12 +52,12 @@ type Step implements Node {
   """
   transitions lists of States changes of the Step.
   """
-  transitions(after: Cursor, first: Int, before: Cursor, last: Int): TransitionConnection
+  transitions(after: Cursor, first: Int, before: Cursor, last: Int): TransitionConnection!
 
   """
   links returns Participant linking and unlinking with this Node.
   """
-  links(after: Cursor, first: Int, before: Cursor, last: Int): LinkConnection
+  links(after: Cursor, first: Int, before: Cursor, last: Int): LinkConnection!
 }
 
 """
@@ -91,14 +91,14 @@ extend type Mutation {
 }
 
 type StepEdge {
-  node: Step
+  node: Step!
   cursor: Cursor!
 }
 
 type StepConnection {
   totalCount: Int!
   pageInfo: PageInfo!
-  edges: [StepEdge]
+  edges: [StepEdge!]!
 }
 
 input StepOrder {

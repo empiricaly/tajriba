@@ -45,7 +45,9 @@ type AddParticipantPayload struct {
 type AddScopeInput struct {
 	// name is the *unique* name of the Scope. If a scope with the same name already
 	// exists, it will return an "already exists" error.
-	Name string `json:"name"`
+	Name *string `json:"name"`
+	// kind is an optional type name.
+	Kind *string `json:"kind"`
 	// attributes to be attached to the Scope at creation.
 	Attributes []*SetAttributeInput `json:"attributes"`
 }
@@ -322,15 +324,28 @@ type TransitionPayload struct {
 type EventType string
 
 const (
-	EventTypeStepAdd               EventType = "STEP_ADD"
-	EventTypeScopeAdd              EventType = "SCOPE_ADD"
-	EventTypeGroupAdd              EventType = "GROUP_ADD"
-	EventTypeTransitionAdd         EventType = "TRANSITION_ADD"
-	EventTypeParticipantAdd        EventType = "PARTICIPANT_ADD"
-	EventTypeParticipantConnect    EventType = "PARTICIPANT_CONNECT"
+	// A step was added.
+	EventTypeStepAdd EventType = "STEP_ADD"
+	// A scope was added.
+	EventTypeScopeAdd EventType = "SCOPE_ADD"
+	// A group was added.
+	EventTypeGroupAdd EventType = "GROUP_ADD"
+	// A transition was added.
+	EventTypeTransitionAdd EventType = "TRANSITION_ADD"
+	// A link was added.
+	EventTypeLinkAdd EventType = "LINK_ADD"
+	// An attribute was added or updated.
+	EventTypeAttributeUpdate EventType = "ATTRIBUTE_UPDATE"
+	// A participant was added.
+	EventTypeParticipantAdd EventType = "PARTICIPANT_ADD"
+	// A participant connected.
+	EventTypeParticipantConnect EventType = "PARTICIPANT_CONNECT"
+	// A participant disconnected.
 	EventTypeParticipantDisconnect EventType = "PARTICIPANT_DISCONNECT"
-	EventTypeLinkAdd               EventType = "LINK_ADD"
-	EventTypeAttributeUpdate       EventType = "ATTRIBUTE_UPDATE"
+	// Participant was already connected when this subscription started. This is a
+	// special event that allows the listener to catch up on the currently connected
+	// players at the beginning of the subscription.
+	EventTypeParticipantConnected EventType = "PARTICIPANT_CONNECTED"
 )
 
 var AllEventType = []EventType{
@@ -338,16 +353,17 @@ var AllEventType = []EventType{
 	EventTypeScopeAdd,
 	EventTypeGroupAdd,
 	EventTypeTransitionAdd,
+	EventTypeLinkAdd,
+	EventTypeAttributeUpdate,
 	EventTypeParticipantAdd,
 	EventTypeParticipantConnect,
 	EventTypeParticipantDisconnect,
-	EventTypeLinkAdd,
-	EventTypeAttributeUpdate,
+	EventTypeParticipantConnected,
 }
 
 func (e EventType) IsValid() bool {
 	switch e {
-	case EventTypeStepAdd, EventTypeScopeAdd, EventTypeGroupAdd, EventTypeTransitionAdd, EventTypeParticipantAdd, EventTypeParticipantConnect, EventTypeParticipantDisconnect, EventTypeLinkAdd, EventTypeAttributeUpdate:
+	case EventTypeStepAdd, EventTypeScopeAdd, EventTypeGroupAdd, EventTypeTransitionAdd, EventTypeLinkAdd, EventTypeAttributeUpdate, EventTypeParticipantAdd, EventTypeParticipantConnect, EventTypeParticipantDisconnect, EventTypeParticipantConnected:
 		return true
 	}
 	return false

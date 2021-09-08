@@ -20,6 +20,8 @@ func (r *Runtime) propagateHook(ctx context.Context, eventType mgen.EventType, n
 		return
 	}
 
+	log.Info().Interface("subs", r.onEventSubs).Interface("eventType", eventType).Msg("PROPAGATUON")
+
 	for _, subs := range r.onEventSubs {
 		for _, sub := range subs {
 			if sub.et[eventType] {
@@ -52,6 +54,8 @@ func (r *Runtime) SubOnEvent(
 		return nil, ErrNotAuthorized
 	}
 
+	log.Debug().Interface("events", input.EventTypes).Msg("CONNECTING SUB")
+
 	_, ok := actr.(*models.User)
 	if !ok {
 		_, ok = actr.(*models.Service)
@@ -74,7 +78,25 @@ func (r *Runtime) SubOnEvent(
 		c := &onEventSub{c: pchan, et: et}
 
 		r.Lock()
+
 		r.onEventSubs[actorID] = append(r.onEventSubs[actorID], c)
+
+		log.Debug().Bool("connected sub", et[mgen.EventTypeParticipantConnected]).Msg("HAS CONNECTED SUB")
+		if et[mgen.EventTypeParticipantConnected] {
+			log.Debug().Interface("subs", r.changesSubs).Msg("CONNECTED SUBS")
+			for pID, subs := range r.changesSubs {
+				if len(subs) == 0 {
+					log.Warn().
+						Str("participantID", pID).
+						Msg("hooks: found change sub participant group without subs")
+
+					continue
+				}
+
+				r.propagateHook(ctx, mgen.EventTypeParticipantConnected, pID, subs[0].p)
+			}
+		}
+
 		r.Unlock()
 
 		<-ctx.Done()

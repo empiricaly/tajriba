@@ -9,6 +9,21 @@ fragment stepFields on Step {
   startedAt
   endedAt
   state
+  transitions(first: 100) {
+    totalCount
+    pageInfo {
+      hasNextPage
+      hasPreviousPage
+      startCursor
+      endCursor
+    }
+    edges {
+      node {
+        ...transitionFields
+      }
+      cursor
+    }
+  }
 }
 
 mutation AddSteps($input: [AddStepInput!]!) {

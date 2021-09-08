@@ -5,6 +5,7 @@ package graph
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/empiricaly/tajriba/internal/graph/mgen"
 	"github.com/empiricaly/tajriba/internal/models"
@@ -71,11 +72,19 @@ func (r *mutationResolver) SetAttributes(ctx context.Context, input []*mgen.SetA
 	return aa, nil
 }
 
+func (r *queryResolver) Attributes(ctx context.Context, scopeID string, after *string, first *int, before *string, last *int) (*mgen.AttributeConnection, error) {
+	panic(fmt.Errorf("not implemented"))
+}
+
 // Attribute returns AttributeResolver implementation.
 func (r *Resolver) Attribute() AttributeResolver { return &attributeResolver{r} }
 
 // Mutation returns MutationResolver implementation.
 func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 
+// Query returns QueryResolver implementation.
+func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
+
 type attributeResolver struct{ *Resolver }
 type mutationResolver struct{ *Resolver }
+type queryResolver struct{ *Resolver }

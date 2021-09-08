@@ -9,7 +9,7 @@ fragment transitionFields on Transition {
   to
   node {
     ... on Step {
-      ...stepFields
+      id
     }
   }
 }

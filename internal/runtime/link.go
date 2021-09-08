@@ -74,7 +74,7 @@ func (r *Runtime) Link(ctx context.Context, input mgen.LinkInput) (*mgen.LinkPay
 	for _, participant := range participants {
 		for i, node := range nodes {
 
-			active := activeLinks(participant.Links)
+			active := activeParticipantLinks(participant.Links)
 
 			for _, link := range active {
 				if link.NodeID == input.NodeIDs[i] && link.Link == input.Link {
@@ -100,6 +100,7 @@ func (r *Runtime) Link(ctx context.Context, input mgen.LinkInput) (*mgen.LinkPay
 				Node:          node,
 			}
 			links = append(links, link)
+			participant.Links = append(participant.Links, link)
 		}
 	}
 
@@ -136,7 +137,7 @@ func (r *Runtime) Link(ctx context.Context, input mgen.LinkInput) (*mgen.LinkPay
 	}, nil
 }
 
-func activeLinks(links []*models.Link) []*models.Link {
+func activeNodeLinks(links []*models.Link) []*models.Link {
 	seen := make(map[string]struct{})
 	active := make([]*models.Link, 0)
 
@@ -154,6 +155,34 @@ func activeLinks(links []*models.Link) []*models.Link {
 		}
 
 		active = append(active, link)
+	}
+
+	return active
+}
+
+func activeParticipantLinks(links []*models.Link) []*models.Link {
+	seen := make(map[string]struct{})
+	active := make([]*models.Link, 0)
+
+	for i := len(links) - 1; i >= 0; i-- {
+		link := links[i]
+
+		if _, ok := seen[link.NodeID]; ok {
+			continue
+		}
+
+		seen[link.NodeID] = struct{}{}
+
+		if !link.Link {
+			continue
+		}
+
+		active = append(active, link)
+	}
+
+	for i := len(active)/2 - 1; i >= 0; i-- {
+		opp := len(active) - 1 - i
+		active[i], active[opp] = active[opp], active[i]
 	}
 
 	return active

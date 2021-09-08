@@ -31,6 +31,9 @@ type StepChange {
   "since is the time from which the counter should count."
   since: DateTime
 
+  "state is the stage the Step currently is in"
+  state: State!
+
   """
   remaining is the duration left in seconds of the Step should last before
   ending, from `since`.
@@ -50,8 +53,11 @@ type ScopeChange {
   "id is the identifier for the Scope."
   id: ID!
 
+  "kind is the kind of the Scope."
+  kind: String
+
   "name is the name of the Scope."
-  name: String!
+  name: String
 }
 
 type AttributeChange {
@@ -72,6 +78,9 @@ type AttributeChange {
 
   "vector indicates whether the value is a vector."
   vector: Boolean!
+
+  "version is the version number of this Attribute, starting at 1."
+  version: Int!
 
   "key is the attribute key being updated."
   key: String!

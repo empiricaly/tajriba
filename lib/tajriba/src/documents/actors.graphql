@@ -11,5 +11,6 @@ fragment actorFields on Actor {
   ... on Participant {
     id
     identifier
+    createdAt
   }
 }

@@ -7,43 +7,33 @@ import (
 
 	"github.com/empiricaly/tajriba/internal/auth/actor"
 	"github.com/empiricaly/tajriba/internal/runtime"
+	"github.com/julienschmidt/httprouter"
 	"github.com/pkg/errors"
 )
 
-// Middleware is an HTTP handler that looks up authentication and sets it in
-// context if found.
-type Middleware struct {
-	handler http.Handler
-}
+// Middleware creates a Middleware handler.
+func Middleware(h httprouter.Handle) httprouter.Handle {
+	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		token := r.Header.Get("Authorization")
 
-// NewMiddleware creates a Middleware handler.
-func NewMiddleware(handler http.Handler) *Middleware {
-	return &Middleware{
-		handler: handler,
-	}
-}
+		actr, err := GetAuthentication(r.Context(), token)
+		if err != nil {
+			if errors.Is(err, ErrNotGiven) {
+				h(w, r, ps)
+			} else {
+				// http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+				http.Error(w, `{"errors":[{"message":"must authenticate","extensions":{"code":"UNAUTHENTICATED"}}]}`, http.StatusUnauthorized)
+			}
 
-// ServeHTTP inplements the http.Hander interface.
-func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	token := r.Header.Get("Authorization")
-
-	actr, err := GetAuthentication(r.Context(), token)
-	if err != nil {
-		if errors.Is(err, ErrNotGiven) {
-			m.handler.ServeHTTP(w, r)
-		} else {
-			// http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-			http.Error(w, `{"errors":[{"message":"must authenticate","extensions":{"code":"UNAUTHENTICATED"}}]}`, http.StatusUnauthorized)
+			return
 		}
 
-		return
+		// Put it in context
+		ctx := actor.SetContext(r.Context(), actr)
+		r = r.WithContext(ctx)
+
+		h(w, r, ps)
 	}
-
-	// Put it in context
-	ctx := actor.SetContext(r.Context(), actr)
-	r = r.WithContext(ctx)
-
-	m.handler.ServeHTTP(w, r)
 }
 
 var (

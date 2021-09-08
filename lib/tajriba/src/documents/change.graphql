@@ -7,9 +7,11 @@ subscription Changes {
       ... on ScopeChange {
         id
         name
+        kind
       }
       ... on StepChange {
         id
+        state
         since
         remaining
         ellapsed
@@ -22,6 +24,7 @@ subscription Changes {
         isNew
         index
         vector
+        version
         key
         val
       }

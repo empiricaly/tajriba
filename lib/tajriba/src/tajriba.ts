@@ -8,7 +8,7 @@ import {
 } from "@apollo/client/core";
 import { WebSocketLink } from "@apollo/client/link/ws";
 import ws from "isomorphic-ws";
-import { ClientOptions } from "subscriptions-transport-ws";
+import { ClientOptions, SubscriptionClient } from "subscriptions-transport-ws";
 import {
   AddGroupInput,
   AddGroupsDocument,
@@ -17,6 +17,8 @@ import {
   AddScopesDocument,
   AddStepInput,
   AddStepsDocument,
+  AttributesDocument,
+  AttributesQueryVariables,
   ChangePayload,
   ChangesDocument,
   GroupsDocument,
@@ -50,20 +52,41 @@ const DefaultAddress = "http://localhost:4737/query";
 
 export class Tajriba {
   private _client?: ApolloClient<NormalizedCacheObject>;
+  private subClient?: SubscriptionClient;
+  private _connectionPromise?: [(value: void) => void, (reason?: any) => void];
 
   constructor(readonly url: string = DefaultAddress, readonly token?: string) {}
 
-  static sessionAdmin(url: string = DefaultAddress, sessionToken: string) {
+  static async sessionAdmin(
+    url: string = DefaultAddress,
+    sessionToken: string
+  ) {
     const t = new Tajriba(url, sessionToken);
+    const p = t.connectionStatus();
+    t.connect();
+    try {
+      await p;
+    } catch (err) {
+      t.stop();
+      throw err;
+    }
     return new TajribaAdmin(t);
   }
 
-  static sessionParticipant(
+  static async sessionParticipant(
     url: string = DefaultAddress,
     sessionToken: string,
     participant: Participant
   ) {
     const t = new Tajriba(url, sessionToken);
+    const p = t.connectionStatus();
+    t.connect();
+    try {
+      await p;
+    } catch (err) {
+      t.stop();
+      throw err;
+    }
     return new TajribaParticipant(t, participant);
   }
 
@@ -77,9 +100,23 @@ export class Tajriba {
     }
   }
 
+  private connectionStatus() {
+    return new Promise((resolve, reject) => {
+      this._connectionPromise = [resolve, reject];
+    });
+  }
+
   get client() {
+    if (!this._client) {
+      this.connect();
+    }
+
+    return this._client!;
+  }
+
+  private connect() {
     if (this._client) {
-      return this._client;
+      return;
     }
 
     const cache: InMemoryCache = new InMemoryCache({});
@@ -87,8 +124,18 @@ export class Tajriba {
     const wsClientOptions: ClientOptions = {
       timeout: 24 * 60 * 60 * 1000,
       inactivityTimeout: 24 * 60 * 60 * 1000,
-      lazy: true,
+      lazy: false,
       reconnect: true,
+      connectionCallback: (error: Error[], result?: any) => {
+        if (this._connectionPromise) {
+          if (error) {
+            this._connectionPromise[1](error);
+          } else {
+            this._connectionPromise[0]();
+          }
+          this._connectionPromise = undefined;
+        }
+      },
     };
 
     if (this.token) {
@@ -97,23 +144,33 @@ export class Tajriba {
       };
     }
 
-    const wsLink = new WebSocketLink({
-      uri: this.wsURL,
-      options: wsClientOptions,
-      webSocketImpl: ws,
-    });
+    // Work around from: https://github.com/apollographql/apollo-client/issues/7257
+    this.subClient = new SubscriptionClient(this.wsURL, wsClientOptions, ws);
+
+    const wLink = new WebSocketLink(this.subClient);
 
     const client: ApolloClient<NormalizedCacheObject> = new ApolloClient({
       cache,
-      link: wsLink,
+      link: wLink,
     });
 
     this._client = client;
-
-    return this._client;
   }
 
-  async login(username: string, password: string) {
+  async stop() {
+    if (this._client) {
+      this._client.stop();
+      this._client = undefined;
+      if (this.subClient) {
+        this.subClient.close();
+      }
+    }
+  }
+
+  async login(
+    username: string,
+    password: string
+  ): Promise<[TajribaAdmin, string]> {
     const loginRes = await this.client.mutate({
       mutation: LoginDocument,
       variables: {
@@ -131,17 +188,12 @@ export class Tajriba {
 
     const t = new Tajriba(this.url, sessionToken);
 
-    return new TajribaAdmin(t);
+    return [new TajribaAdmin(t), sessionToken];
   }
 
-  async stop() {
-    if (this.client) {
-      this.client.stop();
-      this._client = undefined;
-    }
-  }
-
-  async register(identifier: string) {
+  async registerParticipant(
+    identifier: string
+  ): Promise<[TajribaParticipant, string]> {
     const addPartRes = await this.client.mutate({
       mutation: AddParticipantDocument,
       variables: {
@@ -166,10 +218,13 @@ export class Tajriba {
 
     const t = new Tajriba(this.url, sessionToken);
 
-    return new TajribaParticipant(t, participant);
+    return [new TajribaParticipant(t, participant), sessionToken];
   }
 
-  async registerService(name: string, token: string) {
+  async registerService(
+    name: string,
+    token: string
+  ): Promise<[TajribaAdmin, string]> {
     const res = await this.client.mutate({
       mutation: RegisterServiceDocument,
       variables: {
@@ -193,18 +248,17 @@ export class Tajriba {
 
     const t = new Tajriba(this.url, sessionToken);
 
-    return new TajribaAdmin(t);
+    return [new TajribaAdmin(t), sessionToken];
   }
 
   async setAttributes(input: SetAttributeInput[]) {
-    const res = await this.client.mutate({
-      mutation: SetAttributesDocument,
-      variables: {
-        input,
-      },
-    });
+    return await this.mutate(SetAttributesDocument, { input }, (data) =>
+      data?.setAttributes.map((p) => p.attribute)
+    );
+  }
 
-    return res.data?.setAttributes;
+  async setAttribute(input: SetAttributeInput) {
+    return (await this.setAttributes([input]))[0];
   }
 
   async query<T = any, TVariables = OperationVariables, U = any>(
@@ -284,6 +338,10 @@ export class TajribaUser {
 
   async setAttributes(input: SetAttributeInput[]) {
     return this.taj.setAttributes(input);
+  }
+
+  async setAttribute(input: SetAttributeInput) {
+    return this.taj.setAttribute(input);
   }
 }
 
@@ -370,6 +428,17 @@ export class TajribaAdmin extends TajribaUser {
       ScopesDocument,
       { ...input },
       (data) => data?.scopes
+    );
+  }
+
+  /**
+   * attributes returns all attributes for a scope.
+   */
+  async attributes(input: AttributesQueryVariables) {
+    return await this.taj.query(
+      AttributesDocument,
+      { ...input },
+      (data) => data?.attributes
     );
   }
 

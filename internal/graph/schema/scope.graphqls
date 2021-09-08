@@ -8,10 +8,13 @@ type Scope implements Node {
   "createdBy returns the Actor that created the record."
   createdBy: Actor!
 
-  "name is the *unique* name of the Scope."
-  name: String!
+  "name is an optional *unique* name."
+  name: String
 
-  "attributes returns all custom data that has been set on the Scope."
+  "kind is an optional type name."
+  kind: String
+
+  "attributes returns all custom data that has been set."
   attributes(
     """
     deleted will return only deleted attributes if false, by default only
@@ -22,7 +25,7 @@ type Scope implements Node {
     first: Int
     before: Cursor
     last: Int
-  ): AttributeConnection
+  ): AttributeConnection!
 
   """
   links returns Participant linking and unlinking with this Node. A single
@@ -40,7 +43,10 @@ input AddScopeInput {
   name is the *unique* name of the Scope. If a scope with the same name already
   exists, it will return an "already exists" error.
   """
-  name: String!
+  name: String
+
+  "kind is an optional type name."
+  kind: String
 
   """
   attributes to be attached to the Scope at creation.
@@ -67,6 +73,11 @@ input ScopedAttributesInput {
   name of the matching Scope.
   """
   name: String
+
+  """
+  kind of the matching Scope.
+  """
+  kind: String
 
   """
   keys to Attributes in matching Scope.
@@ -131,12 +142,12 @@ extend type Subscription {
 }
 
 type ScopeEdge {
-  node: Scope
+  node: Scope!
   cursor: Cursor!
 }
 
 type ScopeConnection {
   totalCount: Int!
   pageInfo: PageInfo!
-  edges: [ScopeEdge]
+  edges: [ScopeEdge!]!
 }

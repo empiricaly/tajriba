@@ -45,12 +45,12 @@ extend type Mutation {
 }
 
 type GroupEdge {
-  node: Group
+  node: Group!
   cursor: Cursor!
 }
 
 type GroupConnection {
   totalCount: Int!
   pageInfo: PageInfo!
-  edges: [GroupEdge]
+  edges: [GroupEdge!]!
 }

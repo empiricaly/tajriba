@@ -112,8 +112,4 @@ func (r *queryResolver) Groups(ctx context.Context, after *string, first *int, b
 // Group returns GroupResolver implementation.
 func (r *Resolver) Group() GroupResolver { return &groupResolver{r} }
 
-// Query returns QueryResolver implementation.
-func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
-
 type groupResolver struct{ *Resolver }
-type queryResolver struct{ *Resolver }

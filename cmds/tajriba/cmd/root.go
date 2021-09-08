@@ -75,7 +75,7 @@ func defineRoot() (*cobra.Command, *bool, error) {
 		},
 	}
 
-	err := tajriba.ConfigFlags(rootCmd)
+	err := tajriba.ConfigFlags(rootCmd, "")
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "define flags")
 	}

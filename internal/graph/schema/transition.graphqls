@@ -68,12 +68,12 @@ extend type Mutation {
 }
 
 type TransitionEdge {
-  node: Transition
+  node: Transition!
   cursor: Cursor!
 }
 
 type TransitionConnection {
   totalCount: Int!
   pageInfo: PageInfo!
-  edges: [TransitionEdge]
+  edges: [TransitionEdge!]!
 }

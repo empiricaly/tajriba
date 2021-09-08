@@ -2,21 +2,39 @@
 EventType holds types of event that can trigger hooks.
 """
 enum EventType {
+  "A step was added."
   STEP_ADD
 
+  "A scope was added."
   SCOPE_ADD
 
+  "A group was added."
   GROUP_ADD
 
+  "A transition was added."
   TRANSITION_ADD
 
-  PARTICIPANT_ADD
-  PARTICIPANT_CONNECT
-  PARTICIPANT_DISCONNECT
-
+  "A link was added."
   LINK_ADD
 
+  "An attribute was added or updated."
   ATTRIBUTE_UPDATE
+
+  "A participant was added."
+  PARTICIPANT_ADD
+
+  "A participant connected."
+  PARTICIPANT_CONNECT
+
+  "A participant disconnected."
+  PARTICIPANT_DISCONNECT
+
+  """
+  Participant was already connected when this subscription started. This is a
+  special event that allows the listener to catch up on the currently connected
+  players at the beginning of the subscription.
+  """
+  PARTICIPANT_CONNECTED
 }
 
 "OnEventInput is the input for the onEvent subscription."
@@ -24,6 +42,15 @@ input OnEventInput {
   "eventsTypes speficies which events to listen to."
   eventTypes: [EventType!]!
 
+  """
+  nodeID is an optional node ID of the node to listen to. If nodeID is
+  specified, nodeType must also be given.
+  """
+  nodeID: ID
+}
+
+"OnAnyEventInput is the input for the onAnyEvent subscription."
+input OnAnyEventInput {
   """
   nodeID is an optional node ID of the node to listen to. If nodeID is
   specified, nodeType must also be given.
@@ -45,15 +72,6 @@ type OnEventPayload {
 
   "node is the node that triggered the event"
   node: Node!
-}
-
-"OnAnyEventInput is the input for the onAnyEvent subscription."
-input OnAnyEventInput {
-  """
-  nodeID is an optional node ID of the node to listen to. If nodeID is
-  specified, nodeType must also be given.
-  """
-  nodeID: ID
 }
 
 extend type Subscription {

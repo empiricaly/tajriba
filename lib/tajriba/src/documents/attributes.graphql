@@ -12,6 +12,7 @@ fragment attributeFields on Attribute {
   key
   val
   index
+  current
   version
   vector
   node {
@@ -19,15 +20,40 @@ fragment attributeFields on Attribute {
   }
 }
 
+query Attributes(
+  $scopeID: ID!
+  $after: Cursor
+  $first: Int
+  $before: Cursor
+  $last: Int
+) {
+  attributes(
+    scopeID: $scopeID
+    after: $after
+    first: $first
+    before: $before
+    last: $last
+  ) {
+    totalCount
+    pageInfo {
+      hasNextPage
+      hasPreviousPage
+      startCursor
+      endCursor
+    }
+    edges {
+      node {
+        ...attributeFields
+      }
+      cursor
+    }
+  }
+}
+
 mutation SetAttributes($input: [SetAttributeInput!]!) {
   setAttributes(input: $input) {
     attribute {
-      id
-      index
-      createdAt
-      createdBy {
-        ...actorFields
-      }
+      ...attributeFields
     }
   }
 }

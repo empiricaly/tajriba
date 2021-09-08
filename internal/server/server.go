@@ -46,9 +46,11 @@ func Start(
 		return nil, errors.Wrap(err, "enable server")
 	}
 
+	router.GET("/", index)
+
 	srv := &http.Server{
 		Addr:        config.Addr,
-		Handler:     cors.Default().Handler(auth.NewMiddleware(router)),
+		Handler:     cors.Default().Handler(router),
 		BaseContext: func(_ net.Listener) context.Context { return ctx },
 	}
 
@@ -102,9 +104,8 @@ func Enable(
 	router *httprouter.Router,
 	schema graphql.ExecutableSchema,
 ) error {
-	router.GET("/", index)
 
-	gqlh := requestMetadata(graphqlHandler(ctx, schema))
+	gqlh := requestMetadata(auth.Middleware(graphqlHandler(ctx, schema)))
 	router.GET("/query", gqlh)
 	router.POST("/query", gqlh)
 

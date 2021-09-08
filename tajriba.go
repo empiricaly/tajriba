@@ -42,7 +42,7 @@ func (r *Runner) Close(ctx context.Context) {
 
 // Start sets up the Tajriba environment and creates an HTTP server.
 func Start(ctx context.Context, config *Config, usingConfigFile bool) (*Runner, error) {
-	ctx, r, schema, err := setup(ctx, config, usingConfigFile)
+	ctx, r, schema, err := Setup(ctx, config, usingConfigFile)
 	if err != nil {
 		return nil, errors.Wrap(err, "setup tajriba")
 	}
@@ -56,22 +56,17 @@ func Start(ctx context.Context, config *Config, usingConfigFile bool) (*Runner, 
 }
 
 // Init sets up the Tajriba environment for an existing HTTP server.
-func Init(ctx context.Context, config *Config, router *httprouter.Router) (*Runner, error) {
-	ctx, r, schema, err := setup(ctx, config, false)
+func Init(ctx context.Context, config *Config, schema graphql.ExecutableSchema, router *httprouter.Router) error {
+	err := server.Enable(ctx, config.Server, router, schema)
 	if err != nil {
-		return nil, errors.Wrap(err, "setup tajriba")
+		return errors.Wrap(err, "init server")
 	}
 
-	err = server.Enable(ctx, config.Server, router, schema)
-	if err != nil {
-		return nil, errors.Wrap(err, "init server")
-	}
-
-	return r, nil
+	return nil
 }
 
-// setup sets up the Tajriba environment.
-func setup(ctx context.Context, config *Config, usingConfigFile bool) (context.Context, *Runner, graphql.ExecutableSchema, error) {
+// Setup sets up the Tajriba environment.
+func Setup(ctx context.Context, config *Config, usingConfigFile bool) (context.Context, *Runner, graphql.ExecutableSchema, error) {
 	err := logger.Init(config.Log)
 	if err != nil {
 		return ctx, nil, nil, errors.Wrap(err, "init logs")

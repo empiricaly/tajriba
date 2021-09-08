@@ -1,5 +1,5 @@
 {
-  "name": "tajriba",
+  "name": "@empirica/tajriba",
   "version": "0.1.0",
   "description": "Tajriba client",
   "main": "src/index.ts",
@@ -51,6 +51,7 @@
   },
   "dependencies": {
     "@apollo/client": "3.3.7",
+    "@lukeed/csprng": "^1.0.0",
     "cross-fetch": "3.0.6",
     "dayjs": "1.10.4",
     "graphql": "15.5.0",

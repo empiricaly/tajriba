@@ -69,12 +69,12 @@ extend type Mutation {
 }
 
 type LinkEdge {
-  node: Link
+  node: Link!
   cursor: Cursor!
 }
 
 type LinkConnection {
   totalCount: Int!
   pageInfo: PageInfo!
-  edges: [LinkEdge]
+  edges: [LinkEdge!]!
 }

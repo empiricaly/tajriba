@@ -7,6 +7,7 @@ import (
 	logger "github.com/empiricaly/tajriba/internal/utils/log"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // Config is server configuration.
@@ -43,27 +44,33 @@ func (c *Config) Validate() error {
 }
 
 // ConfigFlags helps configure cobra and viper flags.
-func ConfigFlags(cmd *cobra.Command) error {
+func ConfigFlags(cmd *cobra.Command, prefix string) error {
 	if cmd == nil {
 		return errors.New("command required")
 	}
 
-	err := server.ConfigFlags(cmd, "server")
+	if prefix != "" {
+		prefix += "."
+	}
+
+	viper.SetDefault(prefix, &Config{})
+
+	err := server.ConfigFlags(cmd, prefix+"server")
 	if err != nil {
 		return errors.Wrap(err, "set server configuration flags")
 	}
 
-	err = store.ConfigFlags(cmd, "store", "tajriba.json")
+	err = store.ConfigFlags(cmd, prefix+"store", "tajriba.json")
 	if err != nil {
 		return errors.Wrap(err, "set store configuration flags")
 	}
 
-	err = auth.ConfigFlags(cmd, "auth")
+	err = auth.ConfigFlags(cmd, prefix+"auth")
 	if err != nil {
 		return errors.Wrap(err, "set auth configuration flags")
 	}
 
-	err = logger.ConfigFlags(cmd, "log", "info")
+	err = logger.ConfigFlags(cmd, prefix+"log", "info")
 	if err != nil {
 		return errors.Wrap(err, "set logger configuration flags")
 	}

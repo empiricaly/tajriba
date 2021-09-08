@@ -82,7 +82,7 @@ export type Attribute = Node & {
   /** vector returns true if the value is a vector. */
   vector: Scalars["Boolean"];
   /** version is the version number of this Attribute, starting at 1. */
-  version?: Maybe<Scalars["Int"]>;
+  version: Scalars["Int"];
   /** versions returns previous versions for the Attribute. */
   versions?: Maybe<AttributeConnection>;
   /** current is true if the Attribute is the current version of the value for key. */
@@ -156,6 +156,61 @@ export type SetAttributePayload = {
   attribute: Attribute;
 };
 
+export type Query = {
+  __typename: "Query";
+  /** attributes returns all attributes for a scope. */
+  attributes?: Maybe<AttributeConnection>;
+  /** groups returns all groups */
+  groups?: Maybe<GroupConnection>;
+  /** participants returns all Participants in the system. */
+  participants?: Maybe<ParticipantConnection>;
+  /**
+   * scopes returns all scopes
+   * If filter is provided it will return scopes matching any
+   * ScopedAttributesInput.
+   */
+  scopes?: Maybe<ScopeConnection>;
+  /** steps returns all steps */
+  steps?: Maybe<StepConnection>;
+};
+
+export type QueryAttributesArgs = {
+  scopeID: Scalars["ID"];
+  after?: Maybe<Scalars["Cursor"]>;
+  first?: Maybe<Scalars["Int"]>;
+  before?: Maybe<Scalars["Cursor"]>;
+  last?: Maybe<Scalars["Int"]>;
+};
+
+export type QueryGroupsArgs = {
+  after?: Maybe<Scalars["Cursor"]>;
+  first?: Maybe<Scalars["Int"]>;
+  before?: Maybe<Scalars["Cursor"]>;
+  last?: Maybe<Scalars["Int"]>;
+};
+
+export type QueryParticipantsArgs = {
+  after?: Maybe<Scalars["Cursor"]>;
+  first?: Maybe<Scalars["Int"]>;
+  before?: Maybe<Scalars["Cursor"]>;
+  last?: Maybe<Scalars["Int"]>;
+};
+
+export type QueryScopesArgs = {
+  filter?: Maybe<Array<ScopedAttributesInput>>;
+  after?: Maybe<Scalars["Cursor"]>;
+  first?: Maybe<Scalars["Int"]>;
+  before?: Maybe<Scalars["Cursor"]>;
+  last?: Maybe<Scalars["Int"]>;
+};
+
+export type QueryStepsArgs = {
+  after?: Maybe<Scalars["Cursor"]>;
+  first?: Maybe<Scalars["Int"]>;
+  before?: Maybe<Scalars["Cursor"]>;
+  last?: Maybe<Scalars["Int"]>;
+};
+
 export type Mutation = {
   __typename: "Mutation";
   /** addGroups creates new Groups. */
@@ -216,7 +271,7 @@ export type MutationTransitionArgs = {
 
 export type AttributeEdge = {
   __typename: "AttributeEdge";
-  node?: Maybe<Attribute>;
+  node: Attribute;
   cursor: Scalars["Cursor"];
 };
 
@@ -224,7 +279,7 @@ export type AttributeConnection = {
   __typename: "AttributeConnection";
   totalCount: Scalars["Int"];
   pageInfo: PageInfo;
-  edges?: Maybe<Array<Maybe<AttributeEdge>>>;
+  edges: Array<AttributeEdge>;
 };
 
 /** Node is an interface allowing simple querying of any node */
@@ -291,6 +346,8 @@ export type StepChange = {
   id: Scalars["ID"];
   /** since is the time from which the counter should count. */
   since?: Maybe<Scalars["DateTime"]>;
+  /** state is the stage the Step currently is in */
+  state: State;
   /**
    * remaining is the duration left in seconds of the Step should last before
    * ending, from `since`.
@@ -306,8 +363,10 @@ export type ScopeChange = {
   __typename: "ScopeChange";
   /** id is the identifier for the Scope. */
   id: Scalars["ID"];
+  /** kind is the kind of the Scope. */
+  kind?: Maybe<Scalars["String"]>;
   /** name is the name of the Scope. */
-  name: Scalars["String"];
+  name?: Maybe<Scalars["String"]>;
 };
 
 export type AttributeChange = {
@@ -324,6 +383,8 @@ export type AttributeChange = {
   index?: Maybe<Scalars["Int"]>;
   /** vector indicates whether the value is a vector. */
   vector: Scalars["Boolean"];
+  /** version is the version number of this Attribute, starting at 1. */
+  version: Scalars["Int"];
   /** key is the attribute key being updated. */
   key: Scalars["String"];
   /** value is the value of the updated attribute. */
@@ -381,54 +442,9 @@ export type AddGroupPayload = {
   group: Group;
 };
 
-export type Query = {
-  __typename: "Query";
-  /** groups returns all groups */
-  groups?: Maybe<GroupConnection>;
-  /** participants returns all Participants in the system. */
-  participants?: Maybe<ParticipantConnection>;
-  /**
-   * scopes returns all scopes
-   * If filter is provided it will return scopes matching any
-   * ScopedAttributesInput.
-   */
-  scopes?: Maybe<ScopeConnection>;
-  /** steps returns all steps */
-  steps?: Maybe<StepConnection>;
-};
-
-export type QueryGroupsArgs = {
-  after?: Maybe<Scalars["Cursor"]>;
-  first?: Maybe<Scalars["Int"]>;
-  before?: Maybe<Scalars["Cursor"]>;
-  last?: Maybe<Scalars["Int"]>;
-};
-
-export type QueryParticipantsArgs = {
-  after?: Maybe<Scalars["Cursor"]>;
-  first?: Maybe<Scalars["Int"]>;
-  before?: Maybe<Scalars["Cursor"]>;
-  last?: Maybe<Scalars["Int"]>;
-};
-
-export type QueryScopesArgs = {
-  filter?: Maybe<Array<ScopedAttributesInput>>;
-  after?: Maybe<Scalars["Cursor"]>;
-  first?: Maybe<Scalars["Int"]>;
-  before?: Maybe<Scalars["Cursor"]>;
-  last?: Maybe<Scalars["Int"]>;
-};
-
-export type QueryStepsArgs = {
-  after?: Maybe<Scalars["Cursor"]>;
-  first?: Maybe<Scalars["Int"]>;
-  before?: Maybe<Scalars["Cursor"]>;
-  last?: Maybe<Scalars["Int"]>;
-};
-
 export type GroupEdge = {
   __typename: "GroupEdge";
-  node?: Maybe<Group>;
+  node: Group;
   cursor: Scalars["Cursor"];
 };
 
@@ -436,26 +452,50 @@ export type GroupConnection = {
   __typename: "GroupConnection";
   totalCount: Scalars["Int"];
   pageInfo: PageInfo;
-  edges?: Maybe<Array<Maybe<GroupEdge>>>;
+  edges: Array<GroupEdge>;
 };
 
 /** EventType holds types of event that can trigger hooks. */
 export enum EventType {
+  /** A step was added. */
   StepAdd = "STEP_ADD",
+  /** A scope was added. */
   ScopeAdd = "SCOPE_ADD",
+  /** A group was added. */
   GroupAdd = "GROUP_ADD",
+  /** A transition was added. */
   TransitionAdd = "TRANSITION_ADD",
-  ParticipantAdd = "PARTICIPANT_ADD",
-  ParticipantConnect = "PARTICIPANT_CONNECT",
-  ParticipantDisconnect = "PARTICIPANT_DISCONNECT",
+  /** A link was added. */
   LinkAdd = "LINK_ADD",
+  /** An attribute was added or updated. */
   AttributeUpdate = "ATTRIBUTE_UPDATE",
+  /** A participant was added. */
+  ParticipantAdd = "PARTICIPANT_ADD",
+  /** A participant connected. */
+  ParticipantConnect = "PARTICIPANT_CONNECT",
+  /** A participant disconnected. */
+  ParticipantDisconnect = "PARTICIPANT_DISCONNECT",
+  /**
+   * Participant was already connected when this subscription started. This is a
+   * special event that allows the listener to catch up on the currently connected
+   * players at the beginning of the subscription.
+   */
+  ParticipantConnected = "PARTICIPANT_CONNECTED",
 }
 
 /** OnEventInput is the input for the onEvent subscription. */
 export type OnEventInput = {
   /** eventsTypes speficies which events to listen to. */
   eventTypes: Array<EventType>;
+  /**
+   * nodeID is an optional node ID of the node to listen to. If nodeID is
+   * specified, nodeType must also be given.
+   */
+  nodeID?: Maybe<Scalars["ID"]>;
+};
+
+/** OnAnyEventInput is the input for the onAnyEvent subscription. */
+export type OnAnyEventInput = {
   /**
    * nodeID is an optional node ID of the node to listen to. If nodeID is
    * specified, nodeType must also be given.
@@ -476,15 +516,6 @@ export type OnEventPayload = {
   eventType: EventType;
   /** node is the node that triggered the event */
   node: Node;
-};
-
-/** OnAnyEventInput is the input for the onAnyEvent subscription. */
-export type OnAnyEventInput = {
-  /**
-   * nodeID is an optional node ID of the node to listen to. If nodeID is
-   * specified, nodeType must also be given.
-   */
-  nodeID?: Maybe<Scalars["ID"]>;
 };
 
 /** Link records a Participant linking or unlinking with a Node. */
@@ -534,7 +565,7 @@ export type LinkPayload = {
 
 export type LinkEdge = {
   __typename: "LinkEdge";
-  node?: Maybe<Link>;
+  node: Link;
   cursor: Scalars["Cursor"];
 };
 
@@ -542,7 +573,7 @@ export type LinkConnection = {
   __typename: "LinkConnection";
   totalCount: Scalars["Int"];
   pageInfo: PageInfo;
-  edges?: Maybe<Array<Maybe<LinkEdge>>>;
+  edges: Array<LinkEdge>;
 };
 
 /** Participant is an entity participating in Steps. */
@@ -594,7 +625,7 @@ export type AddParticipantPayload = {
 
 export type ParticipantEdge = {
   __typename: "ParticipantEdge";
-  node?: Maybe<Participant>;
+  node: Participant;
   cursor: Scalars["Cursor"];
 };
 
@@ -602,7 +633,7 @@ export type ParticipantConnection = {
   __typename: "ParticipantConnection";
   totalCount: Scalars["Int"];
   pageInfo: PageInfo;
-  edges?: Maybe<Array<Maybe<ParticipantEdge>>>;
+  edges: Array<ParticipantEdge>;
 };
 
 export type Scope = Node & {
@@ -613,10 +644,12 @@ export type Scope = Node & {
   createdAt: Scalars["DateTime"];
   /** createdBy returns the Actor that created the record. */
   createdBy: Actor;
-  /** name is the *unique* name of the Scope. */
-  name: Scalars["String"];
-  /** attributes returns all custom data that has been set on the Scope. */
-  attributes?: Maybe<AttributeConnection>;
+  /** name is an optional *unique* name. */
+  name?: Maybe<Scalars["String"]>;
+  /** kind is an optional type name. */
+  kind?: Maybe<Scalars["String"]>;
+  /** attributes returns all custom data that has been set. */
+  attributes: AttributeConnection;
   /**
    * links returns Participant linking and unlinking with this Node. A single
    * Particpant might be linked and unlinked multiple times, and
@@ -646,7 +679,9 @@ export type AddScopeInput = {
    * name is the *unique* name of the Scope. If a scope with the same name already
    * exists, it will return an "already exists" error.
    */
-  name: Scalars["String"];
+  name?: Maybe<Scalars["String"]>;
+  /** kind is an optional type name. */
+  kind?: Maybe<Scalars["String"]>;
   /** attributes to be attached to the Scope at creation. */
   attributes?: Maybe<Array<SetAttributeInput>>;
 };
@@ -665,6 +700,8 @@ export type AddScopePayload = {
 export type ScopedAttributesInput = {
   /** name of the matching Scope. */
   name?: Maybe<Scalars["String"]>;
+  /** kind of the matching Scope. */
+  kind?: Maybe<Scalars["String"]>;
   /** keys to Attributes in matching Scope. */
   keys?: Maybe<Array<Scalars["String"]>>;
   /** kvs to Attributes in matching Scope. */
@@ -692,7 +729,7 @@ export type Kv = {
 
 export type ScopeEdge = {
   __typename: "ScopeEdge";
-  node?: Maybe<Scope>;
+  node: Scope;
   cursor: Scalars["Cursor"];
 };
 
@@ -700,7 +737,7 @@ export type ScopeConnection = {
   __typename: "ScopeConnection";
   totalCount: Scalars["Int"];
   pageInfo: PageInfo;
-  edges?: Maybe<Array<Maybe<ScopeEdge>>>;
+  edges: Array<ScopeEdge>;
 };
 
 export type Service = {
@@ -767,9 +804,9 @@ export type Step = Node & {
   /** endedAt is the time at which the Step ended. */
   endedAt?: Maybe<Scalars["DateTime"]>;
   /** transitions lists of States changes of the Step. */
-  transitions?: Maybe<TransitionConnection>;
+  transitions: TransitionConnection;
   /** links returns Participant linking and unlinking with this Node. */
-  links?: Maybe<LinkConnection>;
+  links: LinkConnection;
 };
 
 /** Step is a span of time. */
@@ -803,7 +840,7 @@ export type AddStepPayload = {
 
 export type StepEdge = {
   __typename: "StepEdge";
-  node?: Maybe<Step>;
+  node: Step;
   cursor: Scalars["Cursor"];
 };
 
@@ -811,7 +848,7 @@ export type StepConnection = {
   __typename: "StepConnection";
   totalCount: Scalars["Int"];
   pageInfo: PageInfo;
-  edges?: Maybe<Array<Maybe<StepEdge>>>;
+  edges: Array<StepEdge>;
 };
 
 export type StepOrder = {
@@ -867,7 +904,7 @@ export type TransitionPayload = {
 
 export type TransitionEdge = {
   __typename: "TransitionEdge";
-  node?: Maybe<Transition>;
+  node: Transition;
   cursor: Scalars["Cursor"];
 };
 
@@ -875,7 +912,7 @@ export type TransitionConnection = {
   __typename: "TransitionConnection";
   totalCount: Scalars["Int"];
   pageInfo: PageInfo;
-  edges?: Maybe<Array<Maybe<TransitionEdge>>>;
+  edges: Array<TransitionEdge>;
 };
 
 /** User is a user that has priviledged access to the data. */
@@ -908,6 +945,67 @@ export type LoginPayload = {
   sessionToken: Scalars["String"];
 };
 
+export type AttributesQueryVariables = Exact<{
+  scopeID: Scalars["ID"];
+  after?: Maybe<Scalars["Cursor"]>;
+  first?: Maybe<Scalars["Int"]>;
+  before?: Maybe<Scalars["Cursor"]>;
+  last?: Maybe<Scalars["Int"]>;
+}>;
+
+export type AttributesQuery = { __typename: "Query" } & {
+  attributes?: Maybe<
+    { __typename: "AttributeConnection" } & Pick<
+      AttributeConnection,
+      "totalCount"
+    > & {
+        pageInfo: { __typename: "PageInfo" } & Pick<
+          PageInfo,
+          "hasNextPage" | "hasPreviousPage" | "startCursor" | "endCursor"
+        >;
+        edges: Array<
+          { __typename: "AttributeEdge" } & Pick<AttributeEdge, "cursor"> & {
+              node: { __typename: "Attribute" } & Pick<
+                Attribute,
+                | "id"
+                | "createdAt"
+                | "private"
+                | "protected"
+                | "immutable"
+                | "deletedAt"
+                | "key"
+                | "val"
+                | "index"
+                | "current"
+                | "version"
+                | "vector"
+              > & {
+                  createdBy:
+                    | ({ __typename: "User" } & Pick<
+                        User,
+                        "id" | "username" | "name"
+                      >)
+                    | ({ __typename: "Service" } & Pick<Service, "id" | "name">)
+                    | ({ __typename: "Participant" } & Pick<
+                        Participant,
+                        "id" | "identifier" | "createdAt"
+                      >);
+                  node:
+                    | ({ __typename: "Attribute" } & Pick<Attribute, "id">)
+                    | ({ __typename: "Group" } & Pick<Group, "id">)
+                    | ({ __typename: "Link" } & Pick<Link, "id">)
+                    | ({ __typename: "Participant" } & Pick<Participant, "id">)
+                    | ({ __typename: "Scope" } & Pick<Scope, "id">)
+                    | ({ __typename: "Step" } & Pick<Step, "id">)
+                    | ({ __typename: "Transition" } & Pick<Transition, "id">)
+                    | ({ __typename: "User" } & Pick<User, "id">);
+                };
+            }
+        >;
+      }
+  >;
+};
+
 export type SetAttributesMutationVariables = Exact<{
   input: Array<SetAttributeInput> | SetAttributeInput;
 }>;
@@ -917,15 +1015,35 @@ export type SetAttributesMutation = { __typename: "Mutation" } & {
     { __typename: "SetAttributePayload" } & {
       attribute: { __typename: "Attribute" } & Pick<
         Attribute,
-        "id" | "index" | "createdAt"
+        | "id"
+        | "createdAt"
+        | "private"
+        | "protected"
+        | "immutable"
+        | "deletedAt"
+        | "key"
+        | "val"
+        | "index"
+        | "current"
+        | "version"
+        | "vector"
       > & {
           createdBy:
             | ({ __typename: "User" } & Pick<User, "id" | "username" | "name">)
             | ({ __typename: "Service" } & Pick<Service, "id" | "name">)
             | ({ __typename: "Participant" } & Pick<
                 Participant,
-                "id" | "identifier"
+                "id" | "identifier" | "createdAt"
               >);
+          node:
+            | ({ __typename: "Attribute" } & Pick<Attribute, "id">)
+            | ({ __typename: "Group" } & Pick<Group, "id">)
+            | ({ __typename: "Link" } & Pick<Link, "id">)
+            | ({ __typename: "Participant" } & Pick<Participant, "id">)
+            | ({ __typename: "Scope" } & Pick<Scope, "id">)
+            | ({ __typename: "Step" } & Pick<Step, "id">)
+            | ({ __typename: "Transition" } & Pick<Transition, "id">)
+            | ({ __typename: "User" } & Pick<User, "id">);
         };
     }
   >;
@@ -941,7 +1059,7 @@ export type ChangesSubscription = { __typename: "Subscription" } & {
       change:
         | ({ __typename: "StepChange" } & Pick<
             StepChange,
-            "id" | "since" | "remaining" | "ellapsed" | "running"
+            "id" | "state" | "since" | "remaining" | "ellapsed" | "running"
           >)
         | ({ __typename: "AttributeChange" } & Pick<
             AttributeChange,
@@ -951,11 +1069,15 @@ export type ChangesSubscription = { __typename: "Subscription" } & {
             | "isNew"
             | "index"
             | "vector"
+            | "version"
             | "key"
             | "val"
           >)
         | ({ __typename: "ParticipantChange" } & Pick<ParticipantChange, "id">)
-        | ({ __typename: "ScopeChange" } & Pick<ScopeChange, "id" | "name">);
+        | ({ __typename: "ScopeChange" } & Pick<
+            ScopeChange,
+            "id" | "name" | "kind"
+          >);
     };
 };
 
@@ -981,30 +1103,21 @@ export type GroupsQueryVariables = Exact<{
 export type GroupsQuery = { __typename: "Query" } & {
   groups?: Maybe<
     { __typename: "GroupConnection" } & Pick<GroupConnection, "totalCount"> & {
-        edges?: Maybe<
-          Array<
-            Maybe<
-              { __typename: "GroupEdge" } & {
-                node?: Maybe<
-                  { __typename: "Group" } & Pick<Group, "id" | "createdAt"> & {
-                      createdBy:
-                        | ({ __typename: "User" } & Pick<
-                            User,
-                            "id" | "username" | "name"
-                          >)
-                        | ({ __typename: "Service" } & Pick<
-                            Service,
-                            "id" | "name"
-                          >)
-                        | ({ __typename: "Participant" } & Pick<
-                            Participant,
-                            "id" | "identifier"
-                          >);
-                    }
-                >;
-              }
-            >
-          >
+        edges: Array<
+          { __typename: "GroupEdge" } & {
+            node: { __typename: "Group" } & Pick<Group, "id" | "createdAt"> & {
+                createdBy:
+                  | ({ __typename: "User" } & Pick<
+                      User,
+                      "id" | "username" | "name"
+                    >)
+                  | ({ __typename: "Service" } & Pick<Service, "id" | "name">)
+                  | ({ __typename: "Participant" } & Pick<
+                      Participant,
+                      "id" | "identifier" | "createdAt"
+                    >);
+              };
+          }
         >;
         pageInfo: { __typename: "PageInfo" } & Pick<
           PageInfo,
@@ -1035,6 +1148,7 @@ export type OnEventSubscription = { __typename: "Subscription" } & {
               | "key"
               | "val"
               | "index"
+              | "current"
               | "version"
               | "vector"
               | "id"
@@ -1047,7 +1161,7 @@ export type OnEventSubscription = { __typename: "Subscription" } & {
                   | ({ __typename: "Service" } & Pick<Service, "id" | "name">)
                   | ({ __typename: "Participant" } & Pick<
                       Participant,
-                      "id" | "identifier"
+                      "id" | "identifier" | "createdAt"
                     >);
                 node:
                   | ({ __typename: "Attribute" } & Pick<Attribute, "id">)
@@ -1068,7 +1182,7 @@ export type OnEventSubscription = { __typename: "Subscription" } & {
                   | ({ __typename: "Service" } & Pick<Service, "id" | "name">)
                   | ({ __typename: "Participant" } & Pick<
                       Participant,
-                      "id" | "identifier"
+                      "id" | "identifier" | "createdAt"
                     >);
               })
           | ({ __typename: "Link" } & Pick<
@@ -1083,7 +1197,7 @@ export type OnEventSubscription = { __typename: "Subscription" } & {
                   | ({ __typename: "Service" } & Pick<Service, "id" | "name">)
                   | ({ __typename: "Participant" } & Pick<
                       Participant,
-                      "id" | "identifier"
+                      "id" | "identifier" | "createdAt"
                     >);
                 participant: { __typename: "Participant" } & Pick<
                   Participant,
@@ -1105,7 +1219,7 @@ export type OnEventSubscription = { __typename: "Subscription" } & {
             >)
           | ({ __typename: "Scope" } & Pick<
               Scope,
-              "name" | "createdAt" | "id"
+              "name" | "kind" | "createdAt" | "id"
             > & {
                 createdBy:
                   | ({ __typename: "User" } & Pick<
@@ -1115,8 +1229,74 @@ export type OnEventSubscription = { __typename: "Subscription" } & {
                   | ({ __typename: "Service" } & Pick<Service, "id" | "name">)
                   | ({ __typename: "Participant" } & Pick<
                       Participant,
-                      "id" | "identifier"
+                      "id" | "identifier" | "createdAt"
                     >);
+                attributes: { __typename: "AttributeConnection" } & Pick<
+                  AttributeConnection,
+                  "totalCount"
+                > & {
+                    pageInfo: { __typename: "PageInfo" } & Pick<
+                      PageInfo,
+                      | "hasNextPage"
+                      | "hasPreviousPage"
+                      | "startCursor"
+                      | "endCursor"
+                    >;
+                    edges: Array<
+                      { __typename: "AttributeEdge" } & Pick<
+                        AttributeEdge,
+                        "cursor"
+                      > & {
+                          node: { __typename: "Attribute" } & Pick<
+                            Attribute,
+                            | "id"
+                            | "createdAt"
+                            | "private"
+                            | "protected"
+                            | "immutable"
+                            | "deletedAt"
+                            | "key"
+                            | "val"
+                            | "index"
+                            | "current"
+                            | "version"
+                            | "vector"
+                          > & {
+                              createdBy:
+                                | ({ __typename: "User" } & Pick<
+                                    User,
+                                    "id" | "username" | "name"
+                                  >)
+                                | ({ __typename: "Service" } & Pick<
+                                    Service,
+                                    "id" | "name"
+                                  >)
+                                | ({ __typename: "Participant" } & Pick<
+                                    Participant,
+                                    "id" | "identifier" | "createdAt"
+                                  >);
+                              node:
+                                | ({ __typename: "Attribute" } & Pick<
+                                    Attribute,
+                                    "id"
+                                  >)
+                                | ({ __typename: "Group" } & Pick<Group, "id">)
+                                | ({ __typename: "Link" } & Pick<Link, "id">)
+                                | ({ __typename: "Participant" } & Pick<
+                                    Participant,
+                                    "id"
+                                  >)
+                                | ({ __typename: "Scope" } & Pick<Scope, "id">)
+                                | ({ __typename: "Step" } & Pick<Step, "id">)
+                                | ({ __typename: "Transition" } & Pick<
+                                    Transition,
+                                    "id"
+                                  >)
+                                | ({ __typename: "User" } & Pick<User, "id">);
+                            };
+                        }
+                    >;
+                  };
               })
           | ({ __typename: "Step" } & Pick<
               Step,
@@ -1135,8 +1315,54 @@ export type OnEventSubscription = { __typename: "Subscription" } & {
                   | ({ __typename: "Service" } & Pick<Service, "id" | "name">)
                   | ({ __typename: "Participant" } & Pick<
                       Participant,
-                      "id" | "identifier"
+                      "id" | "identifier" | "createdAt"
                     >);
+                transitions: { __typename: "TransitionConnection" } & Pick<
+                  TransitionConnection,
+                  "totalCount"
+                > & {
+                    pageInfo: { __typename: "PageInfo" } & Pick<
+                      PageInfo,
+                      | "hasNextPage"
+                      | "hasPreviousPage"
+                      | "startCursor"
+                      | "endCursor"
+                    >;
+                    edges: Array<
+                      { __typename: "TransitionEdge" } & Pick<
+                        TransitionEdge,
+                        "cursor"
+                      > & {
+                          node: { __typename: "Transition" } & Pick<
+                            Transition,
+                            "id" | "createdAt" | "from" | "to"
+                          > & {
+                              createdBy:
+                                | ({ __typename: "User" } & Pick<
+                                    User,
+                                    "id" | "username" | "name"
+                                  >)
+                                | ({ __typename: "Service" } & Pick<
+                                    Service,
+                                    "id" | "name"
+                                  >)
+                                | ({ __typename: "Participant" } & Pick<
+                                    Participant,
+                                    "id" | "identifier" | "createdAt"
+                                  >);
+                              node:
+                                | { __typename: "Attribute" }
+                                | { __typename: "Group" }
+                                | { __typename: "Link" }
+                                | { __typename: "Participant" }
+                                | { __typename: "Scope" }
+                                | ({ __typename: "Step" } & Pick<Step, "id">)
+                                | { __typename: "Transition" }
+                                | { __typename: "User" };
+                            };
+                        }
+                    >;
+                  };
               })
           | ({ __typename: "Transition" } & Pick<
               Transition,
@@ -1150,7 +1376,7 @@ export type OnEventSubscription = { __typename: "Subscription" } & {
                   | ({ __typename: "Service" } & Pick<Service, "id" | "name">)
                   | ({ __typename: "Participant" } & Pick<
                       Participant,
-                      "id" | "identifier"
+                      "id" | "identifier" | "createdAt"
                     >);
                 node:
                   | { __typename: "Attribute" }
@@ -1158,29 +1384,7 @@ export type OnEventSubscription = { __typename: "Subscription" } & {
                   | { __typename: "Link" }
                   | { __typename: "Participant" }
                   | { __typename: "Scope" }
-                  | ({ __typename: "Step" } & Pick<
-                      Step,
-                      | "id"
-                      | "createdAt"
-                      | "duration"
-                      | "startedAt"
-                      | "endedAt"
-                      | "state"
-                    > & {
-                        createdBy:
-                          | ({ __typename: "User" } & Pick<
-                              User,
-                              "id" | "username" | "name"
-                            >)
-                          | ({ __typename: "Service" } & Pick<
-                              Service,
-                              "id" | "name"
-                            >)
-                          | ({ __typename: "Participant" } & Pick<
-                              Participant,
-                              "id" | "identifier"
-                            >);
-                      })
+                  | ({ __typename: "Step" } & Pick<Step, "id">)
                   | { __typename: "Transition" }
                   | { __typename: "User" };
               })
@@ -1210,6 +1414,7 @@ export type OnAnyEventSubscription = { __typename: "Subscription" } & {
               | "key"
               | "val"
               | "index"
+              | "current"
               | "version"
               | "vector"
               | "id"
@@ -1222,7 +1427,7 @@ export type OnAnyEventSubscription = { __typename: "Subscription" } & {
                   | ({ __typename: "Service" } & Pick<Service, "id" | "name">)
                   | ({ __typename: "Participant" } & Pick<
                       Participant,
-                      "id" | "identifier"
+                      "id" | "identifier" | "createdAt"
                     >);
                 node:
                   | ({ __typename: "Attribute" } & Pick<Attribute, "id">)
@@ -1243,7 +1448,7 @@ export type OnAnyEventSubscription = { __typename: "Subscription" } & {
                   | ({ __typename: "Service" } & Pick<Service, "id" | "name">)
                   | ({ __typename: "Participant" } & Pick<
                       Participant,
-                      "id" | "identifier"
+                      "id" | "identifier" | "createdAt"
                     >);
               })
           | ({ __typename: "Link" } & Pick<
@@ -1258,7 +1463,7 @@ export type OnAnyEventSubscription = { __typename: "Subscription" } & {
                   | ({ __typename: "Service" } & Pick<Service, "id" | "name">)
                   | ({ __typename: "Participant" } & Pick<
                       Participant,
-                      "id" | "identifier"
+                      "id" | "identifier" | "createdAt"
                     >);
                 participant: { __typename: "Participant" } & Pick<
                   Participant,
@@ -1280,7 +1485,7 @@ export type OnAnyEventSubscription = { __typename: "Subscription" } & {
             >)
           | ({ __typename: "Scope" } & Pick<
               Scope,
-              "name" | "createdAt" | "id"
+              "name" | "kind" | "createdAt" | "id"
             > & {
                 createdBy:
                   | ({ __typename: "User" } & Pick<
@@ -1290,8 +1495,74 @@ export type OnAnyEventSubscription = { __typename: "Subscription" } & {
                   | ({ __typename: "Service" } & Pick<Service, "id" | "name">)
                   | ({ __typename: "Participant" } & Pick<
                       Participant,
-                      "id" | "identifier"
+                      "id" | "identifier" | "createdAt"
                     >);
+                attributes: { __typename: "AttributeConnection" } & Pick<
+                  AttributeConnection,
+                  "totalCount"
+                > & {
+                    pageInfo: { __typename: "PageInfo" } & Pick<
+                      PageInfo,
+                      | "hasNextPage"
+                      | "hasPreviousPage"
+                      | "startCursor"
+                      | "endCursor"
+                    >;
+                    edges: Array<
+                      { __typename: "AttributeEdge" } & Pick<
+                        AttributeEdge,
+                        "cursor"
+                      > & {
+                          node: { __typename: "Attribute" } & Pick<
+                            Attribute,
+                            | "id"
+                            | "createdAt"
+                            | "private"
+                            | "protected"
+                            | "immutable"
+                            | "deletedAt"
+                            | "key"
+                            | "val"
+                            | "index"
+                            | "current"
+                            | "version"
+                            | "vector"
+                          > & {
+                              createdBy:
+                                | ({ __typename: "User" } & Pick<
+                                    User,
+                                    "id" | "username" | "name"
+                                  >)
+                                | ({ __typename: "Service" } & Pick<
+                                    Service,
+                                    "id" | "name"
+                                  >)
+                                | ({ __typename: "Participant" } & Pick<
+                                    Participant,
+                                    "id" | "identifier" | "createdAt"
+                                  >);
+                              node:
+                                | ({ __typename: "Attribute" } & Pick<
+                                    Attribute,
+                                    "id"
+                                  >)
+                                | ({ __typename: "Group" } & Pick<Group, "id">)
+                                | ({ __typename: "Link" } & Pick<Link, "id">)
+                                | ({ __typename: "Participant" } & Pick<
+                                    Participant,
+                                    "id"
+                                  >)
+                                | ({ __typename: "Scope" } & Pick<Scope, "id">)
+                                | ({ __typename: "Step" } & Pick<Step, "id">)
+                                | ({ __typename: "Transition" } & Pick<
+                                    Transition,
+                                    "id"
+                                  >)
+                                | ({ __typename: "User" } & Pick<User, "id">);
+                            };
+                        }
+                    >;
+                  };
               })
           | ({ __typename: "Step" } & Pick<
               Step,
@@ -1310,8 +1581,54 @@ export type OnAnyEventSubscription = { __typename: "Subscription" } & {
                   | ({ __typename: "Service" } & Pick<Service, "id" | "name">)
                   | ({ __typename: "Participant" } & Pick<
                       Participant,
-                      "id" | "identifier"
+                      "id" | "identifier" | "createdAt"
                     >);
+                transitions: { __typename: "TransitionConnection" } & Pick<
+                  TransitionConnection,
+                  "totalCount"
+                > & {
+                    pageInfo: { __typename: "PageInfo" } & Pick<
+                      PageInfo,
+                      | "hasNextPage"
+                      | "hasPreviousPage"
+                      | "startCursor"
+                      | "endCursor"
+                    >;
+                    edges: Array<
+                      { __typename: "TransitionEdge" } & Pick<
+                        TransitionEdge,
+                        "cursor"
+                      > & {
+                          node: { __typename: "Transition" } & Pick<
+                            Transition,
+                            "id" | "createdAt" | "from" | "to"
+                          > & {
+                              createdBy:
+                                | ({ __typename: "User" } & Pick<
+                                    User,
+                                    "id" | "username" | "name"
+                                  >)
+                                | ({ __typename: "Service" } & Pick<
+                                    Service,
+                                    "id" | "name"
+                                  >)
+                                | ({ __typename: "Participant" } & Pick<
+                                    Participant,
+                                    "id" | "identifier" | "createdAt"
+                                  >);
+                              node:
+                                | { __typename: "Attribute" }
+                                | { __typename: "Group" }
+                                | { __typename: "Link" }
+                                | { __typename: "Participant" }
+                                | { __typename: "Scope" }
+                                | ({ __typename: "Step" } & Pick<Step, "id">)
+                                | { __typename: "Transition" }
+                                | { __typename: "User" };
+                            };
+                        }
+                    >;
+                  };
               })
           | ({ __typename: "Transition" } & Pick<
               Transition,
@@ -1325,7 +1642,7 @@ export type OnAnyEventSubscription = { __typename: "Subscription" } & {
                   | ({ __typename: "Service" } & Pick<Service, "id" | "name">)
                   | ({ __typename: "Participant" } & Pick<
                       Participant,
-                      "id" | "identifier"
+                      "id" | "identifier" | "createdAt"
                     >);
                 node:
                   | { __typename: "Attribute" }
@@ -1333,29 +1650,7 @@ export type OnAnyEventSubscription = { __typename: "Subscription" } & {
                   | { __typename: "Link" }
                   | { __typename: "Participant" }
                   | { __typename: "Scope" }
-                  | ({ __typename: "Step" } & Pick<
-                      Step,
-                      | "id"
-                      | "createdAt"
-                      | "duration"
-                      | "startedAt"
-                      | "endedAt"
-                      | "state"
-                    > & {
-                        createdBy:
-                          | ({ __typename: "User" } & Pick<
-                              User,
-                              "id" | "username" | "name"
-                            >)
-                          | ({ __typename: "Service" } & Pick<
-                              Service,
-                              "id" | "name"
-                            >)
-                          | ({ __typename: "Participant" } & Pick<
-                              Participant,
-                              "id" | "identifier"
-                            >);
-                      })
+                  | ({ __typename: "Step" } & Pick<Step, "id">)
                   | { __typename: "Transition" }
                   | { __typename: "User" };
               })
@@ -1399,19 +1694,13 @@ export type ParticipantsQuery = { __typename: "Query" } & {
       ParticipantConnection,
       "totalCount"
     > & {
-        edges?: Maybe<
-          Array<
-            Maybe<
-              { __typename: "ParticipantEdge" } & {
-                node?: Maybe<
-                  { __typename: "Participant" } & Pick<
-                    Participant,
-                    "id" | "createdAt" | "identifier"
-                  >
-                >;
-              }
-            >
-          >
+        edges: Array<
+          { __typename: "ParticipantEdge" } & {
+            node: { __typename: "Participant" } & Pick<
+              Participant,
+              "id" | "createdAt" | "identifier"
+            >;
+          }
         >;
         pageInfo: { __typename: "PageInfo" } & Pick<
           PageInfo,
@@ -1446,15 +1735,78 @@ export type AddScopesMutation = { __typename: "Mutation" } & {
     { __typename: "AddScopePayload" } & {
       scope: { __typename: "Scope" } & Pick<
         Scope,
-        "id" | "name" | "createdAt"
+        "id" | "name" | "kind" | "createdAt"
       > & {
           createdBy:
             | ({ __typename: "User" } & Pick<User, "id" | "username" | "name">)
             | ({ __typename: "Service" } & Pick<Service, "id" | "name">)
             | ({ __typename: "Participant" } & Pick<
                 Participant,
-                "id" | "identifier"
+                "id" | "identifier" | "createdAt"
               >);
+          attributes: { __typename: "AttributeConnection" } & Pick<
+            AttributeConnection,
+            "totalCount"
+          > & {
+              pageInfo: { __typename: "PageInfo" } & Pick<
+                PageInfo,
+                "hasNextPage" | "hasPreviousPage" | "startCursor" | "endCursor"
+              >;
+              edges: Array<
+                { __typename: "AttributeEdge" } & Pick<
+                  AttributeEdge,
+                  "cursor"
+                > & {
+                    node: { __typename: "Attribute" } & Pick<
+                      Attribute,
+                      | "id"
+                      | "createdAt"
+                      | "private"
+                      | "protected"
+                      | "immutable"
+                      | "deletedAt"
+                      | "key"
+                      | "val"
+                      | "index"
+                      | "current"
+                      | "version"
+                      | "vector"
+                    > & {
+                        createdBy:
+                          | ({ __typename: "User" } & Pick<
+                              User,
+                              "id" | "username" | "name"
+                            >)
+                          | ({ __typename: "Service" } & Pick<
+                              Service,
+                              "id" | "name"
+                            >)
+                          | ({ __typename: "Participant" } & Pick<
+                              Participant,
+                              "id" | "identifier" | "createdAt"
+                            >);
+                        node:
+                          | ({ __typename: "Attribute" } & Pick<
+                              Attribute,
+                              "id"
+                            >)
+                          | ({ __typename: "Group" } & Pick<Group, "id">)
+                          | ({ __typename: "Link" } & Pick<Link, "id">)
+                          | ({ __typename: "Participant" } & Pick<
+                              Participant,
+                              "id"
+                            >)
+                          | ({ __typename: "Scope" } & Pick<Scope, "id">)
+                          | ({ __typename: "Step" } & Pick<Step, "id">)
+                          | ({ __typename: "Transition" } & Pick<
+                              Transition,
+                              "id"
+                            >)
+                          | ({ __typename: "User" } & Pick<User, "id">);
+                      };
+                  }
+              >;
+            };
         };
     }
   >;
@@ -1471,33 +1823,90 @@ export type ScopesQueryVariables = Exact<{
 export type ScopesQuery = { __typename: "Query" } & {
   scopes?: Maybe<
     { __typename: "ScopeConnection" } & Pick<ScopeConnection, "totalCount"> & {
-        edges?: Maybe<
-          Array<
-            Maybe<
-              { __typename: "ScopeEdge" } & {
-                node?: Maybe<
-                  { __typename: "Scope" } & Pick<
-                    Scope,
-                    "id" | "name" | "createdAt"
-                  > & {
-                      createdBy:
-                        | ({ __typename: "User" } & Pick<
-                            User,
-                            "id" | "username" | "name"
-                          >)
-                        | ({ __typename: "Service" } & Pick<
-                            Service,
-                            "id" | "name"
-                          >)
-                        | ({ __typename: "Participant" } & Pick<
-                            Participant,
-                            "id" | "identifier"
-                          >);
-                    }
-                >;
-              }
-            >
-          >
+        edges: Array<
+          { __typename: "ScopeEdge" } & {
+            node: { __typename: "Scope" } & Pick<
+              Scope,
+              "id" | "name" | "kind" | "createdAt"
+            > & {
+                createdBy:
+                  | ({ __typename: "User" } & Pick<
+                      User,
+                      "id" | "username" | "name"
+                    >)
+                  | ({ __typename: "Service" } & Pick<Service, "id" | "name">)
+                  | ({ __typename: "Participant" } & Pick<
+                      Participant,
+                      "id" | "identifier" | "createdAt"
+                    >);
+                attributes: { __typename: "AttributeConnection" } & Pick<
+                  AttributeConnection,
+                  "totalCount"
+                > & {
+                    pageInfo: { __typename: "PageInfo" } & Pick<
+                      PageInfo,
+                      | "hasNextPage"
+                      | "hasPreviousPage"
+                      | "startCursor"
+                      | "endCursor"
+                    >;
+                    edges: Array<
+                      { __typename: "AttributeEdge" } & Pick<
+                        AttributeEdge,
+                        "cursor"
+                      > & {
+                          node: { __typename: "Attribute" } & Pick<
+                            Attribute,
+                            | "id"
+                            | "createdAt"
+                            | "private"
+                            | "protected"
+                            | "immutable"
+                            | "deletedAt"
+                            | "key"
+                            | "val"
+                            | "index"
+                            | "current"
+                            | "version"
+                            | "vector"
+                          > & {
+                              createdBy:
+                                | ({ __typename: "User" } & Pick<
+                                    User,
+                                    "id" | "username" | "name"
+                                  >)
+                                | ({ __typename: "Service" } & Pick<
+                                    Service,
+                                    "id" | "name"
+                                  >)
+                                | ({ __typename: "Participant" } & Pick<
+                                    Participant,
+                                    "id" | "identifier" | "createdAt"
+                                  >);
+                              node:
+                                | ({ __typename: "Attribute" } & Pick<
+                                    Attribute,
+                                    "id"
+                                  >)
+                                | ({ __typename: "Group" } & Pick<Group, "id">)
+                                | ({ __typename: "Link" } & Pick<Link, "id">)
+                                | ({ __typename: "Participant" } & Pick<
+                                    Participant,
+                                    "id"
+                                  >)
+                                | ({ __typename: "Scope" } & Pick<Scope, "id">)
+                                | ({ __typename: "Step" } & Pick<Step, "id">)
+                                | ({ __typename: "Transition" } & Pick<
+                                    Transition,
+                                    "id"
+                                  >)
+                                | ({ __typename: "User" } & Pick<User, "id">);
+                            };
+                        }
+                    >;
+                  };
+              };
+          }
         >;
         pageInfo: { __typename: "PageInfo" } & Pick<
           PageInfo,
@@ -1528,6 +1937,7 @@ export type ScopedAttributesSubscription = { __typename: "Subscription" } & {
           | "key"
           | "val"
           | "index"
+          | "current"
           | "version"
           | "vector"
         > & {
@@ -1539,7 +1949,7 @@ export type ScopedAttributesSubscription = { __typename: "Subscription" } & {
               | ({ __typename: "Service" } & Pick<Service, "id" | "name">)
               | ({ __typename: "Participant" } & Pick<
                   Participant,
-                  "id" | "identifier"
+                  "id" | "identifier" | "createdAt"
                 >);
             node:
               | ({ __typename: "Attribute" } & Pick<Attribute, "id">)
@@ -1587,8 +1997,51 @@ export type AddStepsMutation = { __typename: "Mutation" } & {
             | ({ __typename: "Service" } & Pick<Service, "id" | "name">)
             | ({ __typename: "Participant" } & Pick<
                 Participant,
-                "id" | "identifier"
+                "id" | "identifier" | "createdAt"
               >);
+          transitions: { __typename: "TransitionConnection" } & Pick<
+            TransitionConnection,
+            "totalCount"
+          > & {
+              pageInfo: { __typename: "PageInfo" } & Pick<
+                PageInfo,
+                "hasNextPage" | "hasPreviousPage" | "startCursor" | "endCursor"
+              >;
+              edges: Array<
+                { __typename: "TransitionEdge" } & Pick<
+                  TransitionEdge,
+                  "cursor"
+                > & {
+                    node: { __typename: "Transition" } & Pick<
+                      Transition,
+                      "id" | "createdAt" | "from" | "to"
+                    > & {
+                        createdBy:
+                          | ({ __typename: "User" } & Pick<
+                              User,
+                              "id" | "username" | "name"
+                            >)
+                          | ({ __typename: "Service" } & Pick<
+                              Service,
+                              "id" | "name"
+                            >)
+                          | ({ __typename: "Participant" } & Pick<
+                              Participant,
+                              "id" | "identifier" | "createdAt"
+                            >);
+                        node:
+                          | { __typename: "Attribute" }
+                          | { __typename: "Group" }
+                          | { __typename: "Link" }
+                          | { __typename: "Participant" }
+                          | { __typename: "Scope" }
+                          | ({ __typename: "Step" } & Pick<Step, "id">)
+                          | { __typename: "Transition" }
+                          | { __typename: "User" };
+                      };
+                  }
+              >;
+            };
         };
     }
   >;
@@ -1604,38 +2057,75 @@ export type StepsQueryVariables = Exact<{
 export type StepsQuery = { __typename: "Query" } & {
   steps?: Maybe<
     { __typename: "StepConnection" } & Pick<StepConnection, "totalCount"> & {
-        edges?: Maybe<
-          Array<
-            Maybe<
-              { __typename: "StepEdge" } & {
-                node?: Maybe<
-                  { __typename: "Step" } & Pick<
-                    Step,
-                    | "id"
-                    | "createdAt"
-                    | "duration"
-                    | "startedAt"
-                    | "endedAt"
-                    | "state"
-                  > & {
-                      createdBy:
-                        | ({ __typename: "User" } & Pick<
-                            User,
-                            "id" | "username" | "name"
-                          >)
-                        | ({ __typename: "Service" } & Pick<
-                            Service,
-                            "id" | "name"
-                          >)
-                        | ({ __typename: "Participant" } & Pick<
-                            Participant,
-                            "id" | "identifier"
-                          >);
-                    }
-                >;
-              }
-            >
-          >
+        edges: Array<
+          { __typename: "StepEdge" } & {
+            node: { __typename: "Step" } & Pick<
+              Step,
+              | "id"
+              | "createdAt"
+              | "duration"
+              | "startedAt"
+              | "endedAt"
+              | "state"
+            > & {
+                createdBy:
+                  | ({ __typename: "User" } & Pick<
+                      User,
+                      "id" | "username" | "name"
+                    >)
+                  | ({ __typename: "Service" } & Pick<Service, "id" | "name">)
+                  | ({ __typename: "Participant" } & Pick<
+                      Participant,
+                      "id" | "identifier" | "createdAt"
+                    >);
+                transitions: { __typename: "TransitionConnection" } & Pick<
+                  TransitionConnection,
+                  "totalCount"
+                > & {
+                    pageInfo: { __typename: "PageInfo" } & Pick<
+                      PageInfo,
+                      | "hasNextPage"
+                      | "hasPreviousPage"
+                      | "startCursor"
+                      | "endCursor"
+                    >;
+                    edges: Array<
+                      { __typename: "TransitionEdge" } & Pick<
+                        TransitionEdge,
+                        "cursor"
+                      > & {
+                          node: { __typename: "Transition" } & Pick<
+                            Transition,
+                            "id" | "createdAt" | "from" | "to"
+                          > & {
+                              createdBy:
+                                | ({ __typename: "User" } & Pick<
+                                    User,
+                                    "id" | "username" | "name"
+                                  >)
+                                | ({ __typename: "Service" } & Pick<
+                                    Service,
+                                    "id" | "name"
+                                  >)
+                                | ({ __typename: "Participant" } & Pick<
+                                    Participant,
+                                    "id" | "identifier" | "createdAt"
+                                  >);
+                              node:
+                                | { __typename: "Attribute" }
+                                | { __typename: "Group" }
+                                | { __typename: "Link" }
+                                | { __typename: "Participant" }
+                                | { __typename: "Scope" }
+                                | ({ __typename: "Step" } & Pick<Step, "id">)
+                                | { __typename: "Transition" }
+                                | { __typename: "User" };
+                            };
+                        }
+                    >;
+                  };
+              };
+          }
         >;
         pageInfo: { __typename: "PageInfo" } & Pick<
           PageInfo,
@@ -1660,7 +2150,7 @@ export type TransitionMutation = { __typename: "Mutation" } & {
           | ({ __typename: "Service" } & Pick<Service, "id" | "name">)
           | ({ __typename: "Participant" } & Pick<
               Participant,
-              "id" | "identifier"
+              "id" | "identifier" | "createdAt"
             >);
         node:
           | { __typename: "Attribute" }
@@ -1668,26 +2158,7 @@ export type TransitionMutation = { __typename: "Mutation" } & {
           | { __typename: "Link" }
           | { __typename: "Participant" }
           | { __typename: "Scope" }
-          | ({ __typename: "Step" } & Pick<
-              Step,
-              | "id"
-              | "createdAt"
-              | "duration"
-              | "startedAt"
-              | "endedAt"
-              | "state"
-            > & {
-                createdBy:
-                  | ({ __typename: "User" } & Pick<
-                      User,
-                      "id" | "username" | "name"
-                    >)
-                  | ({ __typename: "Service" } & Pick<Service, "id" | "name">)
-                  | ({ __typename: "Participant" } & Pick<
-                      Participant,
-                      "id" | "identifier"
-                    >);
-              })
+          | ({ __typename: "Step" } & Pick<Step, "id">)
           | { __typename: "Transition" }
           | { __typename: "User" };
       };
@@ -1735,6 +2206,319 @@ const result: PossibleTypesResultData = {
 };
 export default result;
 
+export const AttributesDocument: DocumentNode<
+  AttributesQuery,
+  AttributesQueryVariables
+> = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "query",
+      name: { kind: "Name", value: "Attributes" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "scopeID" },
+          },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "after" },
+          },
+          type: { kind: "NamedType", name: { kind: "Name", value: "Cursor" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "first" },
+          },
+          type: { kind: "NamedType", name: { kind: "Name", value: "Int" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "before" },
+          },
+          type: { kind: "NamedType", name: { kind: "Name", value: "Cursor" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "last" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "Int" } },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "attributes" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "scopeID" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "scopeID" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "after" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "after" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "first" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "first" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "before" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "before" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "last" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "last" },
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "totalCount" } },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "pageInfo" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "hasNextPage" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "hasPreviousPage" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "startCursor" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "endCursor" },
+                      },
+                    ],
+                  },
+                },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "edges" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "node" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "__typename" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "id" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "createdAt" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "createdBy" },
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  {
+                                    kind: "InlineFragment",
+                                    typeCondition: {
+                                      kind: "NamedType",
+                                      name: { kind: "Name", value: "User" },
+                                    },
+                                    selectionSet: {
+                                      kind: "SelectionSet",
+                                      selections: [
+                                        {
+                                          kind: "Field",
+                                          name: { kind: "Name", value: "id" },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "username",
+                                          },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: { kind: "Name", value: "name" },
+                                        },
+                                      ],
+                                    },
+                                  },
+                                  {
+                                    kind: "InlineFragment",
+                                    typeCondition: {
+                                      kind: "NamedType",
+                                      name: { kind: "Name", value: "Service" },
+                                    },
+                                    selectionSet: {
+                                      kind: "SelectionSet",
+                                      selections: [
+                                        {
+                                          kind: "Field",
+                                          name: { kind: "Name", value: "id" },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: { kind: "Name", value: "name" },
+                                        },
+                                      ],
+                                    },
+                                  },
+                                  {
+                                    kind: "InlineFragment",
+                                    typeCondition: {
+                                      kind: "NamedType",
+                                      name: {
+                                        kind: "Name",
+                                        value: "Participant",
+                                      },
+                                    },
+                                    selectionSet: {
+                                      kind: "SelectionSet",
+                                      selections: [
+                                        {
+                                          kind: "Field",
+                                          name: { kind: "Name", value: "id" },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "identifier",
+                                          },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "createdAt",
+                                          },
+                                        },
+                                      ],
+                                    },
+                                  },
+                                ],
+                              },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "private" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "protected" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "immutable" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "deletedAt" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "key" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "val" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "index" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "current" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "version" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "vector" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "node" },
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "id" },
+                                  },
+                                ],
+                              },
+                            },
+                          ],
+                        },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "cursor" },
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+};
 export const SetAttributesDocument: DocumentNode<
   SetAttributesMutation,
   SetAttributesMutationVariables
@@ -1792,8 +2576,11 @@ export const SetAttributesDocument: DocumentNode<
                   selectionSet: {
                     kind: "SelectionSet",
                     selections: [
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "__typename" },
+                      },
                       { kind: "Field", name: { kind: "Name", value: "id" } },
-                      { kind: "Field", name: { kind: "Name", value: "index" } },
                       {
                         kind: "Field",
                         name: { kind: "Name", value: "createdAt" },
@@ -1865,8 +2652,56 @@ export const SetAttributesDocument: DocumentNode<
                                     kind: "Field",
                                     name: { kind: "Name", value: "identifier" },
                                   },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "createdAt" },
+                                  },
                                 ],
                               },
+                            },
+                          ],
+                        },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "private" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "protected" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "immutable" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "deletedAt" },
+                      },
+                      { kind: "Field", name: { kind: "Name", value: "key" } },
+                      { kind: "Field", name: { kind: "Name", value: "val" } },
+                      { kind: "Field", name: { kind: "Name", value: "index" } },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "current" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "version" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "vector" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "node" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "id" },
                             },
                           ],
                         },
@@ -1930,6 +2765,10 @@ export const ChangesDocument: DocumentNode<
                               kind: "Field",
                               name: { kind: "Name", value: "name" },
                             },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "kind" },
+                            },
                           ],
                         },
                       },
@@ -1945,6 +2784,10 @@ export const ChangesDocument: DocumentNode<
                             {
                               kind: "Field",
                               name: { kind: "Name", value: "id" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "state" },
                             },
                             {
                               kind: "Field",
@@ -1997,6 +2840,10 @@ export const ChangesDocument: DocumentNode<
                             {
                               kind: "Field",
                               name: { kind: "Name", value: "vector" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "version" },
                             },
                             {
                               kind: "Field",
@@ -2286,6 +3133,13 @@ export const GroupsDocument: DocumentNode<GroupsQuery, GroupsQueryVariables> = {
                                             value: "identifier",
                                           },
                                         },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "createdAt",
+                                          },
+                                        },
                                       ],
                                     },
                                   },
@@ -2496,6 +3350,13 @@ export const OnEventDocument: DocumentNode<
                                             value: "identifier",
                                           },
                                         },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "createdAt",
+                                          },
+                                        },
                                       ],
                                     },
                                   },
@@ -2529,6 +3390,10 @@ export const OnEventDocument: DocumentNode<
                             {
                               kind: "Field",
                               name: { kind: "Name", value: "index" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "current" },
                             },
                             {
                               kind: "Field",
@@ -2643,6 +3508,13 @@ export const OnEventDocument: DocumentNode<
                                             value: "identifier",
                                           },
                                         },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "createdAt",
+                                          },
+                                        },
                                       ],
                                     },
                                   },
@@ -2664,6 +3536,272 @@ export const OnEventDocument: DocumentNode<
                             {
                               kind: "Field",
                               name: { kind: "Name", value: "state" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "transitions" },
+                              arguments: [
+                                {
+                                  kind: "Argument",
+                                  name: { kind: "Name", value: "first" },
+                                  value: { kind: "IntValue", value: "100" },
+                                },
+                              ],
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "totalCount" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "pageInfo" },
+                                    selectionSet: {
+                                      kind: "SelectionSet",
+                                      selections: [
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "hasNextPage",
+                                          },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "hasPreviousPage",
+                                          },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "startCursor",
+                                          },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "endCursor",
+                                          },
+                                        },
+                                      ],
+                                    },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "edges" },
+                                    selectionSet: {
+                                      kind: "SelectionSet",
+                                      selections: [
+                                        {
+                                          kind: "Field",
+                                          name: { kind: "Name", value: "node" },
+                                          selectionSet: {
+                                            kind: "SelectionSet",
+                                            selections: [
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "__typename",
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "id",
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "createdAt",
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "createdBy",
+                                                },
+                                                selectionSet: {
+                                                  kind: "SelectionSet",
+                                                  selections: [
+                                                    {
+                                                      kind: "InlineFragment",
+                                                      typeCondition: {
+                                                        kind: "NamedType",
+                                                        name: {
+                                                          kind: "Name",
+                                                          value: "User",
+                                                        },
+                                                      },
+                                                      selectionSet: {
+                                                        kind: "SelectionSet",
+                                                        selections: [
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value: "id",
+                                                            },
+                                                          },
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value: "username",
+                                                            },
+                                                          },
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value: "name",
+                                                            },
+                                                          },
+                                                        ],
+                                                      },
+                                                    },
+                                                    {
+                                                      kind: "InlineFragment",
+                                                      typeCondition: {
+                                                        kind: "NamedType",
+                                                        name: {
+                                                          kind: "Name",
+                                                          value: "Service",
+                                                        },
+                                                      },
+                                                      selectionSet: {
+                                                        kind: "SelectionSet",
+                                                        selections: [
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value: "id",
+                                                            },
+                                                          },
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value: "name",
+                                                            },
+                                                          },
+                                                        ],
+                                                      },
+                                                    },
+                                                    {
+                                                      kind: "InlineFragment",
+                                                      typeCondition: {
+                                                        kind: "NamedType",
+                                                        name: {
+                                                          kind: "Name",
+                                                          value: "Participant",
+                                                        },
+                                                      },
+                                                      selectionSet: {
+                                                        kind: "SelectionSet",
+                                                        selections: [
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value: "id",
+                                                            },
+                                                          },
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value:
+                                                                "identifier",
+                                                            },
+                                                          },
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value:
+                                                                "createdAt",
+                                                            },
+                                                          },
+                                                        ],
+                                                      },
+                                                    },
+                                                  ],
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "from",
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "to",
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "node",
+                                                },
+                                                selectionSet: {
+                                                  kind: "SelectionSet",
+                                                  selections: [
+                                                    {
+                                                      kind: "InlineFragment",
+                                                      typeCondition: {
+                                                        kind: "NamedType",
+                                                        name: {
+                                                          kind: "Name",
+                                                          value: "Step",
+                                                        },
+                                                      },
+                                                      selectionSet: {
+                                                        kind: "SelectionSet",
+                                                        selections: [
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value: "id",
+                                                            },
+                                                          },
+                                                        ],
+                                                      },
+                                                    },
+                                                  ],
+                                                },
+                                              },
+                                            ],
+                                          },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "cursor",
+                                          },
+                                        },
+                                      ],
+                                    },
+                                  },
+                                ],
+                              },
                             },
                           ],
                         },
@@ -2757,6 +3895,13 @@ export const OnEventDocument: DocumentNode<
                                             value: "identifier",
                                           },
                                         },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "createdAt",
+                                          },
+                                        },
                                       ],
                                     },
                                   },
@@ -2778,6 +3923,10 @@ export const OnEventDocument: DocumentNode<
                             {
                               kind: "Field",
                               name: { kind: "Name", value: "name" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "kind" },
                             },
                             {
                               kind: "Field",
@@ -2857,6 +4006,320 @@ export const OnEventDocument: DocumentNode<
                                           name: {
                                             kind: "Name",
                                             value: "identifier",
+                                          },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "createdAt",
+                                          },
+                                        },
+                                      ],
+                                    },
+                                  },
+                                ],
+                              },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "attributes" },
+                              arguments: [
+                                {
+                                  kind: "Argument",
+                                  name: { kind: "Name", value: "first" },
+                                  value: { kind: "IntValue", value: "100" },
+                                },
+                              ],
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "totalCount" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "pageInfo" },
+                                    selectionSet: {
+                                      kind: "SelectionSet",
+                                      selections: [
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "hasNextPage",
+                                          },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "hasPreviousPage",
+                                          },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "startCursor",
+                                          },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "endCursor",
+                                          },
+                                        },
+                                      ],
+                                    },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "edges" },
+                                    selectionSet: {
+                                      kind: "SelectionSet",
+                                      selections: [
+                                        {
+                                          kind: "Field",
+                                          name: { kind: "Name", value: "node" },
+                                          selectionSet: {
+                                            kind: "SelectionSet",
+                                            selections: [
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "__typename",
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "id",
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "createdAt",
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "createdBy",
+                                                },
+                                                selectionSet: {
+                                                  kind: "SelectionSet",
+                                                  selections: [
+                                                    {
+                                                      kind: "InlineFragment",
+                                                      typeCondition: {
+                                                        kind: "NamedType",
+                                                        name: {
+                                                          kind: "Name",
+                                                          value: "User",
+                                                        },
+                                                      },
+                                                      selectionSet: {
+                                                        kind: "SelectionSet",
+                                                        selections: [
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value: "id",
+                                                            },
+                                                          },
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value: "username",
+                                                            },
+                                                          },
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value: "name",
+                                                            },
+                                                          },
+                                                        ],
+                                                      },
+                                                    },
+                                                    {
+                                                      kind: "InlineFragment",
+                                                      typeCondition: {
+                                                        kind: "NamedType",
+                                                        name: {
+                                                          kind: "Name",
+                                                          value: "Service",
+                                                        },
+                                                      },
+                                                      selectionSet: {
+                                                        kind: "SelectionSet",
+                                                        selections: [
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value: "id",
+                                                            },
+                                                          },
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value: "name",
+                                                            },
+                                                          },
+                                                        ],
+                                                      },
+                                                    },
+                                                    {
+                                                      kind: "InlineFragment",
+                                                      typeCondition: {
+                                                        kind: "NamedType",
+                                                        name: {
+                                                          kind: "Name",
+                                                          value: "Participant",
+                                                        },
+                                                      },
+                                                      selectionSet: {
+                                                        kind: "SelectionSet",
+                                                        selections: [
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value: "id",
+                                                            },
+                                                          },
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value:
+                                                                "identifier",
+                                                            },
+                                                          },
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value:
+                                                                "createdAt",
+                                                            },
+                                                          },
+                                                        ],
+                                                      },
+                                                    },
+                                                  ],
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "private",
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "protected",
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "immutable",
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "deletedAt",
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "key",
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "val",
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "index",
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "current",
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "version",
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "vector",
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "node",
+                                                },
+                                                selectionSet: {
+                                                  kind: "SelectionSet",
+                                                  selections: [
+                                                    {
+                                                      kind: "Field",
+                                                      name: {
+                                                        kind: "Name",
+                                                        value: "id",
+                                                      },
+                                                    },
+                                                  ],
+                                                },
+                                              },
+                                            ],
+                                          },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "cursor",
                                           },
                                         },
                                       ],
@@ -2957,6 +4420,13 @@ export const OnEventDocument: DocumentNode<
                                             value: "identifier",
                                           },
                                         },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "createdAt",
+                                          },
+                                        },
                                       ],
                                     },
                                   },
@@ -2988,155 +4458,7 @@ export const OnEventDocument: DocumentNode<
                                       selections: [
                                         {
                                           kind: "Field",
-                                          name: {
-                                            kind: "Name",
-                                            value: "__typename",
-                                          },
-                                        },
-                                        {
-                                          kind: "Field",
                                           name: { kind: "Name", value: "id" },
-                                        },
-                                        {
-                                          kind: "Field",
-                                          name: {
-                                            kind: "Name",
-                                            value: "createdAt",
-                                          },
-                                        },
-                                        {
-                                          kind: "Field",
-                                          name: {
-                                            kind: "Name",
-                                            value: "createdBy",
-                                          },
-                                          selectionSet: {
-                                            kind: "SelectionSet",
-                                            selections: [
-                                              {
-                                                kind: "InlineFragment",
-                                                typeCondition: {
-                                                  kind: "NamedType",
-                                                  name: {
-                                                    kind: "Name",
-                                                    value: "User",
-                                                  },
-                                                },
-                                                selectionSet: {
-                                                  kind: "SelectionSet",
-                                                  selections: [
-                                                    {
-                                                      kind: "Field",
-                                                      name: {
-                                                        kind: "Name",
-                                                        value: "id",
-                                                      },
-                                                    },
-                                                    {
-                                                      kind: "Field",
-                                                      name: {
-                                                        kind: "Name",
-                                                        value: "username",
-                                                      },
-                                                    },
-                                                    {
-                                                      kind: "Field",
-                                                      name: {
-                                                        kind: "Name",
-                                                        value: "name",
-                                                      },
-                                                    },
-                                                  ],
-                                                },
-                                              },
-                                              {
-                                                kind: "InlineFragment",
-                                                typeCondition: {
-                                                  kind: "NamedType",
-                                                  name: {
-                                                    kind: "Name",
-                                                    value: "Service",
-                                                  },
-                                                },
-                                                selectionSet: {
-                                                  kind: "SelectionSet",
-                                                  selections: [
-                                                    {
-                                                      kind: "Field",
-                                                      name: {
-                                                        kind: "Name",
-                                                        value: "id",
-                                                      },
-                                                    },
-                                                    {
-                                                      kind: "Field",
-                                                      name: {
-                                                        kind: "Name",
-                                                        value: "name",
-                                                      },
-                                                    },
-                                                  ],
-                                                },
-                                              },
-                                              {
-                                                kind: "InlineFragment",
-                                                typeCondition: {
-                                                  kind: "NamedType",
-                                                  name: {
-                                                    kind: "Name",
-                                                    value: "Participant",
-                                                  },
-                                                },
-                                                selectionSet: {
-                                                  kind: "SelectionSet",
-                                                  selections: [
-                                                    {
-                                                      kind: "Field",
-                                                      name: {
-                                                        kind: "Name",
-                                                        value: "id",
-                                                      },
-                                                    },
-                                                    {
-                                                      kind: "Field",
-                                                      name: {
-                                                        kind: "Name",
-                                                        value: "identifier",
-                                                      },
-                                                    },
-                                                  ],
-                                                },
-                                              },
-                                            ],
-                                          },
-                                        },
-                                        {
-                                          kind: "Field",
-                                          name: {
-                                            kind: "Name",
-                                            value: "duration",
-                                          },
-                                        },
-                                        {
-                                          kind: "Field",
-                                          name: {
-                                            kind: "Name",
-                                            value: "startedAt",
-                                          },
-                                        },
-                                        {
-                                          kind: "Field",
-                                          name: {
-                                            kind: "Name",
-                                            value: "endedAt",
-                                          },
-                                        },
-                                        {
-                                          kind: "Field",
-                                          name: {
-                                            kind: "Name",
-                                            value: "state",
-                                          },
                                         },
                                       ],
                                     },
@@ -3234,6 +4556,13 @@ export const OnEventDocument: DocumentNode<
                                           name: {
                                             kind: "Name",
                                             value: "identifier",
+                                          },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "createdAt",
                                           },
                                         },
                                       ],
@@ -3450,6 +4779,13 @@ export const OnAnyEventDocument: DocumentNode<
                                             value: "identifier",
                                           },
                                         },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "createdAt",
+                                          },
+                                        },
                                       ],
                                     },
                                   },
@@ -3483,6 +4819,10 @@ export const OnAnyEventDocument: DocumentNode<
                             {
                               kind: "Field",
                               name: { kind: "Name", value: "index" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "current" },
                             },
                             {
                               kind: "Field",
@@ -3597,6 +4937,13 @@ export const OnAnyEventDocument: DocumentNode<
                                             value: "identifier",
                                           },
                                         },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "createdAt",
+                                          },
+                                        },
                                       ],
                                     },
                                   },
@@ -3618,6 +4965,272 @@ export const OnAnyEventDocument: DocumentNode<
                             {
                               kind: "Field",
                               name: { kind: "Name", value: "state" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "transitions" },
+                              arguments: [
+                                {
+                                  kind: "Argument",
+                                  name: { kind: "Name", value: "first" },
+                                  value: { kind: "IntValue", value: "100" },
+                                },
+                              ],
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "totalCount" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "pageInfo" },
+                                    selectionSet: {
+                                      kind: "SelectionSet",
+                                      selections: [
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "hasNextPage",
+                                          },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "hasPreviousPage",
+                                          },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "startCursor",
+                                          },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "endCursor",
+                                          },
+                                        },
+                                      ],
+                                    },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "edges" },
+                                    selectionSet: {
+                                      kind: "SelectionSet",
+                                      selections: [
+                                        {
+                                          kind: "Field",
+                                          name: { kind: "Name", value: "node" },
+                                          selectionSet: {
+                                            kind: "SelectionSet",
+                                            selections: [
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "__typename",
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "id",
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "createdAt",
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "createdBy",
+                                                },
+                                                selectionSet: {
+                                                  kind: "SelectionSet",
+                                                  selections: [
+                                                    {
+                                                      kind: "InlineFragment",
+                                                      typeCondition: {
+                                                        kind: "NamedType",
+                                                        name: {
+                                                          kind: "Name",
+                                                          value: "User",
+                                                        },
+                                                      },
+                                                      selectionSet: {
+                                                        kind: "SelectionSet",
+                                                        selections: [
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value: "id",
+                                                            },
+                                                          },
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value: "username",
+                                                            },
+                                                          },
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value: "name",
+                                                            },
+                                                          },
+                                                        ],
+                                                      },
+                                                    },
+                                                    {
+                                                      kind: "InlineFragment",
+                                                      typeCondition: {
+                                                        kind: "NamedType",
+                                                        name: {
+                                                          kind: "Name",
+                                                          value: "Service",
+                                                        },
+                                                      },
+                                                      selectionSet: {
+                                                        kind: "SelectionSet",
+                                                        selections: [
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value: "id",
+                                                            },
+                                                          },
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value: "name",
+                                                            },
+                                                          },
+                                                        ],
+                                                      },
+                                                    },
+                                                    {
+                                                      kind: "InlineFragment",
+                                                      typeCondition: {
+                                                        kind: "NamedType",
+                                                        name: {
+                                                          kind: "Name",
+                                                          value: "Participant",
+                                                        },
+                                                      },
+                                                      selectionSet: {
+                                                        kind: "SelectionSet",
+                                                        selections: [
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value: "id",
+                                                            },
+                                                          },
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value:
+                                                                "identifier",
+                                                            },
+                                                          },
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value:
+                                                                "createdAt",
+                                                            },
+                                                          },
+                                                        ],
+                                                      },
+                                                    },
+                                                  ],
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "from",
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "to",
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "node",
+                                                },
+                                                selectionSet: {
+                                                  kind: "SelectionSet",
+                                                  selections: [
+                                                    {
+                                                      kind: "InlineFragment",
+                                                      typeCondition: {
+                                                        kind: "NamedType",
+                                                        name: {
+                                                          kind: "Name",
+                                                          value: "Step",
+                                                        },
+                                                      },
+                                                      selectionSet: {
+                                                        kind: "SelectionSet",
+                                                        selections: [
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value: "id",
+                                                            },
+                                                          },
+                                                        ],
+                                                      },
+                                                    },
+                                                  ],
+                                                },
+                                              },
+                                            ],
+                                          },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "cursor",
+                                          },
+                                        },
+                                      ],
+                                    },
+                                  },
+                                ],
+                              },
                             },
                           ],
                         },
@@ -3711,6 +5324,13 @@ export const OnAnyEventDocument: DocumentNode<
                                             value: "identifier",
                                           },
                                         },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "createdAt",
+                                          },
+                                        },
                                       ],
                                     },
                                   },
@@ -3732,6 +5352,10 @@ export const OnAnyEventDocument: DocumentNode<
                             {
                               kind: "Field",
                               name: { kind: "Name", value: "name" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "kind" },
                             },
                             {
                               kind: "Field",
@@ -3811,6 +5435,320 @@ export const OnAnyEventDocument: DocumentNode<
                                           name: {
                                             kind: "Name",
                                             value: "identifier",
+                                          },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "createdAt",
+                                          },
+                                        },
+                                      ],
+                                    },
+                                  },
+                                ],
+                              },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "attributes" },
+                              arguments: [
+                                {
+                                  kind: "Argument",
+                                  name: { kind: "Name", value: "first" },
+                                  value: { kind: "IntValue", value: "100" },
+                                },
+                              ],
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "totalCount" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "pageInfo" },
+                                    selectionSet: {
+                                      kind: "SelectionSet",
+                                      selections: [
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "hasNextPage",
+                                          },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "hasPreviousPage",
+                                          },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "startCursor",
+                                          },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "endCursor",
+                                          },
+                                        },
+                                      ],
+                                    },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "edges" },
+                                    selectionSet: {
+                                      kind: "SelectionSet",
+                                      selections: [
+                                        {
+                                          kind: "Field",
+                                          name: { kind: "Name", value: "node" },
+                                          selectionSet: {
+                                            kind: "SelectionSet",
+                                            selections: [
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "__typename",
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "id",
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "createdAt",
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "createdBy",
+                                                },
+                                                selectionSet: {
+                                                  kind: "SelectionSet",
+                                                  selections: [
+                                                    {
+                                                      kind: "InlineFragment",
+                                                      typeCondition: {
+                                                        kind: "NamedType",
+                                                        name: {
+                                                          kind: "Name",
+                                                          value: "User",
+                                                        },
+                                                      },
+                                                      selectionSet: {
+                                                        kind: "SelectionSet",
+                                                        selections: [
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value: "id",
+                                                            },
+                                                          },
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value: "username",
+                                                            },
+                                                          },
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value: "name",
+                                                            },
+                                                          },
+                                                        ],
+                                                      },
+                                                    },
+                                                    {
+                                                      kind: "InlineFragment",
+                                                      typeCondition: {
+                                                        kind: "NamedType",
+                                                        name: {
+                                                          kind: "Name",
+                                                          value: "Service",
+                                                        },
+                                                      },
+                                                      selectionSet: {
+                                                        kind: "SelectionSet",
+                                                        selections: [
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value: "id",
+                                                            },
+                                                          },
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value: "name",
+                                                            },
+                                                          },
+                                                        ],
+                                                      },
+                                                    },
+                                                    {
+                                                      kind: "InlineFragment",
+                                                      typeCondition: {
+                                                        kind: "NamedType",
+                                                        name: {
+                                                          kind: "Name",
+                                                          value: "Participant",
+                                                        },
+                                                      },
+                                                      selectionSet: {
+                                                        kind: "SelectionSet",
+                                                        selections: [
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value: "id",
+                                                            },
+                                                          },
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value:
+                                                                "identifier",
+                                                            },
+                                                          },
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value:
+                                                                "createdAt",
+                                                            },
+                                                          },
+                                                        ],
+                                                      },
+                                                    },
+                                                  ],
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "private",
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "protected",
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "immutable",
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "deletedAt",
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "key",
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "val",
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "index",
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "current",
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "version",
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "vector",
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "node",
+                                                },
+                                                selectionSet: {
+                                                  kind: "SelectionSet",
+                                                  selections: [
+                                                    {
+                                                      kind: "Field",
+                                                      name: {
+                                                        kind: "Name",
+                                                        value: "id",
+                                                      },
+                                                    },
+                                                  ],
+                                                },
+                                              },
+                                            ],
+                                          },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "cursor",
                                           },
                                         },
                                       ],
@@ -3911,6 +5849,13 @@ export const OnAnyEventDocument: DocumentNode<
                                             value: "identifier",
                                           },
                                         },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "createdAt",
+                                          },
+                                        },
                                       ],
                                     },
                                   },
@@ -3942,155 +5887,7 @@ export const OnAnyEventDocument: DocumentNode<
                                       selections: [
                                         {
                                           kind: "Field",
-                                          name: {
-                                            kind: "Name",
-                                            value: "__typename",
-                                          },
-                                        },
-                                        {
-                                          kind: "Field",
                                           name: { kind: "Name", value: "id" },
-                                        },
-                                        {
-                                          kind: "Field",
-                                          name: {
-                                            kind: "Name",
-                                            value: "createdAt",
-                                          },
-                                        },
-                                        {
-                                          kind: "Field",
-                                          name: {
-                                            kind: "Name",
-                                            value: "createdBy",
-                                          },
-                                          selectionSet: {
-                                            kind: "SelectionSet",
-                                            selections: [
-                                              {
-                                                kind: "InlineFragment",
-                                                typeCondition: {
-                                                  kind: "NamedType",
-                                                  name: {
-                                                    kind: "Name",
-                                                    value: "User",
-                                                  },
-                                                },
-                                                selectionSet: {
-                                                  kind: "SelectionSet",
-                                                  selections: [
-                                                    {
-                                                      kind: "Field",
-                                                      name: {
-                                                        kind: "Name",
-                                                        value: "id",
-                                                      },
-                                                    },
-                                                    {
-                                                      kind: "Field",
-                                                      name: {
-                                                        kind: "Name",
-                                                        value: "username",
-                                                      },
-                                                    },
-                                                    {
-                                                      kind: "Field",
-                                                      name: {
-                                                        kind: "Name",
-                                                        value: "name",
-                                                      },
-                                                    },
-                                                  ],
-                                                },
-                                              },
-                                              {
-                                                kind: "InlineFragment",
-                                                typeCondition: {
-                                                  kind: "NamedType",
-                                                  name: {
-                                                    kind: "Name",
-                                                    value: "Service",
-                                                  },
-                                                },
-                                                selectionSet: {
-                                                  kind: "SelectionSet",
-                                                  selections: [
-                                                    {
-                                                      kind: "Field",
-                                                      name: {
-                                                        kind: "Name",
-                                                        value: "id",
-                                                      },
-                                                    },
-                                                    {
-                                                      kind: "Field",
-                                                      name: {
-                                                        kind: "Name",
-                                                        value: "name",
-                                                      },
-                                                    },
-                                                  ],
-                                                },
-                                              },
-                                              {
-                                                kind: "InlineFragment",
-                                                typeCondition: {
-                                                  kind: "NamedType",
-                                                  name: {
-                                                    kind: "Name",
-                                                    value: "Participant",
-                                                  },
-                                                },
-                                                selectionSet: {
-                                                  kind: "SelectionSet",
-                                                  selections: [
-                                                    {
-                                                      kind: "Field",
-                                                      name: {
-                                                        kind: "Name",
-                                                        value: "id",
-                                                      },
-                                                    },
-                                                    {
-                                                      kind: "Field",
-                                                      name: {
-                                                        kind: "Name",
-                                                        value: "identifier",
-                                                      },
-                                                    },
-                                                  ],
-                                                },
-                                              },
-                                            ],
-                                          },
-                                        },
-                                        {
-                                          kind: "Field",
-                                          name: {
-                                            kind: "Name",
-                                            value: "duration",
-                                          },
-                                        },
-                                        {
-                                          kind: "Field",
-                                          name: {
-                                            kind: "Name",
-                                            value: "startedAt",
-                                          },
-                                        },
-                                        {
-                                          kind: "Field",
-                                          name: {
-                                            kind: "Name",
-                                            value: "endedAt",
-                                          },
-                                        },
-                                        {
-                                          kind: "Field",
-                                          name: {
-                                            kind: "Name",
-                                            value: "state",
-                                          },
                                         },
                                       ],
                                     },
@@ -4188,6 +5985,13 @@ export const OnAnyEventDocument: DocumentNode<
                                           name: {
                                             kind: "Name",
                                             value: "identifier",
+                                          },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "createdAt",
                                           },
                                         },
                                       ],
@@ -4604,6 +6408,7 @@ export const AddScopesDocument: DocumentNode<
                       },
                       { kind: "Field", name: { kind: "Name", value: "id" } },
                       { kind: "Field", name: { kind: "Name", value: "name" } },
+                      { kind: "Field", name: { kind: "Name", value: "kind" } },
                       {
                         kind: "Field",
                         name: { kind: "Name", value: "createdAt" },
@@ -4674,6 +6479,297 @@ export const AddScopesDocument: DocumentNode<
                                   {
                                     kind: "Field",
                                     name: { kind: "Name", value: "identifier" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "createdAt" },
+                                  },
+                                ],
+                              },
+                            },
+                          ],
+                        },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "attributes" },
+                        arguments: [
+                          {
+                            kind: "Argument",
+                            name: { kind: "Name", value: "first" },
+                            value: { kind: "IntValue", value: "100" },
+                          },
+                        ],
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "totalCount" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "pageInfo" },
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  {
+                                    kind: "Field",
+                                    name: {
+                                      kind: "Name",
+                                      value: "hasNextPage",
+                                    },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: {
+                                      kind: "Name",
+                                      value: "hasPreviousPage",
+                                    },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: {
+                                      kind: "Name",
+                                      value: "startCursor",
+                                    },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "endCursor" },
+                                  },
+                                ],
+                              },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "edges" },
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "node" },
+                                    selectionSet: {
+                                      kind: "SelectionSet",
+                                      selections: [
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "__typename",
+                                          },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: { kind: "Name", value: "id" },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "createdAt",
+                                          },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "createdBy",
+                                          },
+                                          selectionSet: {
+                                            kind: "SelectionSet",
+                                            selections: [
+                                              {
+                                                kind: "InlineFragment",
+                                                typeCondition: {
+                                                  kind: "NamedType",
+                                                  name: {
+                                                    kind: "Name",
+                                                    value: "User",
+                                                  },
+                                                },
+                                                selectionSet: {
+                                                  kind: "SelectionSet",
+                                                  selections: [
+                                                    {
+                                                      kind: "Field",
+                                                      name: {
+                                                        kind: "Name",
+                                                        value: "id",
+                                                      },
+                                                    },
+                                                    {
+                                                      kind: "Field",
+                                                      name: {
+                                                        kind: "Name",
+                                                        value: "username",
+                                                      },
+                                                    },
+                                                    {
+                                                      kind: "Field",
+                                                      name: {
+                                                        kind: "Name",
+                                                        value: "name",
+                                                      },
+                                                    },
+                                                  ],
+                                                },
+                                              },
+                                              {
+                                                kind: "InlineFragment",
+                                                typeCondition: {
+                                                  kind: "NamedType",
+                                                  name: {
+                                                    kind: "Name",
+                                                    value: "Service",
+                                                  },
+                                                },
+                                                selectionSet: {
+                                                  kind: "SelectionSet",
+                                                  selections: [
+                                                    {
+                                                      kind: "Field",
+                                                      name: {
+                                                        kind: "Name",
+                                                        value: "id",
+                                                      },
+                                                    },
+                                                    {
+                                                      kind: "Field",
+                                                      name: {
+                                                        kind: "Name",
+                                                        value: "name",
+                                                      },
+                                                    },
+                                                  ],
+                                                },
+                                              },
+                                              {
+                                                kind: "InlineFragment",
+                                                typeCondition: {
+                                                  kind: "NamedType",
+                                                  name: {
+                                                    kind: "Name",
+                                                    value: "Participant",
+                                                  },
+                                                },
+                                                selectionSet: {
+                                                  kind: "SelectionSet",
+                                                  selections: [
+                                                    {
+                                                      kind: "Field",
+                                                      name: {
+                                                        kind: "Name",
+                                                        value: "id",
+                                                      },
+                                                    },
+                                                    {
+                                                      kind: "Field",
+                                                      name: {
+                                                        kind: "Name",
+                                                        value: "identifier",
+                                                      },
+                                                    },
+                                                    {
+                                                      kind: "Field",
+                                                      name: {
+                                                        kind: "Name",
+                                                        value: "createdAt",
+                                                      },
+                                                    },
+                                                  ],
+                                                },
+                                              },
+                                            ],
+                                          },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "private",
+                                          },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "protected",
+                                          },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "immutable",
+                                          },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "deletedAt",
+                                          },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: { kind: "Name", value: "key" },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: { kind: "Name", value: "val" },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "index",
+                                          },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "current",
+                                          },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "version",
+                                          },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "vector",
+                                          },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: { kind: "Name", value: "node" },
+                                          selectionSet: {
+                                            kind: "SelectionSet",
+                                            selections: [
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "id",
+                                                },
+                                              },
+                                            ],
+                                          },
+                                        },
+                                      ],
+                                    },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "cursor" },
                                   },
                                 ],
                               },
@@ -4824,6 +6920,10 @@ export const ScopesDocument: DocumentNode<ScopesQuery, ScopesQueryVariables> = {
                             },
                             {
                               kind: "Field",
+                              name: { kind: "Name", value: "kind" },
+                            },
+                            {
+                              kind: "Field",
                               name: { kind: "Name", value: "createdAt" },
                             },
                             {
@@ -4900,6 +7000,320 @@ export const ScopesDocument: DocumentNode<ScopesQuery, ScopesQueryVariables> = {
                                           name: {
                                             kind: "Name",
                                             value: "identifier",
+                                          },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "createdAt",
+                                          },
+                                        },
+                                      ],
+                                    },
+                                  },
+                                ],
+                              },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "attributes" },
+                              arguments: [
+                                {
+                                  kind: "Argument",
+                                  name: { kind: "Name", value: "first" },
+                                  value: { kind: "IntValue", value: "100" },
+                                },
+                              ],
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "totalCount" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "pageInfo" },
+                                    selectionSet: {
+                                      kind: "SelectionSet",
+                                      selections: [
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "hasNextPage",
+                                          },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "hasPreviousPage",
+                                          },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "startCursor",
+                                          },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "endCursor",
+                                          },
+                                        },
+                                      ],
+                                    },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "edges" },
+                                    selectionSet: {
+                                      kind: "SelectionSet",
+                                      selections: [
+                                        {
+                                          kind: "Field",
+                                          name: { kind: "Name", value: "node" },
+                                          selectionSet: {
+                                            kind: "SelectionSet",
+                                            selections: [
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "__typename",
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "id",
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "createdAt",
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "createdBy",
+                                                },
+                                                selectionSet: {
+                                                  kind: "SelectionSet",
+                                                  selections: [
+                                                    {
+                                                      kind: "InlineFragment",
+                                                      typeCondition: {
+                                                        kind: "NamedType",
+                                                        name: {
+                                                          kind: "Name",
+                                                          value: "User",
+                                                        },
+                                                      },
+                                                      selectionSet: {
+                                                        kind: "SelectionSet",
+                                                        selections: [
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value: "id",
+                                                            },
+                                                          },
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value: "username",
+                                                            },
+                                                          },
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value: "name",
+                                                            },
+                                                          },
+                                                        ],
+                                                      },
+                                                    },
+                                                    {
+                                                      kind: "InlineFragment",
+                                                      typeCondition: {
+                                                        kind: "NamedType",
+                                                        name: {
+                                                          kind: "Name",
+                                                          value: "Service",
+                                                        },
+                                                      },
+                                                      selectionSet: {
+                                                        kind: "SelectionSet",
+                                                        selections: [
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value: "id",
+                                                            },
+                                                          },
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value: "name",
+                                                            },
+                                                          },
+                                                        ],
+                                                      },
+                                                    },
+                                                    {
+                                                      kind: "InlineFragment",
+                                                      typeCondition: {
+                                                        kind: "NamedType",
+                                                        name: {
+                                                          kind: "Name",
+                                                          value: "Participant",
+                                                        },
+                                                      },
+                                                      selectionSet: {
+                                                        kind: "SelectionSet",
+                                                        selections: [
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value: "id",
+                                                            },
+                                                          },
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value:
+                                                                "identifier",
+                                                            },
+                                                          },
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value:
+                                                                "createdAt",
+                                                            },
+                                                          },
+                                                        ],
+                                                      },
+                                                    },
+                                                  ],
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "private",
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "protected",
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "immutable",
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "deletedAt",
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "key",
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "val",
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "index",
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "current",
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "version",
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "vector",
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "node",
+                                                },
+                                                selectionSet: {
+                                                  kind: "SelectionSet",
+                                                  selections: [
+                                                    {
+                                                      kind: "Field",
+                                                      name: {
+                                                        kind: "Name",
+                                                        value: "id",
+                                                      },
+                                                    },
+                                                  ],
+                                                },
+                                              },
+                                            ],
+                                          },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "cursor",
                                           },
                                         },
                                       ],
@@ -5081,6 +7495,10 @@ export const ScopedAttributesDocument: DocumentNode<
                                     kind: "Field",
                                     name: { kind: "Name", value: "identifier" },
                                   },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "createdAt" },
+                                  },
                                 ],
                               },
                             },
@@ -5106,6 +7524,10 @@ export const ScopedAttributesDocument: DocumentNode<
                       { kind: "Field", name: { kind: "Name", value: "key" } },
                       { kind: "Field", name: { kind: "Name", value: "val" } },
                       { kind: "Field", name: { kind: "Name", value: "index" } },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "current" },
+                      },
                       {
                         kind: "Field",
                         name: { kind: "Name", value: "version" },
@@ -5349,6 +7771,10 @@ export const AddStepsDocument: DocumentNode<
                                     kind: "Field",
                                     name: { kind: "Name", value: "identifier" },
                                   },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "createdAt" },
+                                  },
                                 ],
                               },
                             },
@@ -5368,6 +7794,252 @@ export const AddStepsDocument: DocumentNode<
                         name: { kind: "Name", value: "endedAt" },
                       },
                       { kind: "Field", name: { kind: "Name", value: "state" } },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "transitions" },
+                        arguments: [
+                          {
+                            kind: "Argument",
+                            name: { kind: "Name", value: "first" },
+                            value: { kind: "IntValue", value: "100" },
+                          },
+                        ],
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "totalCount" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "pageInfo" },
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  {
+                                    kind: "Field",
+                                    name: {
+                                      kind: "Name",
+                                      value: "hasNextPage",
+                                    },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: {
+                                      kind: "Name",
+                                      value: "hasPreviousPage",
+                                    },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: {
+                                      kind: "Name",
+                                      value: "startCursor",
+                                    },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "endCursor" },
+                                  },
+                                ],
+                              },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "edges" },
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "node" },
+                                    selectionSet: {
+                                      kind: "SelectionSet",
+                                      selections: [
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "__typename",
+                                          },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: { kind: "Name", value: "id" },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "createdAt",
+                                          },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "createdBy",
+                                          },
+                                          selectionSet: {
+                                            kind: "SelectionSet",
+                                            selections: [
+                                              {
+                                                kind: "InlineFragment",
+                                                typeCondition: {
+                                                  kind: "NamedType",
+                                                  name: {
+                                                    kind: "Name",
+                                                    value: "User",
+                                                  },
+                                                },
+                                                selectionSet: {
+                                                  kind: "SelectionSet",
+                                                  selections: [
+                                                    {
+                                                      kind: "Field",
+                                                      name: {
+                                                        kind: "Name",
+                                                        value: "id",
+                                                      },
+                                                    },
+                                                    {
+                                                      kind: "Field",
+                                                      name: {
+                                                        kind: "Name",
+                                                        value: "username",
+                                                      },
+                                                    },
+                                                    {
+                                                      kind: "Field",
+                                                      name: {
+                                                        kind: "Name",
+                                                        value: "name",
+                                                      },
+                                                    },
+                                                  ],
+                                                },
+                                              },
+                                              {
+                                                kind: "InlineFragment",
+                                                typeCondition: {
+                                                  kind: "NamedType",
+                                                  name: {
+                                                    kind: "Name",
+                                                    value: "Service",
+                                                  },
+                                                },
+                                                selectionSet: {
+                                                  kind: "SelectionSet",
+                                                  selections: [
+                                                    {
+                                                      kind: "Field",
+                                                      name: {
+                                                        kind: "Name",
+                                                        value: "id",
+                                                      },
+                                                    },
+                                                    {
+                                                      kind: "Field",
+                                                      name: {
+                                                        kind: "Name",
+                                                        value: "name",
+                                                      },
+                                                    },
+                                                  ],
+                                                },
+                                              },
+                                              {
+                                                kind: "InlineFragment",
+                                                typeCondition: {
+                                                  kind: "NamedType",
+                                                  name: {
+                                                    kind: "Name",
+                                                    value: "Participant",
+                                                  },
+                                                },
+                                                selectionSet: {
+                                                  kind: "SelectionSet",
+                                                  selections: [
+                                                    {
+                                                      kind: "Field",
+                                                      name: {
+                                                        kind: "Name",
+                                                        value: "id",
+                                                      },
+                                                    },
+                                                    {
+                                                      kind: "Field",
+                                                      name: {
+                                                        kind: "Name",
+                                                        value: "identifier",
+                                                      },
+                                                    },
+                                                    {
+                                                      kind: "Field",
+                                                      name: {
+                                                        kind: "Name",
+                                                        value: "createdAt",
+                                                      },
+                                                    },
+                                                  ],
+                                                },
+                                              },
+                                            ],
+                                          },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: { kind: "Name", value: "from" },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: { kind: "Name", value: "to" },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: { kind: "Name", value: "node" },
+                                          selectionSet: {
+                                            kind: "SelectionSet",
+                                            selections: [
+                                              {
+                                                kind: "InlineFragment",
+                                                typeCondition: {
+                                                  kind: "NamedType",
+                                                  name: {
+                                                    kind: "Name",
+                                                    value: "Step",
+                                                  },
+                                                },
+                                                selectionSet: {
+                                                  kind: "SelectionSet",
+                                                  selections: [
+                                                    {
+                                                      kind: "Field",
+                                                      name: {
+                                                        kind: "Name",
+                                                        value: "id",
+                                                      },
+                                                    },
+                                                  ],
+                                                },
+                                              },
+                                            ],
+                                          },
+                                        },
+                                      ],
+                                    },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "cursor" },
+                                  },
+                                ],
+                              },
+                            },
+                          ],
+                        },
+                      },
                     ],
                   },
                 },
@@ -5560,6 +8232,13 @@ export const StepsDocument: DocumentNode<StepsQuery, StepsQueryVariables> = {
                                             value: "identifier",
                                           },
                                         },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "createdAt",
+                                          },
+                                        },
                                       ],
                                     },
                                   },
@@ -5581,6 +8260,272 @@ export const StepsDocument: DocumentNode<StepsQuery, StepsQueryVariables> = {
                             {
                               kind: "Field",
                               name: { kind: "Name", value: "state" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "transitions" },
+                              arguments: [
+                                {
+                                  kind: "Argument",
+                                  name: { kind: "Name", value: "first" },
+                                  value: { kind: "IntValue", value: "100" },
+                                },
+                              ],
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "totalCount" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "pageInfo" },
+                                    selectionSet: {
+                                      kind: "SelectionSet",
+                                      selections: [
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "hasNextPage",
+                                          },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "hasPreviousPage",
+                                          },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "startCursor",
+                                          },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "endCursor",
+                                          },
+                                        },
+                                      ],
+                                    },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "edges" },
+                                    selectionSet: {
+                                      kind: "SelectionSet",
+                                      selections: [
+                                        {
+                                          kind: "Field",
+                                          name: { kind: "Name", value: "node" },
+                                          selectionSet: {
+                                            kind: "SelectionSet",
+                                            selections: [
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "__typename",
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "id",
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "createdAt",
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "createdBy",
+                                                },
+                                                selectionSet: {
+                                                  kind: "SelectionSet",
+                                                  selections: [
+                                                    {
+                                                      kind: "InlineFragment",
+                                                      typeCondition: {
+                                                        kind: "NamedType",
+                                                        name: {
+                                                          kind: "Name",
+                                                          value: "User",
+                                                        },
+                                                      },
+                                                      selectionSet: {
+                                                        kind: "SelectionSet",
+                                                        selections: [
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value: "id",
+                                                            },
+                                                          },
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value: "username",
+                                                            },
+                                                          },
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value: "name",
+                                                            },
+                                                          },
+                                                        ],
+                                                      },
+                                                    },
+                                                    {
+                                                      kind: "InlineFragment",
+                                                      typeCondition: {
+                                                        kind: "NamedType",
+                                                        name: {
+                                                          kind: "Name",
+                                                          value: "Service",
+                                                        },
+                                                      },
+                                                      selectionSet: {
+                                                        kind: "SelectionSet",
+                                                        selections: [
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value: "id",
+                                                            },
+                                                          },
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value: "name",
+                                                            },
+                                                          },
+                                                        ],
+                                                      },
+                                                    },
+                                                    {
+                                                      kind: "InlineFragment",
+                                                      typeCondition: {
+                                                        kind: "NamedType",
+                                                        name: {
+                                                          kind: "Name",
+                                                          value: "Participant",
+                                                        },
+                                                      },
+                                                      selectionSet: {
+                                                        kind: "SelectionSet",
+                                                        selections: [
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value: "id",
+                                                            },
+                                                          },
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value:
+                                                                "identifier",
+                                                            },
+                                                          },
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value:
+                                                                "createdAt",
+                                                            },
+                                                          },
+                                                        ],
+                                                      },
+                                                    },
+                                                  ],
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "from",
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "to",
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "node",
+                                                },
+                                                selectionSet: {
+                                                  kind: "SelectionSet",
+                                                  selections: [
+                                                    {
+                                                      kind: "InlineFragment",
+                                                      typeCondition: {
+                                                        kind: "NamedType",
+                                                        name: {
+                                                          kind: "Name",
+                                                          value: "Step",
+                                                        },
+                                                      },
+                                                      selectionSet: {
+                                                        kind: "SelectionSet",
+                                                        selections: [
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value: "id",
+                                                            },
+                                                          },
+                                                        ],
+                                                      },
+                                                    },
+                                                  ],
+                                                },
+                                              },
+                                            ],
+                                          },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "cursor",
+                                          },
+                                        },
+                                      ],
+                                    },
+                                  },
+                                ],
+                              },
                             },
                           ],
                         },
@@ -5749,6 +8694,10 @@ export const TransitionDocument: DocumentNode<
                                     kind: "Field",
                                     name: { kind: "Name", value: "identifier" },
                                   },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "createdAt" },
+                                  },
                                 ],
                               },
                             },
@@ -5774,134 +8723,7 @@ export const TransitionDocument: DocumentNode<
                                 selections: [
                                   {
                                     kind: "Field",
-                                    name: { kind: "Name", value: "__typename" },
-                                  },
-                                  {
-                                    kind: "Field",
                                     name: { kind: "Name", value: "id" },
-                                  },
-                                  {
-                                    kind: "Field",
-                                    name: { kind: "Name", value: "createdAt" },
-                                  },
-                                  {
-                                    kind: "Field",
-                                    name: { kind: "Name", value: "createdBy" },
-                                    selectionSet: {
-                                      kind: "SelectionSet",
-                                      selections: [
-                                        {
-                                          kind: "InlineFragment",
-                                          typeCondition: {
-                                            kind: "NamedType",
-                                            name: {
-                                              kind: "Name",
-                                              value: "User",
-                                            },
-                                          },
-                                          selectionSet: {
-                                            kind: "SelectionSet",
-                                            selections: [
-                                              {
-                                                kind: "Field",
-                                                name: {
-                                                  kind: "Name",
-                                                  value: "id",
-                                                },
-                                              },
-                                              {
-                                                kind: "Field",
-                                                name: {
-                                                  kind: "Name",
-                                                  value: "username",
-                                                },
-                                              },
-                                              {
-                                                kind: "Field",
-                                                name: {
-                                                  kind: "Name",
-                                                  value: "name",
-                                                },
-                                              },
-                                            ],
-                                          },
-                                        },
-                                        {
-                                          kind: "InlineFragment",
-                                          typeCondition: {
-                                            kind: "NamedType",
-                                            name: {
-                                              kind: "Name",
-                                              value: "Service",
-                                            },
-                                          },
-                                          selectionSet: {
-                                            kind: "SelectionSet",
-                                            selections: [
-                                              {
-                                                kind: "Field",
-                                                name: {
-                                                  kind: "Name",
-                                                  value: "id",
-                                                },
-                                              },
-                                              {
-                                                kind: "Field",
-                                                name: {
-                                                  kind: "Name",
-                                                  value: "name",
-                                                },
-                                              },
-                                            ],
-                                          },
-                                        },
-                                        {
-                                          kind: "InlineFragment",
-                                          typeCondition: {
-                                            kind: "NamedType",
-                                            name: {
-                                              kind: "Name",
-                                              value: "Participant",
-                                            },
-                                          },
-                                          selectionSet: {
-                                            kind: "SelectionSet",
-                                            selections: [
-                                              {
-                                                kind: "Field",
-                                                name: {
-                                                  kind: "Name",
-                                                  value: "id",
-                                                },
-                                              },
-                                              {
-                                                kind: "Field",
-                                                name: {
-                                                  kind: "Name",
-                                                  value: "identifier",
-                                                },
-                                              },
-                                            ],
-                                          },
-                                        },
-                                      ],
-                                    },
-                                  },
-                                  {
-                                    kind: "Field",
-                                    name: { kind: "Name", value: "duration" },
-                                  },
-                                  {
-                                    kind: "Field",
-                                    name: { kind: "Name", value: "startedAt" },
-                                  },
-                                  {
-                                    kind: "Field",
-                                    name: { kind: "Name", value: "endedAt" },
-                                  },
-                                  {
-                                    kind: "Field",
-                                    name: { kind: "Name", value: "state" },
                                   },
                                 ],
                               },
@@ -6042,6 +8864,21 @@ export type SetAttributePayloadKeySpecifier = (
 export type SetAttributePayloadFieldPolicy = {
   attribute?: FieldPolicy<any> | FieldReadFunction<any>;
 };
+export type QueryKeySpecifier = (
+  | "attributes"
+  | "groups"
+  | "participants"
+  | "scopes"
+  | "steps"
+  | QueryKeySpecifier
+)[];
+export type QueryFieldPolicy = {
+  attributes?: FieldPolicy<any> | FieldReadFunction<any>;
+  groups?: FieldPolicy<any> | FieldReadFunction<any>;
+  participants?: FieldPolicy<any> | FieldReadFunction<any>;
+  scopes?: FieldPolicy<any> | FieldReadFunction<any>;
+  steps?: FieldPolicy<any> | FieldReadFunction<any>;
+};
 export type MutationKeySpecifier = (
   | "addGroups"
   | "addParticipant"
@@ -6116,6 +8953,7 @@ export type ChangePayloadFieldPolicy = {
 export type StepChangeKeySpecifier = (
   | "id"
   | "since"
+  | "state"
   | "remaining"
   | "ellapsed"
   | "running"
@@ -6124,17 +8962,20 @@ export type StepChangeKeySpecifier = (
 export type StepChangeFieldPolicy = {
   id?: FieldPolicy<any> | FieldReadFunction<any>;
   since?: FieldPolicy<any> | FieldReadFunction<any>;
+  state?: FieldPolicy<any> | FieldReadFunction<any>;
   remaining?: FieldPolicy<any> | FieldReadFunction<any>;
   ellapsed?: FieldPolicy<any> | FieldReadFunction<any>;
   running?: FieldPolicy<any> | FieldReadFunction<any>;
 };
 export type ScopeChangeKeySpecifier = (
   | "id"
+  | "kind"
   | "name"
   | ScopeChangeKeySpecifier
 )[];
 export type ScopeChangeFieldPolicy = {
   id?: FieldPolicy<any> | FieldReadFunction<any>;
+  kind?: FieldPolicy<any> | FieldReadFunction<any>;
   name?: FieldPolicy<any> | FieldReadFunction<any>;
 };
 export type AttributeChangeKeySpecifier = (
@@ -6144,6 +8985,7 @@ export type AttributeChangeKeySpecifier = (
   | "isNew"
   | "index"
   | "vector"
+  | "version"
   | "key"
   | "val"
   | AttributeChangeKeySpecifier
@@ -6155,6 +8997,7 @@ export type AttributeChangeFieldPolicy = {
   isNew?: FieldPolicy<any> | FieldReadFunction<any>;
   index?: FieldPolicy<any> | FieldReadFunction<any>;
   vector?: FieldPolicy<any> | FieldReadFunction<any>;
+  version?: FieldPolicy<any> | FieldReadFunction<any>;
   key?: FieldPolicy<any> | FieldReadFunction<any>;
   val?: FieldPolicy<any> | FieldReadFunction<any>;
 };
@@ -6197,19 +9040,6 @@ export type AddGroupPayloadKeySpecifier = (
 )[];
 export type AddGroupPayloadFieldPolicy = {
   group?: FieldPolicy<any> | FieldReadFunction<any>;
-};
-export type QueryKeySpecifier = (
-  | "groups"
-  | "participants"
-  | "scopes"
-  | "steps"
-  | QueryKeySpecifier
-)[];
-export type QueryFieldPolicy = {
-  groups?: FieldPolicy<any> | FieldReadFunction<any>;
-  participants?: FieldPolicy<any> | FieldReadFunction<any>;
-  scopes?: FieldPolicy<any> | FieldReadFunction<any>;
-  steps?: FieldPolicy<any> | FieldReadFunction<any>;
 };
 export type GroupEdgeKeySpecifier = (
   | "node"
@@ -6331,6 +9161,7 @@ export type ScopeKeySpecifier = (
   | "createdAt"
   | "createdBy"
   | "name"
+  | "kind"
   | "attributes"
   | "links"
   | ScopeKeySpecifier
@@ -6340,6 +9171,7 @@ export type ScopeFieldPolicy = {
   createdAt?: FieldPolicy<any> | FieldReadFunction<any>;
   createdBy?: FieldPolicy<any> | FieldReadFunction<any>;
   name?: FieldPolicy<any> | FieldReadFunction<any>;
+  kind?: FieldPolicy<any> | FieldReadFunction<any>;
   attributes?: FieldPolicy<any> | FieldReadFunction<any>;
   links?: FieldPolicy<any> | FieldReadFunction<any>;
 };
@@ -6528,6 +9360,13 @@ export type TypedTypePolicies = TypePolicies & {
       | (() => undefined | SetAttributePayloadKeySpecifier);
     fields?: SetAttributePayloadFieldPolicy;
   };
+  Query?: Omit<TypePolicy, "fields" | "keyFields"> & {
+    keyFields?:
+      | false
+      | QueryKeySpecifier
+      | (() => undefined | QueryKeySpecifier);
+    fields?: QueryFieldPolicy;
+  };
   Mutation?: Omit<TypePolicy, "fields" | "keyFields"> & {
     keyFields?:
       | false
@@ -6615,13 +9454,6 @@ export type TypedTypePolicies = TypePolicies & {
       | AddGroupPayloadKeySpecifier
       | (() => undefined | AddGroupPayloadKeySpecifier);
     fields?: AddGroupPayloadFieldPolicy;
-  };
-  Query?: Omit<TypePolicy, "fields" | "keyFields"> & {
-    keyFields?:
-      | false
-      | QueryKeySpecifier
-      | (() => undefined | QueryKeySpecifier);
-    fields?: QueryFieldPolicy;
   };
   GroupEdge?: Omit<TypePolicy, "fields" | "keyFields"> & {
     keyFields?:

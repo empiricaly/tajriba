@@ -11,7 +11,9 @@ type Scope struct {
 	// id is the unique globally identifier for the record.
 	ID string `json:"id"`
 	// name is the *unique* name of the Scope.
-	Name string `json:"name"`
+	Name *string `json:"name"`
+	// kind is an optional type name.
+	Kind *string `json:"kind"`
 	// createdAt is the time of creation of the record.
 	CreatedAt time.Time `json:"createdAt"`
 	// createdBy is the Actor that created the record.
@@ -44,6 +46,9 @@ type ScopedAttributesInput struct {
 	// name of the matching Scope.
 	Name string `json:"name"`
 
+	// kind of the matching Scope.
+	Kind string `json:"kind"`
+
 	// keys to Attributes in matching Scope.
 	Keys []string `json:"keys"`
 
@@ -65,8 +70,12 @@ func (s *ScopedAttributesInput) Validate(noneOK bool) error {
 		filters++
 	}
 
+	if len(s.Kind) > 0 {
+		filters++
+	}
+
 	if filters > 1 {
-		return errors.New("has name, keys and/or kvs: must have only one filter")
+		return errors.New("has name, kind, keys and/or kvs: must have only one filter")
 	}
 
 	if !noneOK && filters == 0 {
@@ -77,8 +86,12 @@ func (s *ScopedAttributesInput) Validate(noneOK bool) error {
 }
 
 func (s *ScopedAttributesInput) Match(scope *Scope) bool {
-	if len(s.Name) > 0 {
-		return s.Name == scope.Name
+	if len(s.Name) > 0 && scope.Name != nil {
+		return s.Name == *scope.Name
+	}
+
+	if len(s.Kind) > 0 && scope.Kind != nil {
+		return s.Kind == *scope.Kind
 	}
 
 	if len(s.Keys) > 0 {

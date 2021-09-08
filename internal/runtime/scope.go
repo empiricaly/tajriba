@@ -12,7 +12,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (r *Runtime) AddScope(ctx context.Context, name string, attributes []*mgen.SetAttributeInput) (*models.Scope, error) {
+func (r *Runtime) AddScope(ctx context.Context, name *string, kind *string, attributes []*mgen.SetAttributeInput) (*models.Scope, error) {
 	r.Lock()
 	defer r.Unlock()
 
@@ -21,9 +21,11 @@ func (r *Runtime) AddScope(ctx context.Context, name string, attributes []*mgen.
 		return nil, ErrNotAuthorized
 	}
 
-	for _, s := range r.scopes {
-		if s.Name == name {
-			return nil, ErrAlreadyExists
+	if name != nil {
+		for _, s := range r.scopes {
+			if s.Name != nil && *s.Name == *name {
+				return nil, ErrAlreadyExists
+			}
 		}
 	}
 
@@ -32,10 +34,11 @@ func (r *Runtime) AddScope(ctx context.Context, name string, attributes []*mgen.
 
 	s := &models.Scope{
 		ID:            ids.ID(ctx, ids.Scope),
-		Name:          name,
 		CreatedAt:     now,
 		CreatedByID:   actorID,
 		CreatedBy:     actr,
+		Kind:          kind,
+		Name:          name,
 		AttributesMap: make(map[string]*models.Attribute),
 	}
 
@@ -49,8 +52,6 @@ func (r *Runtime) AddScope(ctx context.Context, name string, attributes []*mgen.
 	r.scopesMap[s.ID] = s
 	r.values[s.ID] = s
 
-	r.propagateHook(ctx, mgen.EventTypeScopeAdd, s.ID, s)
-
 	for _, attr := range attributes {
 		attr.NodeID = &s.ID
 	}
@@ -63,6 +64,8 @@ func (r *Runtime) AddScope(ctx context.Context, name string, attributes []*mgen.
 	if _, err := r.setAttributes(ctx, attr); err != nil {
 		return nil, errors.Wrap(err, "save attributes")
 	}
+
+	r.propagateHook(ctx, mgen.EventTypeScopeAdd, s.ID, s)
 
 	return s, nil
 }
@@ -139,9 +142,6 @@ func (r *Runtime) ScopeAttributes(
 	hasPrev bool,
 	err error,
 ) {
-	r.RLock()
-	defer r.RUnlock()
-
 	scope, ok := r.scopesMap[scopeID]
 	if !ok {
 		return nil, 0, false, false, ErrNotFound
@@ -176,9 +176,6 @@ func (r *Runtime) ScopeLinks(
 	hasPrev bool,
 	err error,
 ) {
-	r.RLock()
-	defer r.RUnlock()
-
 	scope, ok := r.scopesMap[scopeID]
 	if !ok {
 		return nil, 0, false, false, ErrNotFound

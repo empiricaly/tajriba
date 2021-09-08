@@ -99,6 +99,7 @@ type ComplexityRoot struct {
 		NodeID  func(childComplexity int) int
 		Val     func(childComplexity int) int
 		Vector  func(childComplexity int) int
+		Version func(childComplexity int) int
 	}
 
 	AttributeConnection struct {
@@ -214,6 +215,7 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
+		Attributes   func(childComplexity int, scopeID string, after *string, first *int, before *string, last *int) int
 		Groups       func(childComplexity int, after *string, first *int, before *string, last *int) int
 		Participants func(childComplexity int, after *string, first *int, before *string, last *int) int
 		Scopes       func(childComplexity int, filter []*models.ScopedAttributesInput, after *string, first *int, before *string, last *int) int
@@ -230,12 +232,14 @@ type ComplexityRoot struct {
 		CreatedAt  func(childComplexity int) int
 		CreatedBy  func(childComplexity int) int
 		ID         func(childComplexity int) int
+		Kind       func(childComplexity int) int
 		Links      func(childComplexity int, after *string, first *int, before *string, last *int) int
 		Name       func(childComplexity int) int
 	}
 
 	ScopeChange struct {
 		ID   func(childComplexity int) int
+		Kind func(childComplexity int) int
 		Name func(childComplexity int) int
 	}
 
@@ -284,6 +288,7 @@ type ComplexityRoot struct {
 		Remaining func(childComplexity int) int
 		Running   func(childComplexity int) int
 		Since     func(childComplexity int) int
+		State     func(childComplexity int) int
 	}
 
 	StepConnection struct {
@@ -357,6 +362,7 @@ type ParticipantResolver interface {
 	Links(ctx context.Context, obj *models.Participant, after *string, first *int, before *string, last *int) (*mgen.LinkConnection, error)
 }
 type QueryResolver interface {
+	Attributes(ctx context.Context, scopeID string, after *string, first *int, before *string, last *int) (*mgen.AttributeConnection, error)
 	Groups(ctx context.Context, after *string, first *int, before *string, last *int) (*mgen.GroupConnection, error)
 	Participants(ctx context.Context, after *string, first *int, before *string, last *int) (*mgen.ParticipantConnection, error)
 	Scopes(ctx context.Context, filter []*models.ScopedAttributesInput, after *string, first *int, before *string, last *int) (*mgen.ScopeConnection, error)
@@ -592,6 +598,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.AttributeChange.Vector(childComplexity), true
+
+	case "AttributeChange.version":
+		if e.complexity.AttributeChange.Version == nil {
+			break
+		}
+
+		return e.complexity.AttributeChange.Version(childComplexity), true
 
 	case "AttributeConnection.edges":
 		if e.complexity.AttributeConnection.Edges == nil {
@@ -1054,6 +1067,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.ParticipantEdge.Node(childComplexity), true
 
+	case "Query.attributes":
+		if e.complexity.Query.Attributes == nil {
+			break
+		}
+
+		args, err := ec.field_Query_attributes_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.Attributes(childComplexity, args["scopeID"].(string), args["after"].(*string), args["first"].(*int), args["before"].(*string), args["last"].(*int)), true
+
 	case "Query.groups":
 		if e.complexity.Query.Groups == nil {
 			break
@@ -1149,6 +1174,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Scope.ID(childComplexity), true
 
+	case "Scope.kind":
+		if e.complexity.Scope.Kind == nil {
+			break
+		}
+
+		return e.complexity.Scope.Kind(childComplexity), true
+
 	case "Scope.links":
 		if e.complexity.Scope.Links == nil {
 			break
@@ -1174,6 +1206,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.ScopeChange.ID(childComplexity), true
+
+	case "ScopeChange.kind":
+		if e.complexity.ScopeChange.Kind == nil {
+			break
+		}
+
+		return e.complexity.ScopeChange.Kind(childComplexity), true
 
 	case "ScopeChange.name":
 		if e.complexity.ScopeChange.Name == nil {
@@ -1373,6 +1412,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.StepChange.Since(childComplexity), true
+
+	case "StepChange.state":
+		if e.complexity.StepChange.State == nil {
+			break
+		}
+
+		return e.complexity.StepChange.State(childComplexity), true
 
 	case "StepConnection.edges":
 		if e.complexity.StepConnection.Edges == nil {
@@ -1715,7 +1761,7 @@ type Attribute implements Node {
   vector: Boolean!
 
   "version is the version number of this Attribute, starting at 1."
-  version: Int
+  version: Int!
 
   "versions returns previous versions for the Attribute."
   versions(after: Cursor, first: Int, before: Cursor, last: Int): AttributeConnection
@@ -1801,6 +1847,14 @@ type SetAttributePayload {
   attribute: Attribute!
 }
 
+extend type Query {
+  """
+  attributes returns all attributes for a scope.
+  """
+  attributes(scopeID: ID!, after: Cursor, first: Int, before: Cursor, last: Int): AttributeConnection
+    @hasRole(role: ADMIN)
+}
+
 extend type Mutation {
   """
   Create or update an Attribute on a Node.
@@ -1809,14 +1863,14 @@ extend type Mutation {
 }
 
 type AttributeEdge {
-  node: Attribute
+  node: Attribute!
   cursor: Cursor!
 }
 
 type AttributeConnection {
   totalCount: Int!
   pageInfo: PageInfo!
-  edges: [AttributeEdge]
+  edges: [AttributeEdge!]!
 }
 `, BuiltIn: false},
 	{Name: "schema/base.graphqls", Input: `"DateTime is an int64 Date + Time value given in Epoch with ns precision."
@@ -1871,6 +1925,9 @@ type StepChange {
   "since is the time from which the counter should count."
   since: DateTime
 
+  "state is the stage the Step currently is in"
+  state: State!
+
   """
   remaining is the duration left in seconds of the Step should last before
   ending, from ` + "`" + `since` + "`" + `.
@@ -1890,8 +1947,11 @@ type ScopeChange {
   "id is the identifier for the Scope."
   id: ID!
 
+  "kind is the kind of the Scope."
+  kind: String
+
   "name is the name of the Scope."
-  name: String!
+  name: String
 }
 
 type AttributeChange {
@@ -1912,6 +1972,9 @@ type AttributeChange {
 
   "vector indicates whether the value is a vector."
   vector: Boolean!
+
+  "version is the version number of this Attribute, starting at 1."
+  version: Int!
 
   "key is the attribute key being updated."
   key: String!
@@ -1984,35 +2047,53 @@ extend type Mutation {
 }
 
 type GroupEdge {
-  node: Group
+  node: Group!
   cursor: Cursor!
 }
 
 type GroupConnection {
   totalCount: Int!
   pageInfo: PageInfo!
-  edges: [GroupEdge]
+  edges: [GroupEdge!]!
 }
 `, BuiltIn: false},
 	{Name: "schema/hooks.graphqls", Input: `"""
 EventType holds types of event that can trigger hooks.
 """
 enum EventType {
+  "A step was added."
   STEP_ADD
 
+  "A scope was added."
   SCOPE_ADD
 
+  "A group was added."
   GROUP_ADD
 
+  "A transition was added."
   TRANSITION_ADD
 
-  PARTICIPANT_ADD
-  PARTICIPANT_CONNECT
-  PARTICIPANT_DISCONNECT
-
+  "A link was added."
   LINK_ADD
 
+  "An attribute was added or updated."
   ATTRIBUTE_UPDATE
+
+  "A participant was added."
+  PARTICIPANT_ADD
+
+  "A participant connected."
+  PARTICIPANT_CONNECT
+
+  "A participant disconnected."
+  PARTICIPANT_DISCONNECT
+
+  """
+  Participant was already connected when this subscription started. This is a
+  special event that allows the listener to catch up on the currently connected
+  players at the beginning of the subscription.
+  """
+  PARTICIPANT_CONNECTED
 }
 
 "OnEventInput is the input for the onEvent subscription."
@@ -2020,6 +2101,15 @@ input OnEventInput {
   "eventsTypes speficies which events to listen to."
   eventTypes: [EventType!]!
 
+  """
+  nodeID is an optional node ID of the node to listen to. If nodeID is
+  specified, nodeType must also be given.
+  """
+  nodeID: ID
+}
+
+"OnAnyEventInput is the input for the onAnyEvent subscription."
+input OnAnyEventInput {
   """
   nodeID is an optional node ID of the node to listen to. If nodeID is
   specified, nodeType must also be given.
@@ -2041,15 +2131,6 @@ type OnEventPayload {
 
   "node is the node that triggered the event"
   node: Node!
-}
-
-"OnAnyEventInput is the input for the onAnyEvent subscription."
-input OnAnyEventInput {
-  """
-  nodeID is an optional node ID of the node to listen to. If nodeID is
-  specified, nodeType must also be given.
-  """
-  nodeID: ID
 }
 
 extend type Subscription {
@@ -2134,14 +2215,14 @@ extend type Mutation {
 }
 
 type LinkEdge {
-  node: Link
+  node: Link!
   cursor: Cursor!
 }
 
 type LinkConnection {
   totalCount: Int!
   pageInfo: PageInfo!
-  edges: [LinkEdge]
+  edges: [LinkEdge!]!
 }
 `, BuiltIn: false},
 	{Name: "schema/participant.graphqls", Input: `"Participant is an entity participating in Steps."
@@ -2202,14 +2283,14 @@ extend type Mutation {
 }
 
 type ParticipantEdge {
-  node: Participant
+  node: Participant!
   cursor: Cursor!
 }
 
 type ParticipantConnection {
   totalCount: Int!
   pageInfo: PageInfo!
-  edges: [ParticipantEdge]
+  edges: [ParticipantEdge!]!
 }
 `, BuiltIn: false},
 	{Name: "schema/scope.graphqls", Input: `type Scope implements Node {
@@ -2222,10 +2303,13 @@ type ParticipantConnection {
   "createdBy returns the Actor that created the record."
   createdBy: Actor!
 
-  "name is the *unique* name of the Scope."
-  name: String!
+  "name is an optional *unique* name."
+  name: String
 
-  "attributes returns all custom data that has been set on the Scope."
+  "kind is an optional type name."
+  kind: String
+
+  "attributes returns all custom data that has been set."
   attributes(
     """
     deleted will return only deleted attributes if false, by default only
@@ -2236,7 +2320,7 @@ type ParticipantConnection {
     first: Int
     before: Cursor
     last: Int
-  ): AttributeConnection
+  ): AttributeConnection!
 
   """
   links returns Participant linking and unlinking with this Node. A single
@@ -2254,7 +2338,10 @@ input AddScopeInput {
   name is the *unique* name of the Scope. If a scope with the same name already
   exists, it will return an "already exists" error.
   """
-  name: String!
+  name: String
+
+  "kind is an optional type name."
+  kind: String
 
   """
   attributes to be attached to the Scope at creation.
@@ -2281,6 +2368,11 @@ input ScopedAttributesInput {
   name of the matching Scope.
   """
   name: String
+
+  """
+  kind of the matching Scope.
+  """
+  kind: String
 
   """
   keys to Attributes in matching Scope.
@@ -2345,14 +2437,14 @@ extend type Subscription {
 }
 
 type ScopeEdge {
-  node: Scope
+  node: Scope!
   cursor: Cursor!
 }
 
 type ScopeConnection {
   totalCount: Int!
   pageInfo: PageInfo!
-  edges: [ScopeEdge]
+  edges: [ScopeEdge!]!
 }
 `, BuiltIn: false},
 	{Name: "schema/service.graphqls", Input: `type Service {
@@ -2443,12 +2535,12 @@ type Step implements Node {
   """
   transitions lists of States changes of the Step.
   """
-  transitions(after: Cursor, first: Int, before: Cursor, last: Int): TransitionConnection
+  transitions(after: Cursor, first: Int, before: Cursor, last: Int): TransitionConnection!
 
   """
   links returns Participant linking and unlinking with this Node.
   """
-  links(after: Cursor, first: Int, before: Cursor, last: Int): LinkConnection
+  links(after: Cursor, first: Int, before: Cursor, last: Int): LinkConnection!
 }
 
 """
@@ -2482,14 +2574,14 @@ extend type Mutation {
 }
 
 type StepEdge {
-  node: Step
+  node: Step!
   cursor: Cursor!
 }
 
 type StepConnection {
   totalCount: Int!
   pageInfo: PageInfo!
-  edges: [StepEdge]
+  edges: [StepEdge!]!
 }
 
 input StepOrder {
@@ -2573,14 +2665,14 @@ extend type Mutation {
 }
 
 type TransitionEdge {
-  node: Transition
+  node: Transition!
   cursor: Cursor!
 }
 
 type TransitionConnection {
   totalCount: Int!
   pageInfo: PageInfo!
-  edges: [TransitionEdge]
+  edges: [TransitionEdge!]!
 }
 `, BuiltIn: false},
 	{Name: "schema/user.graphqls", Input: `"User is a user that has priviledged access to the data."
@@ -2916,6 +3008,57 @@ func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs
 		}
 	}
 	args["name"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_attributes_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["scopeID"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("scopeID"))
+		arg0, err = ec.unmarshalNID2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["scopeID"] = arg0
+	var arg1 *string
+	if tmp, ok := rawArgs["after"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("after"))
+		arg1, err = ec.unmarshalOCursor2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["after"] = arg1
+	var arg2 *int
+	if tmp, ok := rawArgs["first"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("first"))
+		arg2, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["first"] = arg2
+	var arg3 *string
+	if tmp, ok := rawArgs["before"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("before"))
+		arg3, err = ec.unmarshalOCursor2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["before"] = arg3
+	var arg4 *int
+	if tmp, ok := rawArgs["last"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("last"))
+		arg4, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["last"] = arg4
 	return args, nil
 }
 
@@ -3932,11 +4075,14 @@ func (ec *executionContext) _Attribute_version(ctx context.Context, field graphq
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(int)
 	fc.Result = res
-	return ec.marshalOInt2int(ctx, field.Selections, res)
+	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Attribute_versions(ctx context.Context, field graphql.CollectedField, obj *models.Attribute) (ret graphql.Marshaler) {
@@ -4255,6 +4401,41 @@ func (ec *executionContext) _AttributeChange_vector(ctx context.Context, field g
 	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _AttributeChange_version(ctx context.Context, field graphql.CollectedField, obj *models.AttributeChange) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "AttributeChange",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Version, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _AttributeChange_key(ctx context.Context, field graphql.CollectedField, obj *models.AttributeChange) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -4417,11 +4598,14 @@ func (ec *executionContext) _AttributeConnection_edges(ctx context.Context, fiel
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.([]*mgen.AttributeEdge)
 	fc.Result = res
-	return ec.marshalOAttributeEdge2ᚕᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐAttributeEdge(ctx, field.Selections, res)
+	return ec.marshalNAttributeEdge2ᚕᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐAttributeEdgeᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _AttributeEdge_node(ctx context.Context, field graphql.CollectedField, obj *mgen.AttributeEdge) (ret graphql.Marshaler) {
@@ -4449,11 +4633,14 @@ func (ec *executionContext) _AttributeEdge_node(ctx context.Context, field graph
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(*models.Attribute)
 	fc.Result = res
-	return ec.marshalOAttribute2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋmodelsᚐAttribute(ctx, field.Selections, res)
+	return ec.marshalNAttribute2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋmodelsᚐAttribute(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _AttributeEdge_cursor(ctx context.Context, field graphql.CollectedField, obj *mgen.AttributeEdge) (ret graphql.Marshaler) {
@@ -4835,11 +5022,14 @@ func (ec *executionContext) _GroupConnection_edges(ctx context.Context, field gr
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.([]*mgen.GroupEdge)
 	fc.Result = res
-	return ec.marshalOGroupEdge2ᚕᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐGroupEdge(ctx, field.Selections, res)
+	return ec.marshalNGroupEdge2ᚕᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐGroupEdgeᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _GroupEdge_node(ctx context.Context, field graphql.CollectedField, obj *mgen.GroupEdge) (ret graphql.Marshaler) {
@@ -4867,11 +5057,14 @@ func (ec *executionContext) _GroupEdge_node(ctx context.Context, field graphql.C
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(*models.Group)
 	fc.Result = res
-	return ec.marshalOGroup2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋmodelsᚐGroup(ctx, field.Selections, res)
+	return ec.marshalNGroup2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋmodelsᚐGroup(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _GroupEdge_cursor(ctx context.Context, field graphql.CollectedField, obj *mgen.GroupEdge) (ret graphql.Marshaler) {
@@ -5214,11 +5407,14 @@ func (ec *executionContext) _LinkConnection_edges(ctx context.Context, field gra
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.([]*mgen.LinkEdge)
 	fc.Result = res
-	return ec.marshalOLinkEdge2ᚕᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐLinkEdge(ctx, field.Selections, res)
+	return ec.marshalNLinkEdge2ᚕᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐLinkEdgeᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _LinkEdge_node(ctx context.Context, field graphql.CollectedField, obj *mgen.LinkEdge) (ret graphql.Marshaler) {
@@ -5246,11 +5442,14 @@ func (ec *executionContext) _LinkEdge_node(ctx context.Context, field graphql.Co
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(*models.Link)
 	fc.Result = res
-	return ec.marshalOLink2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋmodelsᚐLink(ctx, field.Selections, res)
+	return ec.marshalNLink2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋmodelsᚐLink(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _LinkEdge_cursor(ctx context.Context, field graphql.CollectedField, obj *mgen.LinkEdge) (ret graphql.Marshaler) {
@@ -6463,11 +6662,14 @@ func (ec *executionContext) _ParticipantConnection_edges(ctx context.Context, fi
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.([]*mgen.ParticipantEdge)
 	fc.Result = res
-	return ec.marshalOParticipantEdge2ᚕᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐParticipantEdge(ctx, field.Selections, res)
+	return ec.marshalNParticipantEdge2ᚕᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐParticipantEdgeᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _ParticipantEdge_node(ctx context.Context, field graphql.CollectedField, obj *mgen.ParticipantEdge) (ret graphql.Marshaler) {
@@ -6495,11 +6697,14 @@ func (ec *executionContext) _ParticipantEdge_node(ctx context.Context, field gra
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(*models.Participant)
 	fc.Result = res
-	return ec.marshalOParticipant2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋmodelsᚐParticipant(ctx, field.Selections, res)
+	return ec.marshalNParticipant2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋmodelsᚐParticipant(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _ParticipantEdge_cursor(ctx context.Context, field graphql.CollectedField, obj *mgen.ParticipantEdge) (ret graphql.Marshaler) {
@@ -6535,6 +6740,69 @@ func (ec *executionContext) _ParticipantEdge_cursor(ctx context.Context, field g
 	res := resTmp.(string)
 	fc.Result = res
 	return ec.marshalNCursor2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_attributes(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Query_attributes_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		directive0 := func(rctx context.Context) (interface{}, error) {
+			ctx = rctx // use context from middleware stack in children
+			return ec.resolvers.Query().Attributes(rctx, args["scopeID"].(string), args["after"].(*string), args["first"].(*int), args["before"].(*string), args["last"].(*int))
+		}
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			role, err := ec.unmarshalNRole2githubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐRole(ctx, "ADMIN")
+			if err != nil {
+				return nil, err
+			}
+			if ec.directives.HasRole == nil {
+				return nil, errors.New("directive hasRole is not implemented")
+			}
+			return ec.directives.HasRole(ctx, nil, directive0, role)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.(*mgen.AttributeConnection); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be *github.com/empiricaly/tajriba/internal/graph/mgen.AttributeConnection`, tmp)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*mgen.AttributeConnection)
+	fc.Result = res
+	return ec.marshalOAttributeConnection2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐAttributeConnection(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_groups(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -7060,14 +7328,43 @@ func (ec *executionContext) _Scope_name(ctx context.Context, field graphql.Colle
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Scope_kind(ctx context.Context, field graphql.CollectedField, obj *models.Scope) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Scope",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Kind, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Scope_attributes(ctx context.Context, field graphql.CollectedField, obj *models.Scope) (ret graphql.Marshaler) {
@@ -7102,11 +7399,14 @@ func (ec *executionContext) _Scope_attributes(ctx context.Context, field graphql
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(*mgen.AttributeConnection)
 	fc.Result = res
-	return ec.marshalOAttributeConnection2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐAttributeConnection(ctx, field.Selections, res)
+	return ec.marshalNAttributeConnection2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐAttributeConnection(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Scope_links(ctx context.Context, field graphql.CollectedField, obj *models.Scope) (ret graphql.Marshaler) {
@@ -7183,6 +7483,38 @@ func (ec *executionContext) _ScopeChange_id(ctx context.Context, field graphql.C
 	return ec.marshalNID2string(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _ScopeChange_kind(ctx context.Context, field graphql.CollectedField, obj *models.ScopeChange) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "ScopeChange",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Kind, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _ScopeChange_name(ctx context.Context, field graphql.CollectedField, obj *models.ScopeChange) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -7208,14 +7540,11 @@ func (ec *executionContext) _ScopeChange_name(ctx context.Context, field graphql
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _ScopeConnection_totalCount(ctx context.Context, field graphql.CollectedField, obj *mgen.ScopeConnection) (ret graphql.Marshaler) {
@@ -7313,11 +7642,14 @@ func (ec *executionContext) _ScopeConnection_edges(ctx context.Context, field gr
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.([]*mgen.ScopeEdge)
 	fc.Result = res
-	return ec.marshalOScopeEdge2ᚕᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐScopeEdge(ctx, field.Selections, res)
+	return ec.marshalNScopeEdge2ᚕᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐScopeEdgeᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _ScopeEdge_node(ctx context.Context, field graphql.CollectedField, obj *mgen.ScopeEdge) (ret graphql.Marshaler) {
@@ -7345,11 +7677,14 @@ func (ec *executionContext) _ScopeEdge_node(ctx context.Context, field graphql.C
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(*models.Scope)
 	fc.Result = res
-	return ec.marshalOScope2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋmodelsᚐScope(ctx, field.Selections, res)
+	return ec.marshalNScope2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋmodelsᚐScope(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _ScopeEdge_cursor(ctx context.Context, field graphql.CollectedField, obj *mgen.ScopeEdge) (ret graphql.Marshaler) {
@@ -7900,11 +8235,14 @@ func (ec *executionContext) _Step_transitions(ctx context.Context, field graphql
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(*mgen.TransitionConnection)
 	fc.Result = res
-	return ec.marshalOTransitionConnection2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐTransitionConnection(ctx, field.Selections, res)
+	return ec.marshalNTransitionConnection2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐTransitionConnection(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Step_links(ctx context.Context, field graphql.CollectedField, obj *models.Step) (ret graphql.Marshaler) {
@@ -7939,11 +8277,14 @@ func (ec *executionContext) _Step_links(ctx context.Context, field graphql.Colle
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(*mgen.LinkConnection)
 	fc.Result = res
-	return ec.marshalOLinkConnection2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐLinkConnection(ctx, field.Selections, res)
+	return ec.marshalNLinkConnection2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐLinkConnection(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _StepChange_id(ctx context.Context, field graphql.CollectedField, obj *models.StepChange) (ret graphql.Marshaler) {
@@ -8011,6 +8352,41 @@ func (ec *executionContext) _StepChange_since(ctx context.Context, field graphql
 	res := resTmp.(*time.Time)
 	fc.Result = res
 	return ec.marshalODateTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _StepChange_state(ctx context.Context, field graphql.CollectedField, obj *models.StepChange) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "StepChange",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.State, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(models.State)
+	fc.Result = res
+	return ec.marshalNState2githubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋmodelsᚐState(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _StepChange_remaining(ctx context.Context, field graphql.CollectedField, obj *models.StepChange) (ret graphql.Marshaler) {
@@ -8207,11 +8583,14 @@ func (ec *executionContext) _StepConnection_edges(ctx context.Context, field gra
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.([]*mgen.StepEdge)
 	fc.Result = res
-	return ec.marshalOStepEdge2ᚕᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐStepEdge(ctx, field.Selections, res)
+	return ec.marshalNStepEdge2ᚕᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐStepEdgeᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _StepEdge_node(ctx context.Context, field graphql.CollectedField, obj *mgen.StepEdge) (ret graphql.Marshaler) {
@@ -8239,11 +8618,14 @@ func (ec *executionContext) _StepEdge_node(ctx context.Context, field graphql.Co
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(*models.Step)
 	fc.Result = res
-	return ec.marshalOStep2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋmodelsᚐStep(ctx, field.Selections, res)
+	return ec.marshalNStep2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋmodelsᚐStep(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _StepEdge_cursor(ctx context.Context, field graphql.CollectedField, obj *mgen.StepEdge) (ret graphql.Marshaler) {
@@ -8901,11 +9283,14 @@ func (ec *executionContext) _TransitionConnection_edges(ctx context.Context, fie
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.([]*mgen.TransitionEdge)
 	fc.Result = res
-	return ec.marshalOTransitionEdge2ᚕᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐTransitionEdge(ctx, field.Selections, res)
+	return ec.marshalNTransitionEdge2ᚕᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐTransitionEdgeᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _TransitionEdge_node(ctx context.Context, field graphql.CollectedField, obj *mgen.TransitionEdge) (ret graphql.Marshaler) {
@@ -8933,11 +9318,14 @@ func (ec *executionContext) _TransitionEdge_node(ctx context.Context, field grap
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(*models.Transition)
 	fc.Result = res
-	return ec.marshalOTransition2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋmodelsᚐTransition(ctx, field.Selections, res)
+	return ec.marshalNTransition2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋmodelsᚐTransition(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _TransitionEdge_cursor(ctx context.Context, field graphql.CollectedField, obj *mgen.TransitionEdge) (ret graphql.Marshaler) {
@@ -10287,7 +10675,15 @@ func (ec *executionContext) unmarshalInputAddScopeInput(ctx context.Context, obj
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
-			it.Name, err = ec.unmarshalNString2string(ctx, v)
+			it.Name, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "kind":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("kind"))
+			it.Kind, err = ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -10504,6 +10900,14 @@ func (ec *executionContext) unmarshalInputScopedAttributesInput(ctx context.Cont
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
 			it.Name, err = ec.unmarshalOString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "kind":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("kind"))
+			it.Kind, err = ec.unmarshalOString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -10987,6 +11391,9 @@ func (ec *executionContext) _Attribute(ctx context.Context, sel ast.SelectionSet
 			}
 		case "version":
 			out.Values[i] = ec._Attribute_version(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
 		case "versions":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
@@ -11057,6 +11464,11 @@ func (ec *executionContext) _AttributeChange(ctx context.Context, sel ast.Select
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "version":
+			out.Values[i] = ec._AttributeChange_version(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "key":
 			out.Values[i] = ec._AttributeChange_key(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -11098,6 +11510,9 @@ func (ec *executionContext) _AttributeConnection(ctx context.Context, sel ast.Se
 			}
 		case "edges":
 			out.Values[i] = ec._AttributeConnection_edges(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -11122,6 +11537,9 @@ func (ec *executionContext) _AttributeEdge(ctx context.Context, sel ast.Selectio
 			out.Values[i] = graphql.MarshalString("AttributeEdge")
 		case "node":
 			out.Values[i] = ec._AttributeEdge_node(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "cursor":
 			out.Values[i] = ec._AttributeEdge_cursor(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -11246,6 +11664,9 @@ func (ec *executionContext) _GroupConnection(ctx context.Context, sel ast.Select
 			}
 		case "edges":
 			out.Values[i] = ec._GroupConnection_edges(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -11270,6 +11691,9 @@ func (ec *executionContext) _GroupEdge(ctx context.Context, sel ast.SelectionSet
 			out.Values[i] = graphql.MarshalString("GroupEdge")
 		case "node":
 			out.Values[i] = ec._GroupEdge_node(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "cursor":
 			out.Values[i] = ec._GroupEdge_cursor(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -11361,6 +11785,9 @@ func (ec *executionContext) _LinkConnection(ctx context.Context, sel ast.Selecti
 			}
 		case "edges":
 			out.Values[i] = ec._LinkConnection_edges(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -11385,6 +11812,9 @@ func (ec *executionContext) _LinkEdge(ctx context.Context, sel ast.SelectionSet,
 			out.Values[i] = graphql.MarshalString("LinkEdge")
 		case "node":
 			out.Values[i] = ec._LinkEdge_node(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "cursor":
 			out.Values[i] = ec._LinkEdge_cursor(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -11707,6 +12137,9 @@ func (ec *executionContext) _ParticipantConnection(ctx context.Context, sel ast.
 			}
 		case "edges":
 			out.Values[i] = ec._ParticipantConnection_edges(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -11731,6 +12164,9 @@ func (ec *executionContext) _ParticipantEdge(ctx context.Context, sel ast.Select
 			out.Values[i] = graphql.MarshalString("ParticipantEdge")
 		case "node":
 			out.Values[i] = ec._ParticipantEdge_node(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "cursor":
 			out.Values[i] = ec._ParticipantEdge_cursor(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -11762,6 +12198,17 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Query")
+		case "attributes":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_attributes(ctx, field)
+				return res
+			})
 		case "groups":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
@@ -11881,9 +12328,8 @@ func (ec *executionContext) _Scope(ctx context.Context, sel ast.SelectionSet, ob
 			}
 		case "name":
 			out.Values[i] = ec._Scope_name(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
-			}
+		case "kind":
+			out.Values[i] = ec._Scope_kind(ctx, field, obj)
 		case "attributes":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
@@ -11893,6 +12339,9 @@ func (ec *executionContext) _Scope(ctx context.Context, sel ast.SelectionSet, ob
 					}
 				}()
 				res = ec._Scope_attributes(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
 				return res
 			})
 		case "links":
@@ -11933,11 +12382,10 @@ func (ec *executionContext) _ScopeChange(ctx context.Context, sel ast.SelectionS
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "kind":
+			out.Values[i] = ec._ScopeChange_kind(ctx, field, obj)
 		case "name":
 			out.Values[i] = ec._ScopeChange_name(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -11972,6 +12420,9 @@ func (ec *executionContext) _ScopeConnection(ctx context.Context, sel ast.Select
 			}
 		case "edges":
 			out.Values[i] = ec._ScopeConnection_edges(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -11996,6 +12447,9 @@ func (ec *executionContext) _ScopeEdge(ctx context.Context, sel ast.SelectionSet
 			out.Values[i] = graphql.MarshalString("ScopeEdge")
 		case "node":
 			out.Values[i] = ec._ScopeEdge_node(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "cursor":
 			out.Values[i] = ec._ScopeEdge_cursor(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -12159,6 +12613,9 @@ func (ec *executionContext) _Step(ctx context.Context, sel ast.SelectionSet, obj
 					}
 				}()
 				res = ec._Step_transitions(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
 				return res
 			})
 		case "links":
@@ -12170,6 +12627,9 @@ func (ec *executionContext) _Step(ctx context.Context, sel ast.SelectionSet, obj
 					}
 				}()
 				res = ec._Step_links(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
 				return res
 			})
 		default:
@@ -12201,6 +12661,11 @@ func (ec *executionContext) _StepChange(ctx context.Context, sel ast.SelectionSe
 			}
 		case "since":
 			out.Values[i] = ec._StepChange_since(ctx, field, obj)
+		case "state":
+			out.Values[i] = ec._StepChange_state(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "remaining":
 			out.Values[i] = ec._StepChange_remaining(ctx, field, obj)
 		case "ellapsed":
@@ -12244,6 +12709,9 @@ func (ec *executionContext) _StepConnection(ctx context.Context, sel ast.Selecti
 			}
 		case "edges":
 			out.Values[i] = ec._StepConnection_edges(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -12268,6 +12736,9 @@ func (ec *executionContext) _StepEdge(ctx context.Context, sel ast.SelectionSet,
 			out.Values[i] = graphql.MarshalString("StepEdge")
 		case "node":
 			out.Values[i] = ec._StepEdge_node(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "cursor":
 			out.Values[i] = ec._StepEdge_cursor(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -12385,6 +12856,9 @@ func (ec *executionContext) _TransitionConnection(ctx context.Context, sel ast.S
 			}
 		case "edges":
 			out.Values[i] = ec._TransitionConnection_edges(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -12409,6 +12883,9 @@ func (ec *executionContext) _TransitionEdge(ctx context.Context, sel ast.Selecti
 			out.Values[i] = graphql.MarshalString("TransitionEdge")
 		case "node":
 			out.Values[i] = ec._TransitionEdge_node(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "cursor":
 			out.Values[i] = ec._TransitionEdge_cursor(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -12997,6 +13474,67 @@ func (ec *executionContext) marshalNAttribute2ᚖgithubᚗcomᚋempiricalyᚋtaj
 	return ec._Attribute(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNAttributeConnection2githubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐAttributeConnection(ctx context.Context, sel ast.SelectionSet, v mgen.AttributeConnection) graphql.Marshaler {
+	return ec._AttributeConnection(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNAttributeConnection2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐAttributeConnection(ctx context.Context, sel ast.SelectionSet, v *mgen.AttributeConnection) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._AttributeConnection(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNAttributeEdge2ᚕᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐAttributeEdgeᚄ(ctx context.Context, sel ast.SelectionSet, v []*mgen.AttributeEdge) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNAttributeEdge2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐAttributeEdge(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+	return ret
+}
+
+func (ec *executionContext) marshalNAttributeEdge2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐAttributeEdge(ctx context.Context, sel ast.SelectionSet, v *mgen.AttributeEdge) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._AttributeEdge(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNBoolean2bool(ctx context.Context, v interface{}) (bool, error) {
 	res, err := graphql.UnmarshalBoolean(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -13144,6 +13682,53 @@ func (ec *executionContext) marshalNGroup2ᚖgithubᚗcomᚋempiricalyᚋtajriba
 	return ec._Group(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNGroupEdge2ᚕᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐGroupEdgeᚄ(ctx context.Context, sel ast.SelectionSet, v []*mgen.GroupEdge) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNGroupEdge2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐGroupEdge(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+	return ret
+}
+
+func (ec *executionContext) marshalNGroupEdge2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐGroupEdge(ctx context.Context, sel ast.SelectionSet, v *mgen.GroupEdge) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._GroupEdge(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNID2string(ctx context.Context, v interface{}) (string, error) {
 	res, err := graphql.UnmarshalID(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -13207,6 +13792,77 @@ func (ec *executionContext) marshalNInt2int(ctx context.Context, sel ast.Selecti
 func (ec *executionContext) unmarshalNKV2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋmodelsᚐKV(ctx context.Context, v interface{}) (*models.KV, error) {
 	res, err := ec.unmarshalInputKV(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNLink2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋmodelsᚐLink(ctx context.Context, sel ast.SelectionSet, v *models.Link) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._Link(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNLinkConnection2githubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐLinkConnection(ctx context.Context, sel ast.SelectionSet, v mgen.LinkConnection) graphql.Marshaler {
+	return ec._LinkConnection(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNLinkConnection2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐLinkConnection(ctx context.Context, sel ast.SelectionSet, v *mgen.LinkConnection) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._LinkConnection(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNLinkEdge2ᚕᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐLinkEdgeᚄ(ctx context.Context, sel ast.SelectionSet, v []*mgen.LinkEdge) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNLinkEdge2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐLinkEdge(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+	return ret
+}
+
+func (ec *executionContext) marshalNLinkEdge2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐLinkEdge(ctx context.Context, sel ast.SelectionSet, v *mgen.LinkEdge) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._LinkEdge(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNLinkInput2githubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐLinkInput(ctx context.Context, v interface{}) (mgen.LinkInput, error) {
@@ -13361,6 +14017,53 @@ func (ec *executionContext) marshalNParticipant2ᚖgithubᚗcomᚋempiricalyᚋt
 	return ec._Participant(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNParticipantEdge2ᚕᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐParticipantEdgeᚄ(ctx context.Context, sel ast.SelectionSet, v []*mgen.ParticipantEdge) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNParticipantEdge2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐParticipantEdge(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+	return ret
+}
+
+func (ec *executionContext) marshalNParticipantEdge2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐParticipantEdge(ctx context.Context, sel ast.SelectionSet, v *mgen.ParticipantEdge) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._ParticipantEdge(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNRegisterServiceInput2githubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐRegisterServiceInput(ctx context.Context, v interface{}) (mgen.RegisterServiceInput, error) {
 	res, err := ec.unmarshalInputRegisterServiceInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -13398,6 +14101,53 @@ func (ec *executionContext) marshalNScope2ᚖgithubᚗcomᚋempiricalyᚋtajriba
 		return graphql.Null
 	}
 	return ec._Scope(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNScopeEdge2ᚕᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐScopeEdgeᚄ(ctx context.Context, sel ast.SelectionSet, v []*mgen.ScopeEdge) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNScopeEdge2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐScopeEdge(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+	return ret
+}
+
+func (ec *executionContext) marshalNScopeEdge2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐScopeEdge(ctx context.Context, sel ast.SelectionSet, v *mgen.ScopeEdge) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._ScopeEdge(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNScopedAttributesInput2ᚕᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋmodelsᚐScopedAttributesInputᚄ(ctx context.Context, v interface{}) ([]*models.ScopedAttributesInput, error) {
@@ -13543,6 +14293,53 @@ func (ec *executionContext) marshalNStep2ᚖgithubᚗcomᚋempiricalyᚋtajriba�
 	return ec._Step(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNStepEdge2ᚕᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐStepEdgeᚄ(ctx context.Context, sel ast.SelectionSet, v []*mgen.StepEdge) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNStepEdge2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐStepEdge(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+	return ret
+}
+
+func (ec *executionContext) marshalNStepEdge2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐStepEdge(ctx context.Context, sel ast.SelectionSet, v *mgen.StepEdge) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._StepEdge(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNString2string(ctx context.Context, v interface{}) (string, error) {
 	res, err := graphql.UnmarshalString(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -13566,6 +14363,67 @@ func (ec *executionContext) marshalNTransition2ᚖgithubᚗcomᚋempiricalyᚋta
 		return graphql.Null
 	}
 	return ec._Transition(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNTransitionConnection2githubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐTransitionConnection(ctx context.Context, sel ast.SelectionSet, v mgen.TransitionConnection) graphql.Marshaler {
+	return ec._TransitionConnection(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNTransitionConnection2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐTransitionConnection(ctx context.Context, sel ast.SelectionSet, v *mgen.TransitionConnection) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._TransitionConnection(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNTransitionEdge2ᚕᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐTransitionEdgeᚄ(ctx context.Context, sel ast.SelectionSet, v []*mgen.TransitionEdge) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNTransitionEdge2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐTransitionEdge(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+	return ret
+}
+
+func (ec *executionContext) marshalNTransitionEdge2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐTransitionEdge(ctx context.Context, sel ast.SelectionSet, v *mgen.TransitionEdge) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._TransitionEdge(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNTransitionInput2githubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐTransitionInput(ctx context.Context, v interface{}) (mgen.TransitionInput, error) {
@@ -13840,53 +14698,6 @@ func (ec *executionContext) marshalOAttributeConnection2ᚖgithubᚗcomᚋempiri
 	return ec._AttributeConnection(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalOAttributeEdge2ᚕᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐAttributeEdge(ctx context.Context, sel ast.SelectionSet, v []*mgen.AttributeEdge) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalOAttributeEdge2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐAttributeEdge(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-	return ret
-}
-
-func (ec *executionContext) marshalOAttributeEdge2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐAttributeEdge(ctx context.Context, sel ast.SelectionSet, v *mgen.AttributeEdge) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._AttributeEdge(ctx, sel, v)
-}
-
 func (ec *executionContext) unmarshalOBoolean2bool(ctx context.Context, v interface{}) (bool, error) {
 	res, err := graphql.UnmarshalBoolean(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -13941,65 +14752,11 @@ func (ec *executionContext) marshalODateTime2ᚖtimeᚐTime(ctx context.Context,
 	return graphql.MarshalTime(*v)
 }
 
-func (ec *executionContext) marshalOGroup2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋmodelsᚐGroup(ctx context.Context, sel ast.SelectionSet, v *models.Group) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._Group(ctx, sel, v)
-}
-
 func (ec *executionContext) marshalOGroupConnection2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐGroupConnection(ctx context.Context, sel ast.SelectionSet, v *mgen.GroupConnection) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
 	return ec._GroupConnection(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalOGroupEdge2ᚕᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐGroupEdge(ctx context.Context, sel ast.SelectionSet, v []*mgen.GroupEdge) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalOGroupEdge2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐGroupEdge(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-	return ret
-}
-
-func (ec *executionContext) marshalOGroupEdge2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐGroupEdge(ctx context.Context, sel ast.SelectionSet, v *mgen.GroupEdge) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._GroupEdge(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOID2ᚖstring(ctx context.Context, v interface{}) (*string, error) {
@@ -14015,15 +14772,6 @@ func (ec *executionContext) marshalOID2ᚖstring(ctx context.Context, sel ast.Se
 		return graphql.Null
 	}
 	return graphql.MarshalID(*v)
-}
-
-func (ec *executionContext) unmarshalOInt2int(ctx context.Context, v interface{}) (int, error) {
-	res, err := graphql.UnmarshalInt(v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalOInt2int(ctx context.Context, sel ast.SelectionSet, v int) graphql.Marshaler {
-	return graphql.MarshalInt(v)
 }
 
 func (ec *executionContext) unmarshalOInt2ᚖint(ctx context.Context, v interface{}) (*int, error) {
@@ -14065,65 +14813,11 @@ func (ec *executionContext) unmarshalOKV2ᚕᚖgithubᚗcomᚋempiricalyᚋtajri
 	return res, nil
 }
 
-func (ec *executionContext) marshalOLink2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋmodelsᚐLink(ctx context.Context, sel ast.SelectionSet, v *models.Link) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._Link(ctx, sel, v)
-}
-
 func (ec *executionContext) marshalOLinkConnection2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐLinkConnection(ctx context.Context, sel ast.SelectionSet, v *mgen.LinkConnection) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
 	return ec._LinkConnection(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalOLinkEdge2ᚕᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐLinkEdge(ctx context.Context, sel ast.SelectionSet, v []*mgen.LinkEdge) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalOLinkEdge2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐLinkEdge(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-	return ret
-}
-
-func (ec *executionContext) marshalOLinkEdge2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐLinkEdge(ctx context.Context, sel ast.SelectionSet, v *mgen.LinkEdge) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._LinkEdge(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOOnAnyEventInput2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐOnAnyEventInput(ctx context.Context, v interface{}) (*mgen.OnAnyEventInput, error) {
@@ -14149,13 +14843,6 @@ func (ec *executionContext) marshalOOnEventPayload2ᚖgithubᚗcomᚋempiricaly�
 	return ec._OnEventPayload(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalOParticipant2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋmodelsᚐParticipant(ctx context.Context, sel ast.SelectionSet, v *models.Participant) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._Participant(ctx, sel, v)
-}
-
 func (ec *executionContext) marshalOParticipantConnection2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐParticipantConnection(ctx context.Context, sel ast.SelectionSet, v *mgen.ParticipantConnection) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -14163,112 +14850,11 @@ func (ec *executionContext) marshalOParticipantConnection2ᚖgithubᚗcomᚋempi
 	return ec._ParticipantConnection(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalOParticipantEdge2ᚕᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐParticipantEdge(ctx context.Context, sel ast.SelectionSet, v []*mgen.ParticipantEdge) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalOParticipantEdge2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐParticipantEdge(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-	return ret
-}
-
-func (ec *executionContext) marshalOParticipantEdge2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐParticipantEdge(ctx context.Context, sel ast.SelectionSet, v *mgen.ParticipantEdge) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._ParticipantEdge(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalOScope2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋmodelsᚐScope(ctx context.Context, sel ast.SelectionSet, v *models.Scope) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._Scope(ctx, sel, v)
-}
-
 func (ec *executionContext) marshalOScopeConnection2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐScopeConnection(ctx context.Context, sel ast.SelectionSet, v *mgen.ScopeConnection) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
 	return ec._ScopeConnection(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalOScopeEdge2ᚕᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐScopeEdge(ctx context.Context, sel ast.SelectionSet, v []*mgen.ScopeEdge) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalOScopeEdge2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐScopeEdge(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-	return ret
-}
-
-func (ec *executionContext) marshalOScopeEdge2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐScopeEdge(ctx context.Context, sel ast.SelectionSet, v *mgen.ScopeEdge) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._ScopeEdge(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOScopedAttributesInput2ᚕᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋmodelsᚐScopedAttributesInputᚄ(ctx context.Context, v interface{}) ([]*models.ScopedAttributesInput, error) {
@@ -14319,65 +14905,11 @@ func (ec *executionContext) unmarshalOSetAttributeInput2ᚕᚖgithubᚗcomᚋemp
 	return res, nil
 }
 
-func (ec *executionContext) marshalOStep2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋmodelsᚐStep(ctx context.Context, sel ast.SelectionSet, v *models.Step) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._Step(ctx, sel, v)
-}
-
 func (ec *executionContext) marshalOStepConnection2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐStepConnection(ctx context.Context, sel ast.SelectionSet, v *mgen.StepConnection) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
 	return ec._StepConnection(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalOStepEdge2ᚕᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐStepEdge(ctx context.Context, sel ast.SelectionSet, v []*mgen.StepEdge) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalOStepEdge2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐStepEdge(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-	return ret
-}
-
-func (ec *executionContext) marshalOStepEdge2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐStepEdge(ctx context.Context, sel ast.SelectionSet, v *mgen.StepEdge) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._StepEdge(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOStepOrderField2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐStepOrderField(ctx context.Context, v interface{}) (*mgen.StepOrderField, error) {
@@ -14454,67 +14986,6 @@ func (ec *executionContext) marshalOString2ᚖstring(ctx context.Context, sel as
 		return graphql.Null
 	}
 	return graphql.MarshalString(*v)
-}
-
-func (ec *executionContext) marshalOTransition2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋmodelsᚐTransition(ctx context.Context, sel ast.SelectionSet, v *models.Transition) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._Transition(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalOTransitionConnection2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐTransitionConnection(ctx context.Context, sel ast.SelectionSet, v *mgen.TransitionConnection) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._TransitionConnection(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalOTransitionEdge2ᚕᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐTransitionEdge(ctx context.Context, sel ast.SelectionSet, v []*mgen.TransitionEdge) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalOTransitionEdge2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐTransitionEdge(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-	return ret
-}
-
-func (ec *executionContext) marshalOTransitionEdge2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐTransitionEdge(ctx context.Context, sel ast.SelectionSet, v *mgen.TransitionEdge) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._TransitionEdge(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalO__EnumValue2ᚕgithubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐEnumValueᚄ(ctx context.Context, sel ast.SelectionSet, v []introspection.EnumValue) graphql.Marshaler {

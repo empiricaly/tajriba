@@ -2,9 +2,25 @@ fragment scopeFields on Scope {
   __typename
   id
   name
+  kind
   createdAt
   createdBy {
     ...actorFields
+  }
+  attributes(first: 100) {
+    totalCount
+    pageInfo {
+      hasNextPage
+      hasPreviousPage
+      startCursor
+      endCursor
+    }
+    edges {
+      node {
+        ...attributeFields
+      }
+      cursor
+    }
   }
 }
 
@@ -33,13 +49,6 @@ query Scopes(
     edges {
       node {
         ...scopeFields
-        # attributes {
-        #   edges {
-        #     node {
-        #       ...attributeFields
-        #     }
-        #   }
-        # }
       }
     }
     totalCount
@@ -51,6 +60,8 @@ query Scopes(
     }
   }
 }
+
+# TODO Add attributes querying
 
 subscription ScopedAttributes($input: [ScopedAttributesInput!]!) {
   scopedAttributes(input: $input) {
