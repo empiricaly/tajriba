@@ -1,6 +1,9 @@
 package metadata
 
-import "context"
+import (
+	"context"
+	"net/http"
+)
 
 type request int
 
@@ -20,4 +23,5 @@ func SetRequestForContext(ctx context.Context, r *Request) context.Context {
 
 type Request struct {
 	Headers map[string][]string
+	Request *http.Request
 }

@@ -129,6 +129,7 @@ func requestMetadata(h httprouter.Handle) httprouter.Handle {
 
 		rm := &metadata.Request{
 			Headers: headers,
+			Request: r,
 		}
 
 		r = r.WithContext(metadata.SetRequestForContext(r.Context(), rm))

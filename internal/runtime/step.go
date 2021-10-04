@@ -14,9 +14,6 @@ import (
 )
 
 func (r *Runtime) AddStep(ctx context.Context, duration int) (*models.Step, error) {
-	r.Lock()
-	defer r.Unlock()
-
 	actr := actor.ForContext(ctx)
 	if actr == nil {
 		return nil, ErrNotAuthorized
@@ -50,9 +47,6 @@ func (r *Runtime) AddStep(ctx context.Context, duration int) (*models.Step, erro
 }
 
 func (r *Runtime) Transition(ctx context.Context, stepID string, from, to models.State, cause *string) (*models.Transition, error) {
-	r.Lock()
-	defer r.Unlock()
-
 	actr := actor.ForContext(ctx)
 	if actr == nil {
 		return nil, ErrNotAuthorized
@@ -161,6 +155,7 @@ func (r *Runtime) Transition(ctx context.Context, stepID string, from, to models
 	}
 
 	log.Info().
+		Str("state", step.State.String()).
 		Msg("runtime: create transition 3")
 
 	switch step.State {
@@ -173,6 +168,8 @@ func (r *Runtime) Transition(ctx context.Context, stepID string, from, to models
 			return nil, errors.Wrap(err, "stop step")
 		}
 	case models.StateCreated:
+		log.Error().
+			Msg("runtime: create transition ErrInvalidState")
 		return nil, ErrInvalidState
 	default:
 		log.Error().
@@ -258,6 +255,7 @@ func (r *Runtime) startStep(ctx context.Context, s *models.Step) error {
 	last.Ellapsed = ellapsed
 
 	r.stepTimers[s.ID] = time.AfterFunc(remaining, func() {
+		delete(r.stepTimers, s.ID)
 		_, err := r.Transition(ctx, s.ID, models.StateRunning, models.StateEnded, nil)
 		if err != nil {
 			log.Error().Err(err).Str("stepID", s.ID).Msg("runtime: failed scheduled step stop")
@@ -268,11 +266,12 @@ func (r *Runtime) startStep(ctx context.Context, s *models.Step) error {
 }
 
 func (r *Runtime) stopStep(ctx context.Context, stepID string) error {
+	log.Info().Str("id", stepID).Msg("step: stopping")
 	if t, ok := r.stepTimers[stepID]; ok {
 		if !t.Stop() {
 			<-t.C
 		}
-		log.Info().Str("id", stepID).Msg("STOPING STEP")
+		log.Info().Str("id", stepID).Msg("step: stopped")
 	}
 
 	return nil
@@ -291,9 +290,6 @@ func (r *Runtime) Steps(
 	hasPrev bool,
 	err error,
 ) {
-	r.RLock()
-	defer r.RUnlock()
-
 	items := make([]models.Cursorer, len(r.steps))
 	for i := range r.steps {
 		items[i] = r.steps[i]
@@ -323,9 +319,6 @@ func (r *Runtime) StepLinks(
 	hasPrev bool,
 	err error,
 ) {
-	r.RLock()
-	defer r.RUnlock()
-
 	items := make([]models.Cursorer, len(step.Links))
 	for i := range step.Links {
 		items[i] = step.Links[i]
@@ -355,9 +348,6 @@ func (r *Runtime) StepTransitions(
 	hasPrev bool,
 	err error,
 ) {
-	r.RLock()
-	defer r.RUnlock()
-
 	items := make([]models.Cursorer, len(step.Transitions))
 	for i := range step.Transitions {
 		items[i] = step.Transitions[i]

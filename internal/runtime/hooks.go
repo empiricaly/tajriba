@@ -2,10 +2,12 @@ package runtime
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/empiricaly/tajriba/internal/auth/actor"
 	"github.com/empiricaly/tajriba/internal/graph/mgen"
 	"github.com/empiricaly/tajriba/internal/models"
+	"github.com/empiricaly/tajriba/internal/server/metadata"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 )
@@ -20,10 +22,16 @@ func (r *Runtime) propagateHook(ctx context.Context, eventType mgen.EventType, n
 		return
 	}
 
-	log.Info().Interface("subs", r.onEventSubs).Interface("eventType", eventType).Msg("PROPAGATUON")
+	// log.Info().Interface("subs", r.onEventSubs).Interface("eventType", eventType).Msg("PROPAGATUON")
+
+	md := metadata.RequestForContext(ctx)
 
 	for _, subs := range r.onEventSubs {
 		for _, sub := range subs {
+			if md.Request == sub.req {
+				continue
+			}
+
 			if sub.et[eventType] {
 				if sub.nodeID != nil && *sub.nodeID != nodeID {
 					continue
@@ -43,6 +51,7 @@ type onEventSub struct {
 	nodeID *string
 	c      chan *mgen.OnEventPayload
 	et     map[mgen.EventType]bool
+	req    *http.Request
 }
 
 func (r *Runtime) SubOnEvent(
@@ -53,8 +62,6 @@ func (r *Runtime) SubOnEvent(
 	if actr == nil {
 		return nil, ErrNotAuthorized
 	}
-
-	log.Debug().Interface("events", input.EventTypes).Msg("CONNECTING SUB")
 
 	_, ok := actr.(*models.User)
 	if !ok {
@@ -75,15 +82,19 @@ func (r *Runtime) SubOnEvent(
 			et[e] = true
 		}
 
-		c := &onEventSub{c: pchan, et: et}
+		md := metadata.RequestForContext(ctx)
+
+		c := &onEventSub{
+			c:   pchan,
+			et:  et,
+			req: md.Request,
+		}
 
 		r.Lock()
 
 		r.onEventSubs[actorID] = append(r.onEventSubs[actorID], c)
 
-		log.Debug().Bool("connected sub", et[mgen.EventTypeParticipantConnected]).Msg("HAS CONNECTED SUB")
 		if et[mgen.EventTypeParticipantConnected] {
-			log.Debug().Interface("subs", r.changesSubs).Msg("CONNECTED SUBS")
 			for pID, subs := range r.changesSubs {
 				if len(subs) == 0 {
 					log.Warn().

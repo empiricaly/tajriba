@@ -13,9 +13,6 @@ import (
 )
 
 func (r *Runtime) AddScope(ctx context.Context, name *string, kind *string, attributes []*mgen.SetAttributeInput) (*models.Scope, error) {
-	r.Lock()
-	defer r.Unlock()
-
 	actr := actor.ForContext(ctx)
 	if actr == nil {
 		return nil, ErrNotAuthorized
@@ -84,9 +81,6 @@ func (r *Runtime) Scopes(
 	hasPrev bool,
 	err error,
 ) {
-	r.RLock()
-	defer r.RUnlock()
-
 	if err := filter.Validate(true); err != nil {
 		return nil, 0, false, false, errors.Wrap(err, "validate filter")
 	}
@@ -210,9 +204,6 @@ func (r *Runtime) SubScopedAttributes(
 	<-chan *mgen.ScopedAttributesPayload,
 	error,
 ) {
-	r.Lock()
-	defer r.Unlock()
-
 	if err := inputs.Validate(false); err != nil {
 		return nil, errors.Wrap(err, "validate filter")
 	}
