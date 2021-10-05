@@ -28,7 +28,7 @@ func (r *Runtime) propagateHook(ctx context.Context, eventType mgen.EventType, n
 
 	for _, subs := range r.onEventSubs {
 		for _, sub := range subs {
-			if md.Request == sub.req {
+			if md != nil && md.Request == sub.req {
 				continue
 			}
 

@@ -7,6 +7,7 @@ import (
 	"github.com/empiricaly/tajriba/internal/auth/actor"
 	"github.com/empiricaly/tajriba/internal/graph/mgen"
 	"github.com/empiricaly/tajriba/internal/models"
+	"github.com/empiricaly/tajriba/internal/server/metadata"
 	"github.com/empiricaly/tajriba/internal/store"
 	"github.com/empiricaly/tajriba/internal/utils/ids"
 	"github.com/pkg/errors"
@@ -254,9 +255,10 @@ func (r *Runtime) startStep(ctx context.Context, s *models.Step) error {
 	last.Remaining = remaining
 	last.Ellapsed = ellapsed
 
+	ctxStop := metadata.SetRequestForContext(ctx, nil)
 	r.stepTimers[s.ID] = time.AfterFunc(remaining, func() {
 		delete(r.stepTimers, s.ID)
-		_, err := r.Transition(ctx, s.ID, models.StateRunning, models.StateEnded, nil)
+		_, err := r.Transition(ctxStop, s.ID, models.StateRunning, models.StateEnded, nil)
 		if err != nil {
 			log.Error().Err(err).Str("stepID", s.ID).Msg("runtime: failed scheduled step stop")
 		}
