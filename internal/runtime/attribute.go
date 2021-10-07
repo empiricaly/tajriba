@@ -21,9 +21,6 @@ func (r *Runtime) SetAttributes(
 		return nil, ErrEmptyInput
 	}
 
-	r.Lock()
-	defer r.Unlock()
-
 	attrs, err = r.prepAttributes(ctx, inputs)
 	if err != nil {
 		return nil, errors.Wrap(err, "check attributes")
@@ -207,9 +204,6 @@ func (r *Runtime) AttributeVersions(
 	hasPrev bool,
 	err error,
 ) {
-	r.RLock()
-	defer r.RUnlock()
-
 	attr, ok := r.attributesMap[attrID]
 	if !ok {
 		return nil, 0, false, false, ErrNotFound

@@ -51,13 +51,15 @@ func (r *Runtime) pushStep(ctx context.Context, step *models.Step) error {
 		}
 	}
 
+	chg := &mgen.ChangePayload{
+		Change: c,
+		Done:   true,
+	}
+
 	active := activeNodeLinks(step.Links)
 	for _, link := range active {
 		for _, sub := range r.changesSubs[link.ParticipantID] {
-			sub.c <- &mgen.ChangePayload{
-				Change: c,
-				Done:   true,
-			}
+			sub.c <- chg
 		}
 	}
 

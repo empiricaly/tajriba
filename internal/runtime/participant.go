@@ -12,9 +12,6 @@ import (
 )
 
 func (r *Runtime) AddParticipant(ctx context.Context, identifier string) (*models.Participant, string, error) {
-	r.Lock()
-	defer r.Unlock()
-
 	var participant *models.Participant
 
 	for _, p := range r.participants {
@@ -67,9 +64,6 @@ func (r *Runtime) ParticpantLinks(
 	hasPrev bool,
 	err error,
 ) {
-	r.RLock()
-	defer r.RUnlock()
-
 	p, ok := r.participantsMap[particpantID]
 	if !ok {
 		return nil, 0, false, false, ErrNotFound
@@ -103,9 +97,6 @@ func (r *Runtime) Particpants(
 	hasPrev bool,
 	err error,
 ) {
-	r.RLock()
-	defer r.RUnlock()
-
 	items := make([]models.Cursorer, len(r.participants))
 	for i := range r.participants {
 		items[i] = r.participants[i]

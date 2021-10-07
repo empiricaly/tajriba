@@ -12,9 +12,6 @@ import (
 )
 
 func (r *Runtime) RegisterService(ctx context.Context, name string) (*models.Service, string, error) {
-	r.Lock()
-	defer r.Unlock()
-
 	name = strings.TrimSpace(name)
 
 	if name == "" {

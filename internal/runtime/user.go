@@ -12,9 +12,6 @@ import (
 )
 
 func (r *Runtime) Login(ctx context.Context, username, password string) (*models.User, string, error) {
-	r.Lock()
-	defer r.Unlock()
-
 	user, ok := r.usersMap[username]
 
 	if !ok {
@@ -34,9 +31,6 @@ func (r *Runtime) Login(ctx context.Context, username, password string) (*models
 }
 
 func (r *Runtime) FindUser(ctx context.Context, username string) (*models.User, error) {
-	r.RLock()
-	defer r.RUnlock()
-
 	user, ok := r.usersMap[username]
 	if !ok {
 		return nil, ErrNotFound
@@ -46,9 +40,6 @@ func (r *Runtime) FindUser(ctx context.Context, username string) (*models.User, 
 }
 
 func (r *Runtime) AddUser(ctx context.Context, username, name, password string) (*models.User, error) {
-	r.Lock()
-	defer r.Unlock()
-
 	user, ok := r.usersMap[username]
 	if ok {
 		user.Password = password
