@@ -1,6 +1,6 @@
 {
   "name": "@empirica/tajriba",
-  "version": "0.1.0-alpha",
+  "version": "0.1.1-alpha",
   "description": "Tajriba client",
   "main": "src/index.ts",
   "repository": {
@@ -11,15 +11,24 @@
     "url": "https://github.com/empiricaly/tajriba/issues"
   },
   "homepage": "https://github.com/empiricaly/tajriba#readme",
-  "keywords": ["tajriba", "experiment", "research", "multiplayer", "real-time", "behavioral", "social-science", "psychology"],
+  "keywords": [
+    "tajriba",
+    "experiment",
+    "research",
+    "multiplayer",
+    "real-time",
+    "behavioral",
+    "social-science",
+    "psychology"
+  ],
   "author": "Nicolas Paton <nicolas.paton@gmail.com>",
   "license": "Apache-2.0",
   "files": [
     "*"
   ],
   "np": {
-		"contents": "pkg"
-	},
+    "contents": "pkg"
+  },
   "scripts": {
     "build": "pika build",
     "generate": "graphql-codegen",
