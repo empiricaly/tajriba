@@ -119,6 +119,12 @@ type ComplexityRoot struct {
 		Removed func(childComplexity int) int
 	}
 
+	GlobalAttributesPayload struct {
+		Attribute func(childComplexity int) int
+		Done      func(childComplexity int) int
+		IsNew     func(childComplexity int) int
+	}
+
 	Group struct {
 		CreatedAt func(childComplexity int) int
 		CreatedBy func(childComplexity int) int
@@ -254,12 +260,6 @@ type ComplexityRoot struct {
 		Node   func(childComplexity int) int
 	}
 
-	ScopedAttributesPayload struct {
-		Attribute func(childComplexity int) int
-		Done      func(childComplexity int) int
-		IsNew     func(childComplexity int) int
-	}
-
 	Service struct {
 		CreatedAt func(childComplexity int) int
 		ID        func(childComplexity int) int
@@ -302,8 +302,15 @@ type ComplexityRoot struct {
 		Node   func(childComplexity int) int
 	}
 
+	SubAttributesPayload struct {
+		Attribute func(childComplexity int) int
+		Done      func(childComplexity int) int
+		IsNew     func(childComplexity int) int
+	}
+
 	Subscription struct {
 		Changes          func(childComplexity int) int
+		GlobalAttributes func(childComplexity int) int
 		OnAnyEvent       func(childComplexity int, input *mgen.OnAnyEventInput) int
 		OnEvent          func(childComplexity int, input *mgen.OnEventInput) int
 		ScopedAttributes func(childComplexity int, input []*models.ScopedAttributesInput) int
@@ -380,7 +387,8 @@ type SubscriptionResolver interface {
 	Changes(ctx context.Context) (<-chan *mgen.ChangePayload, error)
 	OnEvent(ctx context.Context, input *mgen.OnEventInput) (<-chan *mgen.OnEventPayload, error)
 	OnAnyEvent(ctx context.Context, input *mgen.OnAnyEventInput) (<-chan *mgen.OnEventPayload, error)
-	ScopedAttributes(ctx context.Context, input []*models.ScopedAttributesInput) (<-chan *mgen.ScopedAttributesPayload, error)
+	ScopedAttributes(ctx context.Context, input []*models.ScopedAttributesInput) (<-chan *mgen.SubAttributesPayload, error)
+	GlobalAttributes(ctx context.Context) (<-chan *mgen.SubAttributesPayload, error)
 }
 
 type executableSchema struct {
@@ -661,6 +669,27 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.ChangePayload.Removed(childComplexity), true
+
+	case "GlobalAttributesPayload.attribute":
+		if e.complexity.GlobalAttributesPayload.Attribute == nil {
+			break
+		}
+
+		return e.complexity.GlobalAttributesPayload.Attribute(childComplexity), true
+
+	case "GlobalAttributesPayload.done":
+		if e.complexity.GlobalAttributesPayload.Done == nil {
+			break
+		}
+
+		return e.complexity.GlobalAttributesPayload.Done(childComplexity), true
+
+	case "GlobalAttributesPayload.isNew":
+		if e.complexity.GlobalAttributesPayload.IsNew == nil {
+			break
+		}
+
+		return e.complexity.GlobalAttributesPayload.IsNew(childComplexity), true
 
 	case "Group.createdAt":
 		if e.complexity.Group.CreatedAt == nil {
@@ -1256,27 +1285,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.ScopeEdge.Node(childComplexity), true
 
-	case "ScopedAttributesPayload.attribute":
-		if e.complexity.ScopedAttributesPayload.Attribute == nil {
-			break
-		}
-
-		return e.complexity.ScopedAttributesPayload.Attribute(childComplexity), true
-
-	case "ScopedAttributesPayload.done":
-		if e.complexity.ScopedAttributesPayload.Done == nil {
-			break
-		}
-
-		return e.complexity.ScopedAttributesPayload.Done(childComplexity), true
-
-	case "ScopedAttributesPayload.isNew":
-		if e.complexity.ScopedAttributesPayload.IsNew == nil {
-			break
-		}
-
-		return e.complexity.ScopedAttributesPayload.IsNew(childComplexity), true
-
 	case "Service.createdAt":
 		if e.complexity.Service.CreatedAt == nil {
 			break
@@ -1455,12 +1463,40 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.StepEdge.Node(childComplexity), true
 
+	case "SubAttributesPayload.attribute":
+		if e.complexity.SubAttributesPayload.Attribute == nil {
+			break
+		}
+
+		return e.complexity.SubAttributesPayload.Attribute(childComplexity), true
+
+	case "SubAttributesPayload.done":
+		if e.complexity.SubAttributesPayload.Done == nil {
+			break
+		}
+
+		return e.complexity.SubAttributesPayload.Done(childComplexity), true
+
+	case "SubAttributesPayload.isNew":
+		if e.complexity.SubAttributesPayload.IsNew == nil {
+			break
+		}
+
+		return e.complexity.SubAttributesPayload.IsNew(childComplexity), true
+
 	case "Subscription.changes":
 		if e.complexity.Subscription.Changes == nil {
 			break
 		}
 
 		return e.complexity.Subscription.Changes(childComplexity), true
+
+	case "Subscription.globalAttributes":
+		if e.complexity.Subscription.GlobalAttributes == nil {
+			break
+		}
+
+		return e.complexity.Subscription.GlobalAttributes(childComplexity), true
 
 	case "Subscription.onAnyEvent":
 		if e.complexity.Subscription.OnAnyEvent == nil {
@@ -2386,9 +2422,30 @@ input ScopedAttributesInput {
 }
 
 """
-ScopedAttributesPayload is the return payload for the addScope mutation.
+SubAttributesPayload is the return payload for the scope attributes subs.
 """
-type ScopedAttributesPayload {
+type SubAttributesPayload {
+  """
+  scope that the participant is added to. Attribute may be null only if the
+  subscription did not match any Scopes and done must be published.
+  """
+  attribute: Attribute
+
+  """
+  done indicates that the state has finished synchorizing.
+  """
+  done: Boolean!
+
+  """
+  isNew returns true if the Attribute for key and nodeID was just created.
+  """
+  isNew: Boolean!
+}
+
+"""
+GlobalAttributesPayload is the return payload for the addScope mutation.
+"""
+type GlobalAttributesPayload {
   """
   scope that the participant is added to. Attribute may be null only if the
   subscription did not match any Scopes and done must be published.
@@ -2433,7 +2490,16 @@ extend type Subscription {
   will be returned initially, then any update to Attributes within the matching
   Scopes.
   """
-  scopedAttributes(input: [ScopedAttributesInput!]!): ScopedAttributesPayload! @hasRole(role: ADMIN)
+  scopedAttributes(input: [ScopedAttributesInput!]!): SubAttributesPayload! @hasRole(role: ADMIN)
+
+  """
+  globalAttributes returns Attributes for the global Scope, which is a singleton
+  permission-less Scope that any client can access, even if not logged in. The
+  name of the global Scope is "global" and can only be updated by Users. All
+  Attributes in this Scope will be returned initially, then any update to
+  Attributes from this Scopes.
+  """
+  globalAttributes: SubAttributesPayload!
 }
 
 type ScopeEdge {
@@ -4767,6 +4833,108 @@ func (ec *executionContext) _ChangePayload_done(ctx context.Context, field graph
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.Done, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _GlobalAttributesPayload_attribute(ctx context.Context, field graphql.CollectedField, obj *mgen.GlobalAttributesPayload) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "GlobalAttributesPayload",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Attribute, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*models.Attribute)
+	fc.Result = res
+	return ec.marshalOAttribute2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋmodelsᚐAttribute(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _GlobalAttributesPayload_done(ctx context.Context, field graphql.CollectedField, obj *mgen.GlobalAttributesPayload) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "GlobalAttributesPayload",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Done, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _GlobalAttributesPayload_isNew(ctx context.Context, field graphql.CollectedField, obj *mgen.GlobalAttributesPayload) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "GlobalAttributesPayload",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.IsNew, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -7722,108 +7890,6 @@ func (ec *executionContext) _ScopeEdge_cursor(ctx context.Context, field graphql
 	return ec.marshalNCursor2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _ScopedAttributesPayload_attribute(ctx context.Context, field graphql.CollectedField, obj *mgen.ScopedAttributesPayload) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:     "ScopedAttributesPayload",
-		Field:      field,
-		Args:       nil,
-		IsMethod:   false,
-		IsResolver: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Attribute, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*models.Attribute)
-	fc.Result = res
-	return ec.marshalOAttribute2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋmodelsᚐAttribute(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _ScopedAttributesPayload_done(ctx context.Context, field graphql.CollectedField, obj *mgen.ScopedAttributesPayload) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:     "ScopedAttributesPayload",
-		Field:      field,
-		Args:       nil,
-		IsMethod:   false,
-		IsResolver: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Done, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(bool)
-	fc.Result = res
-	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _ScopedAttributesPayload_isNew(ctx context.Context, field graphql.CollectedField, obj *mgen.ScopedAttributesPayload) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:     "ScopedAttributesPayload",
-		Field:      field,
-		Args:       nil,
-		IsMethod:   false,
-		IsResolver: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.IsNew, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(bool)
-	fc.Result = res
-	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
-}
-
 func (ec *executionContext) _Service_id(ctx context.Context, field graphql.CollectedField, obj *models.Service) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -8663,6 +8729,108 @@ func (ec *executionContext) _StepEdge_cursor(ctx context.Context, field graphql.
 	return ec.marshalNCursor2string(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _SubAttributesPayload_attribute(ctx context.Context, field graphql.CollectedField, obj *mgen.SubAttributesPayload) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "SubAttributesPayload",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Attribute, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*models.Attribute)
+	fc.Result = res
+	return ec.marshalOAttribute2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋmodelsᚐAttribute(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _SubAttributesPayload_done(ctx context.Context, field graphql.CollectedField, obj *mgen.SubAttributesPayload) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "SubAttributesPayload",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Done, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _SubAttributesPayload_isNew(ctx context.Context, field graphql.CollectedField, obj *mgen.SubAttributesPayload) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "SubAttributesPayload",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.IsNew, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Subscription_changes(ctx context.Context, field graphql.CollectedField) (ret func() graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -8924,10 +9092,10 @@ func (ec *executionContext) _Subscription_scopedAttributes(ctx context.Context, 
 		if tmp == nil {
 			return nil, nil
 		}
-		if data, ok := tmp.(<-chan *mgen.ScopedAttributesPayload); ok {
+		if data, ok := tmp.(<-chan *mgen.SubAttributesPayload); ok {
 			return data, nil
 		}
-		return nil, fmt.Errorf(`unexpected type %T from directive, should be <-chan *github.com/empiricaly/tajriba/internal/graph/mgen.ScopedAttributesPayload`, tmp)
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be <-chan *github.com/empiricaly/tajriba/internal/graph/mgen.SubAttributesPayload`, tmp)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -8940,7 +9108,7 @@ func (ec *executionContext) _Subscription_scopedAttributes(ctx context.Context, 
 		return nil
 	}
 	return func() graphql.Marshaler {
-		res, ok := <-resTmp.(<-chan *mgen.ScopedAttributesPayload)
+		res, ok := <-resTmp.(<-chan *mgen.SubAttributesPayload)
 		if !ok {
 			return nil
 		}
@@ -8948,7 +9116,52 @@ func (ec *executionContext) _Subscription_scopedAttributes(ctx context.Context, 
 			w.Write([]byte{'{'})
 			graphql.MarshalString(field.Alias).MarshalGQL(w)
 			w.Write([]byte{':'})
-			ec.marshalNScopedAttributesPayload2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐScopedAttributesPayload(ctx, field.Selections, res).MarshalGQL(w)
+			ec.marshalNSubAttributesPayload2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐSubAttributesPayload(ctx, field.Selections, res).MarshalGQL(w)
+			w.Write([]byte{'}'})
+		})
+	}
+}
+
+func (ec *executionContext) _Subscription_globalAttributes(ctx context.Context, field graphql.CollectedField) (ret func() graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = nil
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Subscription",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Subscription().GlobalAttributes(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return nil
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return nil
+	}
+	return func() graphql.Marshaler {
+		res, ok := <-resTmp.(<-chan *mgen.SubAttributesPayload)
+		if !ok {
+			return nil
+		}
+		return graphql.WriterFunc(func(w io.Writer) {
+			w.Write([]byte{'{'})
+			graphql.MarshalString(field.Alias).MarshalGQL(w)
+			w.Write([]byte{':'})
+			ec.marshalNSubAttributesPayload2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐSubAttributesPayload(ctx, field.Selections, res).MarshalGQL(w)
 			w.Write([]byte{'}'})
 		})
 	}
@@ -11593,6 +11806,40 @@ func (ec *executionContext) _ChangePayload(ctx context.Context, sel ast.Selectio
 	return out
 }
 
+var globalAttributesPayloadImplementors = []string{"GlobalAttributesPayload"}
+
+func (ec *executionContext) _GlobalAttributesPayload(ctx context.Context, sel ast.SelectionSet, obj *mgen.GlobalAttributesPayload) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, globalAttributesPayloadImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("GlobalAttributesPayload")
+		case "attribute":
+			out.Values[i] = ec._GlobalAttributesPayload_attribute(ctx, field, obj)
+		case "done":
+			out.Values[i] = ec._GlobalAttributesPayload_done(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "isNew":
+			out.Values[i] = ec._GlobalAttributesPayload_isNew(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var groupImplementors = []string{"Group", "Node"}
 
 func (ec *executionContext) _Group(ctx context.Context, sel ast.SelectionSet, obj *models.Group) graphql.Marshaler {
@@ -12466,40 +12713,6 @@ func (ec *executionContext) _ScopeEdge(ctx context.Context, sel ast.SelectionSet
 	return out
 }
 
-var scopedAttributesPayloadImplementors = []string{"ScopedAttributesPayload"}
-
-func (ec *executionContext) _ScopedAttributesPayload(ctx context.Context, sel ast.SelectionSet, obj *mgen.ScopedAttributesPayload) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, scopedAttributesPayloadImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	var invalids uint32
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("ScopedAttributesPayload")
-		case "attribute":
-			out.Values[i] = ec._ScopedAttributesPayload_attribute(ctx, field, obj)
-		case "done":
-			out.Values[i] = ec._ScopedAttributesPayload_done(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "isNew":
-			out.Values[i] = ec._ScopedAttributesPayload_isNew(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch()
-	if invalids > 0 {
-		return graphql.Null
-	}
-	return out
-}
-
 var serviceImplementors = []string{"Service", "Actor"}
 
 func (ec *executionContext) _Service(ctx context.Context, sel ast.SelectionSet, obj *models.Service) graphql.Marshaler {
@@ -12755,6 +12968,40 @@ func (ec *executionContext) _StepEdge(ctx context.Context, sel ast.SelectionSet,
 	return out
 }
 
+var subAttributesPayloadImplementors = []string{"SubAttributesPayload"}
+
+func (ec *executionContext) _SubAttributesPayload(ctx context.Context, sel ast.SelectionSet, obj *mgen.SubAttributesPayload) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, subAttributesPayloadImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SubAttributesPayload")
+		case "attribute":
+			out.Values[i] = ec._SubAttributesPayload_attribute(ctx, field, obj)
+		case "done":
+			out.Values[i] = ec._SubAttributesPayload_done(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "isNew":
+			out.Values[i] = ec._SubAttributesPayload_isNew(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var subscriptionImplementors = []string{"Subscription"}
 
 func (ec *executionContext) _Subscription(ctx context.Context, sel ast.SelectionSet) func() graphql.Marshaler {
@@ -12776,6 +13023,8 @@ func (ec *executionContext) _Subscription(ctx context.Context, sel ast.Selection
 		return ec._Subscription_onAnyEvent(ctx, fields[0])
 	case "scopedAttributes":
 		return ec._Subscription_scopedAttributes(ctx, fields[0])
+	case "globalAttributes":
+		return ec._Subscription_globalAttributes(ctx, fields[0])
 	default:
 		panic("unknown field " + strconv.Quote(fields[0].Name))
 	}
@@ -14176,20 +14425,6 @@ func (ec *executionContext) unmarshalNScopedAttributesInput2ᚖgithubᚗcomᚋem
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNScopedAttributesPayload2githubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐScopedAttributesPayload(ctx context.Context, sel ast.SelectionSet, v mgen.ScopedAttributesPayload) graphql.Marshaler {
-	return ec._ScopedAttributesPayload(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalNScopedAttributesPayload2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐScopedAttributesPayload(ctx context.Context, sel ast.SelectionSet, v *mgen.ScopedAttributesPayload) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	return ec._ScopedAttributesPayload(ctx, sel, v)
-}
-
 func (ec *executionContext) marshalNService2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋmodelsᚐService(ctx context.Context, sel ast.SelectionSet, v *models.Service) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -14353,6 +14588,20 @@ func (ec *executionContext) marshalNString2string(ctx context.Context, sel ast.S
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) marshalNSubAttributesPayload2githubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐSubAttributesPayload(ctx context.Context, sel ast.SelectionSet, v mgen.SubAttributesPayload) graphql.Marshaler {
+	return ec._SubAttributesPayload(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNSubAttributesPayload2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐSubAttributesPayload(ctx context.Context, sel ast.SelectionSet, v *mgen.SubAttributesPayload) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._SubAttributesPayload(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNTransition2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋmodelsᚐTransition(ctx context.Context, sel ast.SelectionSet, v *models.Transition) graphql.Marshaler {

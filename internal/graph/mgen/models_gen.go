@@ -90,6 +90,17 @@ type ChangePayload struct {
 	Done bool `json:"done"`
 }
 
+// GlobalAttributesPayload is the return payload for the addScope mutation.
+type GlobalAttributesPayload struct {
+	// scope that the participant is added to. Attribute may be null only if the
+	// subscription did not match any Scopes and done must be published.
+	Attribute *models.Attribute `json:"attribute"`
+	// done indicates that the state has finished synchorizing.
+	Done bool `json:"done"`
+	// isNew returns true if the Attribute for key and nodeID was just created.
+	IsNew bool `json:"isNew"`
+}
+
 type GroupConnection struct {
 	TotalCount int          `json:"totalCount"`
 	PageInfo   *PageInfo    `json:"pageInfo"`
@@ -222,17 +233,6 @@ type ScopeEdge struct {
 	Cursor string        `json:"cursor"`
 }
 
-// ScopedAttributesPayload is the return payload for the addScope mutation.
-type ScopedAttributesPayload struct {
-	// scope that the participant is added to. Attribute may be null only if the
-	// subscription did not match any Scopes and done must be published.
-	Attribute *models.Attribute `json:"attribute"`
-	// done indicates that the state has finished synchorizing.
-	Done bool `json:"done"`
-	// isNew returns true if the Attribute for key and nodeID was just created.
-	IsNew bool `json:"isNew"`
-}
-
 // SetAttributeInput sets an Attribute on a Node.
 type SetAttributeInput struct {
 	// key identifies the unique key of the Attribute.
@@ -287,6 +287,17 @@ type StepEdge struct {
 type StepOrder struct {
 	Direction OrderDirection  `json:"direction"`
 	Field     *StepOrderField `json:"field"`
+}
+
+// SubAttributesPayload is the return payload for the scope attributes subs.
+type SubAttributesPayload struct {
+	// scope that the participant is added to. Attribute may be null only if the
+	// subscription did not match any Scopes and done must be published.
+	Attribute *models.Attribute `json:"attribute"`
+	// done indicates that the state has finished synchorizing.
+	Done bool `json:"done"`
+	// isNew returns true if the Attribute for key and nodeID was just created.
+	IsNew bool `json:"isNew"`
 }
 
 type TransitionConnection struct {

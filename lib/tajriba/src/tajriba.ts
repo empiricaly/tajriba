@@ -21,6 +21,7 @@ import {
   AttributesQueryVariables,
   ChangePayload,
   ChangesDocument,
+  GlobalAttributesDocument,
   GroupsDocument,
   GroupsQueryVariables,
   LinkDocument,
@@ -37,13 +38,13 @@ import {
   RegisterServiceDocument,
   ScopedAttributesDocument,
   ScopedAttributesInput,
-  ScopedAttributesPayload,
   ScopesDocument,
   ScopesQueryVariables,
   SetAttributeInput,
   SetAttributesDocument,
   StepsDocument,
   StepsQueryVariables,
+  SubAttributesPayload,
   TransitionDocument,
   TransitionInput,
 } from "./generated/graphql";
@@ -53,7 +54,12 @@ const DefaultAddress = "http://localhost:4737/query";
 export class Tajriba {
   private _client?: ApolloClient<NormalizedCacheObject>;
   private subClient?: SubscriptionClient;
-  private _connectionPromise?: [(value: void) => void, (reason?: any) => void];
+  private _firstConnProm?: {
+    resolve: (value: void) => void;
+    reject: (reason?: any) => void;
+  };
+  public reconnect = true;
+  public userAgent = "";
 
   constructor(readonly url: string = DefaultAddress, readonly token?: string) {}
 
@@ -102,7 +108,7 @@ export class Tajriba {
 
   private connectionStatus() {
     return new Promise((resolve, reject) => {
-      this._connectionPromise = [resolve, reject];
+      this._firstConnProm = { resolve, reject };
     });
   }
 
@@ -121,31 +127,52 @@ export class Tajriba {
 
     const cache: InMemoryCache = new InMemoryCache({});
 
+    let authToken;
+    if (this.token) {
+      authToken = `Bearer ${this.token}`;
+    }
+
     const wsClientOptions: ClientOptions = {
       timeout: 24 * 60 * 60 * 1000,
       inactivityTimeout: 24 * 60 * 60 * 1000,
       lazy: false,
-      reconnect: true,
+      reconnect: this.reconnect,
       connectionCallback: (error: Error[], result?: any) => {
-        if (this._connectionPromise) {
+        if (this._firstConnProm) {
           if (error) {
-            this._connectionPromise[1](error);
+            this._firstConnProm.reject(error);
           } else {
-            this._connectionPromise[0]();
+            this._firstConnProm.resolve(result);
           }
-          this._connectionPromise = undefined;
+
+          this._firstConnProm = undefined;
         }
+        // console.info("connectionCallback", error, result);
+      },
+      connectionParams: {
+        authToken,
+        "User-Agent": this.userAgent,
       },
     };
 
-    if (this.token) {
-      wsClientOptions.connectionParams = {
-        authToken: `Bearer ${this.token}`,
-      };
-    }
-
     // Work around from: https://github.com/apollographql/apollo-client/issues/7257
     this.subClient = new SubscriptionClient(this.wsURL, wsClientOptions, ws);
+
+    // this.subClient.onConnected(function (payload) {
+    //   console.info("conn", payload);
+    // });
+
+    // this.subClient.onConnecting(function (payload) {
+    //   console.info("conning", payload);
+    // });
+
+    // this.subClient.onDisconnected(function (payload) {
+    //   console.info("disconn", payload);
+    // });
+
+    // this.subClient.onError(function (payload) {
+    //   console.info("conn err", payload);
+    // });
 
     const wLink = new WebSocketLink(this.subClient);
 
@@ -247,6 +274,7 @@ export class Tajriba {
     }
 
     const t = new Tajriba(this.url, sessionToken);
+    t.userAgent = name;
 
     return [new TajribaAdmin(t), sessionToken];
   }
@@ -259,6 +287,29 @@ export class Tajriba {
 
   async setAttribute(input: SetAttributeInput) {
     return (await this.setAttributes([input]))[0];
+  }
+
+  /**
+   * globalAttributes returns Attributes for the global Scope, which is a singleton
+   * permission-less Scope that any client can access, even if not logged in. The
+   * name of the global Scope is "global" and can only be updated by Users. All
+   * Attributes in this Scope will be returned initially, then any update to
+   * Attributes from this Scopes.
+   */
+  globalAttributes(
+    /** cb with scoped attribute updates or an error */
+    cb: (payload: SubAttributesPayload, error: Error | undefined) => any
+  ) {
+    return this.subscribe(
+      GlobalAttributesDocument,
+      {},
+      (data) => {
+        if (data.globalAttributes) {
+          return <SubAttributesPayload>data.globalAttributes;
+        }
+      },
+      cb
+    );
   }
 
   async query<T = any, TVariables = OperationVariables, U = any>(
@@ -342,6 +393,20 @@ export class TajribaUser {
 
   async setAttribute(input: SetAttributeInput) {
     return this.taj.setAttribute(input);
+  }
+
+  /**
+   * globalAttributes returns Attributes for the global Scope, which is a singleton
+   * permission-less Scope that any client can access, even if not logged in. The
+   * name of the global Scope is "global" and can only be updated by Users. All
+   * Attributes in this Scope will be returned initially, then any update to
+   * Attributes from this Scopes.
+   */
+  globalAttributes(
+    /** cb with scoped attribute updates or an error */
+    cb: (payload: SubAttributesPayload, error: Error | undefined) => any
+  ) {
+    return this.taj.globalAttributes(cb);
   }
 }
 
@@ -482,17 +547,17 @@ export class TajribaAdmin extends TajribaUser {
    * Scopes.
    */
   scopedAttributes(
-    /** ScopedAttributesPayload is the return payload for the addScope mutation. */
+    /** SubAttributesPayload is the return payload for the addScope mutation. */
     input: ScopedAttributesInput[],
     /** cb with scoped attribute updates or an error */
-    cb: (payload: ScopedAttributesPayload, error: Error | undefined) => any
+    cb: (payload: SubAttributesPayload, error: Error | undefined) => any
   ) {
     return this.taj.subscribe(
       ScopedAttributesDocument,
       { input },
       (data) => {
         if (data.scopedAttributes) {
-          return <ScopedAttributesPayload>data.scopedAttributes;
+          return <SubAttributesPayload>data.scopedAttributes;
         }
       },
       cb

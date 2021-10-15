@@ -1483,6 +1483,22 @@
             "deprecationReason": null
           },
           {
+            "name": "globalAttributes",
+            "description": "globalAttributes returns Attributes for the global Scope, which is a singleton\npermission-less Scope that any client can access, even if not logged in. The\nname of the global Scope is \"global\" and can only be updated by Users. All\nAttributes in this Scope will be returned initially, then any update to\nAttributes from this Scopes.",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "OBJECT",
+                "name": "SubAttributesPayload",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
             "name": "onAnyEvent",
             "description": "onAnyEvent works like onEvent, except all events are subscribed to.",
             "args": [
@@ -1566,7 +1582,7 @@
               "name": null,
               "ofType": {
                 "kind": "OBJECT",
-                "name": "ScopedAttributesPayload",
+                "name": "SubAttributesPayload",
                 "ofType": null
               }
             },
@@ -3626,8 +3642,63 @@
       },
       {
         "kind": "OBJECT",
-        "name": "ScopedAttributesPayload",
-        "description": "ScopedAttributesPayload is the return payload for the addScope mutation.",
+        "name": "SubAttributesPayload",
+        "description": "SubAttributesPayload is the return payload for the scope attributes subs.",
+        "fields": [
+          {
+            "name": "attribute",
+            "description": "scope that the participant is added to. Attribute may be null only if the\nsubscription did not match any Scopes and done must be published.",
+            "args": [],
+            "type": {
+              "kind": "OBJECT",
+              "name": "Attribute",
+              "ofType": null
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "done",
+            "description": "done indicates that the state has finished synchorizing.",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Boolean",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
+            "name": "isNew",
+            "description": "isNew returns true if the Attribute for key and nodeID was just created.",
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "Boolean",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          }
+        ],
+        "inputFields": null,
+        "interfaces": [],
+        "enumValues": null,
+        "possibleTypes": null
+      },
+      {
+        "kind": "OBJECT",
+        "name": "GlobalAttributesPayload",
+        "description": "GlobalAttributesPayload is the return payload for the addScope mutation.",
         "fields": [
           {
             "name": "attribute",
