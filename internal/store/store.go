@@ -114,10 +114,10 @@ func (c *Conn) Save(objs ...interface{}) error {
 			return errors.Wrap(err, "json marshall and write")
 		}
 
-		err = c.buf.WriteByte('\n')
-		if err != nil {
-			return errors.Wrap(err, "write new line")
-		}
+		// err = c.buf.WriteByte('\n')
+		// if err != nil {
+		// 	return errors.Wrap(err, "write new line")
+		// }
 	}
 
 	c.dirty = true

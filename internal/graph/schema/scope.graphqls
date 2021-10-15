@@ -91,9 +91,30 @@ input ScopedAttributesInput {
 }
 
 """
-ScopedAttributesPayload is the return payload for the addScope mutation.
+SubAttributesPayload is the return payload for the scope attributes subs.
 """
-type ScopedAttributesPayload {
+type SubAttributesPayload {
+  """
+  scope that the participant is added to. Attribute may be null only if the
+  subscription did not match any Scopes and done must be published.
+  """
+  attribute: Attribute
+
+  """
+  done indicates that the state has finished synchorizing.
+  """
+  done: Boolean!
+
+  """
+  isNew returns true if the Attribute for key and nodeID was just created.
+  """
+  isNew: Boolean!
+}
+
+"""
+GlobalAttributesPayload is the return payload for the addScope mutation.
+"""
+type GlobalAttributesPayload {
   """
   scope that the participant is added to. Attribute may be null only if the
   subscription did not match any Scopes and done must be published.
@@ -138,7 +159,16 @@ extend type Subscription {
   will be returned initially, then any update to Attributes within the matching
   Scopes.
   """
-  scopedAttributes(input: [ScopedAttributesInput!]!): ScopedAttributesPayload! @hasRole(role: ADMIN)
+  scopedAttributes(input: [ScopedAttributesInput!]!): SubAttributesPayload! @hasRole(role: ADMIN)
+
+  """
+  globalAttributes returns Attributes for the global Scope, which is a singleton
+  permission-less Scope that any client can access, even if not logged in. The
+  name of the global Scope is "global" and can only be updated by Users. All
+  Attributes in this Scope will be returned initially, then any update to
+  Attributes from this Scopes.
+  """
+  globalAttributes: SubAttributesPayload!
 }
 
 type ScopeEdge {

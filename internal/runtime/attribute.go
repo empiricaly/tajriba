@@ -57,6 +57,12 @@ func (r *Runtime) prepAttributes(
 			return nil, errors.New("scope not found")
 		}
 
+		if scope.Name != nil && *scope.Name == "global" {
+			if _, ok := actr.(*models.Participant); ok {
+				return nil, ErrNotAuthorized
+			}
+		}
+
 		var vector, private, protected, immutable bool
 		if input.Vector != nil && *input.Vector {
 			vector = true

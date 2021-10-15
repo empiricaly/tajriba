@@ -72,3 +72,13 @@ subscription ScopedAttributes($input: [ScopedAttributesInput!]!) {
     done
   }
 }
+
+subscription GlobalAttributes {
+  globalAttributes {
+    attribute {
+      ...attributeFields
+    }
+    isNew
+    done
+  }
+}

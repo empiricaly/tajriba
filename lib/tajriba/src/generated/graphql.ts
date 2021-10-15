@@ -296,6 +296,14 @@ export type Subscription = {
    * added, updated, or going in and out of scope, etc.
    */
   changes: ChangePayload;
+  /**
+   * globalAttributes returns Attributes for the global Scope, which is a singleton
+   * permission-less Scope that any client can access, even if not logged in. The
+   * name of the global Scope is "global" and can only be updated by Users. All
+   * Attributes in this Scope will be returned initially, then any update to
+   * Attributes from this Scopes.
+   */
+  globalAttributes: SubAttributesPayload;
   /** onAnyEvent works like onEvent, except all events are subscribed to. */
   onAnyEvent?: Maybe<OnEventPayload>;
   /**
@@ -309,7 +317,7 @@ export type Subscription = {
    * will be returned initially, then any update to Attributes within the matching
    * Scopes.
    */
-  scopedAttributes: ScopedAttributesPayload;
+  scopedAttributes: SubAttributesPayload;
 };
 
 export type SubscriptionOnAnyEventArgs = {
@@ -708,9 +716,23 @@ export type ScopedAttributesInput = {
   kvs?: Maybe<Array<Kv>>;
 };
 
-/** ScopedAttributesPayload is the return payload for the addScope mutation. */
-export type ScopedAttributesPayload = {
-  __typename: "ScopedAttributesPayload";
+/** SubAttributesPayload is the return payload for the scope attributes subs. */
+export type SubAttributesPayload = {
+  __typename: "SubAttributesPayload";
+  /**
+   * scope that the participant is added to. Attribute may be null only if the
+   * subscription did not match any Scopes and done must be published.
+   */
+  attribute?: Maybe<Attribute>;
+  /** done indicates that the state has finished synchorizing. */
+  done: Scalars["Boolean"];
+  /** isNew returns true if the Attribute for key and nodeID was just created. */
+  isNew: Scalars["Boolean"];
+};
+
+/** GlobalAttributesPayload is the return payload for the addScope mutation. */
+export type GlobalAttributesPayload = {
+  __typename: "GlobalAttributesPayload";
   /**
    * scope that the participant is added to. Attribute may be null only if the
    * subscription did not match any Scopes and done must be published.
@@ -1921,8 +1943,57 @@ export type ScopedAttributesSubscriptionVariables = Exact<{
 }>;
 
 export type ScopedAttributesSubscription = { __typename: "Subscription" } & {
-  scopedAttributes: { __typename: "ScopedAttributesPayload" } & Pick<
-    ScopedAttributesPayload,
+  scopedAttributes: { __typename: "SubAttributesPayload" } & Pick<
+    SubAttributesPayload,
+    "isNew" | "done"
+  > & {
+      attribute?: Maybe<
+        { __typename: "Attribute" } & Pick<
+          Attribute,
+          | "id"
+          | "createdAt"
+          | "private"
+          | "protected"
+          | "immutable"
+          | "deletedAt"
+          | "key"
+          | "val"
+          | "index"
+          | "current"
+          | "version"
+          | "vector"
+        > & {
+            createdBy:
+              | ({ __typename: "User" } & Pick<
+                  User,
+                  "id" | "username" | "name"
+                >)
+              | ({ __typename: "Service" } & Pick<Service, "id" | "name">)
+              | ({ __typename: "Participant" } & Pick<
+                  Participant,
+                  "id" | "identifier" | "createdAt"
+                >);
+            node:
+              | ({ __typename: "Attribute" } & Pick<Attribute, "id">)
+              | ({ __typename: "Group" } & Pick<Group, "id">)
+              | ({ __typename: "Link" } & Pick<Link, "id">)
+              | ({ __typename: "Participant" } & Pick<Participant, "id">)
+              | ({ __typename: "Scope" } & Pick<Scope, "id">)
+              | ({ __typename: "Step" } & Pick<Step, "id">)
+              | ({ __typename: "Transition" } & Pick<Transition, "id">)
+              | ({ __typename: "User" } & Pick<User, "id">);
+          }
+      >;
+    };
+};
+
+export type GlobalAttributesSubscriptionVariables = Exact<{
+  [key: string]: never;
+}>;
+
+export type GlobalAttributesSubscription = { __typename: "Subscription" } & {
+  globalAttributes: { __typename: "SubAttributesPayload" } & Pick<
+    SubAttributesPayload,
     "isNew" | "done"
   > & {
       attribute?: Maybe<
@@ -7562,6 +7633,174 @@ export const ScopedAttributesDocument: DocumentNode<
     },
   ],
 };
+export const GlobalAttributesDocument: DocumentNode<
+  GlobalAttributesSubscription,
+  GlobalAttributesSubscriptionVariables
+> = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "subscription",
+      name: { kind: "Name", value: "GlobalAttributes" },
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "globalAttributes" },
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "attribute" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "__typename" },
+                      },
+                      { kind: "Field", name: { kind: "Name", value: "id" } },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "createdAt" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "createdBy" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            {
+                              kind: "InlineFragment",
+                              typeCondition: {
+                                kind: "NamedType",
+                                name: { kind: "Name", value: "User" },
+                              },
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "id" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "username" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "name" },
+                                  },
+                                ],
+                              },
+                            },
+                            {
+                              kind: "InlineFragment",
+                              typeCondition: {
+                                kind: "NamedType",
+                                name: { kind: "Name", value: "Service" },
+                              },
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "id" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "name" },
+                                  },
+                                ],
+                              },
+                            },
+                            {
+                              kind: "InlineFragment",
+                              typeCondition: {
+                                kind: "NamedType",
+                                name: { kind: "Name", value: "Participant" },
+                              },
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "id" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "identifier" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "createdAt" },
+                                  },
+                                ],
+                              },
+                            },
+                          ],
+                        },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "private" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "protected" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "immutable" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "deletedAt" },
+                      },
+                      { kind: "Field", name: { kind: "Name", value: "key" } },
+                      { kind: "Field", name: { kind: "Name", value: "val" } },
+                      { kind: "Field", name: { kind: "Name", value: "index" } },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "current" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "version" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "vector" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "node" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "id" },
+                            },
+                          ],
+                        },
+                      },
+                    ],
+                  },
+                },
+                { kind: "Field", name: { kind: "Name", value: "isNew" } },
+                { kind: "Field", name: { kind: "Name", value: "done" } },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+};
 export const RegisterServiceDocument: DocumentNode<
   RegisterServiceMutation,
   RegisterServiceMutationVariables
@@ -8928,6 +9167,7 @@ export type NodeFieldPolicy = {
 };
 export type SubscriptionKeySpecifier = (
   | "changes"
+  | "globalAttributes"
   | "onAnyEvent"
   | "onEvent"
   | "scopedAttributes"
@@ -8935,6 +9175,7 @@ export type SubscriptionKeySpecifier = (
 )[];
 export type SubscriptionFieldPolicy = {
   changes?: FieldPolicy<any> | FieldReadFunction<any>;
+  globalAttributes?: FieldPolicy<any> | FieldReadFunction<any>;
   onAnyEvent?: FieldPolicy<any> | FieldReadFunction<any>;
   onEvent?: FieldPolicy<any> | FieldReadFunction<any>;
   scopedAttributes?: FieldPolicy<any> | FieldReadFunction<any>;
@@ -9182,13 +9423,24 @@ export type AddScopePayloadKeySpecifier = (
 export type AddScopePayloadFieldPolicy = {
   scope?: FieldPolicy<any> | FieldReadFunction<any>;
 };
-export type ScopedAttributesPayloadKeySpecifier = (
+export type SubAttributesPayloadKeySpecifier = (
   | "attribute"
   | "done"
   | "isNew"
-  | ScopedAttributesPayloadKeySpecifier
+  | SubAttributesPayloadKeySpecifier
 )[];
-export type ScopedAttributesPayloadFieldPolicy = {
+export type SubAttributesPayloadFieldPolicy = {
+  attribute?: FieldPolicy<any> | FieldReadFunction<any>;
+  done?: FieldPolicy<any> | FieldReadFunction<any>;
+  isNew?: FieldPolicy<any> | FieldReadFunction<any>;
+};
+export type GlobalAttributesPayloadKeySpecifier = (
+  | "attribute"
+  | "done"
+  | "isNew"
+  | GlobalAttributesPayloadKeySpecifier
+)[];
+export type GlobalAttributesPayloadFieldPolicy = {
   attribute?: FieldPolicy<any> | FieldReadFunction<any>;
   done?: FieldPolicy<any> | FieldReadFunction<any>;
   isNew?: FieldPolicy<any> | FieldReadFunction<any>;
@@ -9543,12 +9795,19 @@ export type TypedTypePolicies = TypePolicies & {
       | (() => undefined | AddScopePayloadKeySpecifier);
     fields?: AddScopePayloadFieldPolicy;
   };
-  ScopedAttributesPayload?: Omit<TypePolicy, "fields" | "keyFields"> & {
+  SubAttributesPayload?: Omit<TypePolicy, "fields" | "keyFields"> & {
     keyFields?:
       | false
-      | ScopedAttributesPayloadKeySpecifier
-      | (() => undefined | ScopedAttributesPayloadKeySpecifier);
-    fields?: ScopedAttributesPayloadFieldPolicy;
+      | SubAttributesPayloadKeySpecifier
+      | (() => undefined | SubAttributesPayloadKeySpecifier);
+    fields?: SubAttributesPayloadFieldPolicy;
+  };
+  GlobalAttributesPayload?: Omit<TypePolicy, "fields" | "keyFields"> & {
+    keyFields?:
+      | false
+      | GlobalAttributesPayloadKeySpecifier
+      | (() => undefined | GlobalAttributesPayloadKeySpecifier);
+    fields?: GlobalAttributesPayloadFieldPolicy;
   };
   ScopeEdge?: Omit<TypePolicy, "fields" | "keyFields"> & {
     keyFields?:

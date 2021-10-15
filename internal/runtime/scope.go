@@ -194,14 +194,14 @@ type scopedAttributesSub struct {
 	inputs models.ScopedAttributesInputs
 	scopes map[string]*models.Scope
 
-	c chan *mgen.ScopedAttributesPayload
+	c chan *mgen.SubAttributesPayload
 }
 
 func (r *Runtime) SubScopedAttributes(
 	ctx context.Context,
 	inputs models.ScopedAttributesInputs,
 ) (
-	<-chan *mgen.ScopedAttributesPayload,
+	<-chan *mgen.SubAttributesPayload,
 	error,
 ) {
 	if err := inputs.Validate(false); err != nil {
@@ -219,7 +219,7 @@ func (r *Runtime) SubScopedAttributes(
 
 	actorID := actr.GetID()
 
-	pchan := make(chan *mgen.ScopedAttributesPayload)
+	pchan := make(chan *mgen.SubAttributesPayload)
 
 	go func() {
 		r.Lock()
@@ -249,14 +249,14 @@ func (r *Runtime) SubScopedAttributes(
 		l := len(attrs)
 
 		for i, attr := range attrs {
-			c.c <- &mgen.ScopedAttributesPayload{
+			c.c <- &mgen.SubAttributesPayload{
 				Attribute: attr,
 				Done:      l == i+1,
 			}
 		}
 
 		if len(attrs) == 0 {
-			c.c <- &mgen.ScopedAttributesPayload{
+			c.c <- &mgen.SubAttributesPayload{
 				Done: true,
 			}
 		}
@@ -332,7 +332,7 @@ func (r *Runtime) pushAttributesForScopedAttributes(ctx context.Context, attrs [
 		l := len(attrs)
 
 		for i, attr := range attrs {
-			sub.c <- &mgen.ScopedAttributesPayload{
+			sub.c <- &mgen.SubAttributesPayload{
 				Attribute: attr,
 				IsNew:     attr.Version == 1,
 				Done:      l == i+1,

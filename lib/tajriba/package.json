@@ -1,6 +1,6 @@
 {
   "name": "@empirica/tajriba",
-  "version": "0.1.0",
+  "version": "0.1.0-alpha",
   "description": "Tajriba client",
   "main": "src/index.ts",
   "author": "Nicolas Paton",
@@ -10,7 +10,8 @@
     "generate": "graphql-codegen",
     "generate:watch": "graphql-codegen -w",
     "prepublish": "npm run build",
-    "publish": "pika-pack publish"
+    "publish": "pika-pack publish",
+    "version": "npm run build"
   },
   "@pika/pack": {
     "pipeline": [
