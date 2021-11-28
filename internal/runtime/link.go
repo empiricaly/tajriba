@@ -61,7 +61,6 @@ func (r *Runtime) Link(ctx context.Context, input mgen.LinkInput) (*mgen.LinkPay
 		participants[i] = v
 	}
 
-	idp := ids.ForContext(ctx)
 	now := time.Now()
 	actorID := actr.GetID()
 	conn := store.ForContext(ctx)
@@ -86,7 +85,7 @@ func (r *Runtime) Link(ctx context.Context, input mgen.LinkInput) (*mgen.LinkPay
 			// }
 
 			link := &models.Link{
-				ID:            idp.ID(ids.Link),
+				ID:            ids.ID(ctx),
 				CreatedAt:     now,
 				CreatedByID:   actorID,
 				CreatedBy:     actr,

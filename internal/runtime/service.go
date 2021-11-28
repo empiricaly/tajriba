@@ -30,7 +30,7 @@ func (r *Runtime) RegisterService(ctx context.Context, name string) (*models.Ser
 
 	if serv == nil {
 		serv = &models.Service{
-			ID:        ids.ID(ctx, ids.Service),
+			ID:        ids.ID(ctx),
 			Name:      name,
 			CreatedAt: time.Now(),
 		}

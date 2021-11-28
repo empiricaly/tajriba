@@ -7,8 +7,10 @@ import (
 	"encoding/json"
 	"io"
 	"os"
+	"reflect"
 	"time"
 
+	"github.com/empiricaly/tajriba/internal/models"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/sasha-s/go-deadlock"
@@ -95,6 +97,11 @@ func (c *Conn) flusher() {
 	}
 }
 
+type objekt struct {
+	Kind Kind        `json:"kind"`
+	Obj  interface{} `json:"obj"`
+}
+
 // Save object.
 func (c *Conn) Save(objs ...interface{}) error {
 	if c.config.UseMemory {
@@ -105,11 +112,24 @@ func (c *Conn) Save(objs ...interface{}) error {
 	defer c.Unlock()
 
 	log.Trace().Msg("store: saving")
+	defer log.Trace().Msg("store: saved")
 
 	enc := json.NewEncoder(c.buf)
 
 	for _, obj := range objs {
-		err := enc.Encode(obj)
+		var name string
+		if t := reflect.TypeOf(obj); t.Kind() == reflect.Ptr {
+			name = t.Elem().Name()
+		} else {
+			name = t.Name()
+		}
+
+		kind, err := ParseKind(name)
+		if err != nil {
+			return errors.Wrap(err, "unknown type")
+		}
+
+		err = enc.Encode(objekt{Kind: kind, Obj: obj})
 		if err != nil {
 			return errors.Wrap(err, "json marshall and write")
 		}
@@ -122,13 +142,11 @@ func (c *Conn) Save(objs ...interface{}) error {
 
 	c.dirty = true
 
-	log.Trace().Msg("store: saved")
-
 	return nil
 }
 
 // Load objects.
-func (c *Conn) Load(f func([]byte) error) error {
+func (c *Conn) Load(f func(interface{}) error) error {
 	if c.config.UseMemory {
 		return nil
 	}
@@ -138,6 +156,8 @@ func (c *Conn) Load(f func([]byte) error) error {
 		return errors.Wrap(err, "seek")
 	}
 
+	obj := &objekt{}
+
 	s := bufio.NewScanner(c.f)
 	for s.Scan() {
 		bline := s.Bytes()
@@ -146,7 +166,16 @@ func (c *Conn) Load(f func([]byte) error) error {
 			continue
 		}
 
-		err = f(bline)
+		if err := json.Unmarshal(bline, obj); err != nil {
+			return errors.Wrap(err, "unmarshall")
+		}
+
+		o, err := newObj(obj.Kind)
+		if err != nil {
+			return errors.Wrap(err, "create object")
+		}
+
+		err = f(o)
 		if err != nil {
 			return errors.Wrap(err, "process line")
 		}
@@ -166,4 +195,57 @@ func (c *Conn) Close() error {
 	}
 
 	return nil
+}
+
+//go:generate go-enum -f=$GOFILE --marshal --lower --names --noprefix
+
+// Kind is enumneration of object kinds.
+// ENUM(Scope, Step, Attribute, Participant, User, Link, Transition, Service, Session, Group)
+type Kind uint8
+
+// MarshalJSON implements the json marshaller method
+func (x Kind) MarshalJSON() ([]byte, error) {
+	return []byte(`"` + x.String() + `"`), nil
+}
+
+// UnmarshalJSON implements the json unmarshaller method
+func (x *Kind) UnmarshalJSON(b []byte) error {
+	if len(b) < 3 {
+		return errors.New("invalid Kind")
+	}
+
+	name := string(b[1 : len(b)-1])
+	tmp, err := ParseKind(name)
+	if err != nil {
+		return err
+	}
+	*x = tmp
+	return nil
+}
+
+func newObj(k Kind) (interface{}, error) {
+	switch k {
+	case Scope:
+		return new(models.Scope), nil
+	case Step:
+		return new(models.Step), nil
+	case Attribute:
+		return new(models.Attribute), nil
+	case Participant:
+		return new(models.Participant), nil
+	case User:
+		return new(models.User), nil
+	case Group:
+		return new(models.Group), nil
+	case Link:
+		return new(models.Link), nil
+	case Transition:
+		return new(models.Transition), nil
+	case Service:
+		return new(models.Service), nil
+	case Session:
+		return new(models.Session), nil
+	default:
+		return nil, errors.New("unknown id meta")
+	}
 }

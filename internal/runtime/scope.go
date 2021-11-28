@@ -18,10 +18,19 @@ func (r *Runtime) AddScope(ctx context.Context, name *string, kind *string, attr
 		return nil, ErrNotAuthorized
 	}
 
+	// var ki, na string
+	// if kind != nil {
+	// 	ki = *kind
+	// }
+	// if name != nil {
+	// 	na = *name
+	// }
+	// spew.Dump("NEW SCOPE", ki, na, attributes)
+
 	if name != nil {
 		for _, s := range r.scopes {
 			if s.Name != nil && *s.Name == *name {
-				return nil, ErrAlreadyExists
+				return nil, errors.Errorf("%s (%s)", ErrAlreadyExists.Error(), *name)
 			}
 		}
 	}
@@ -30,7 +39,7 @@ func (r *Runtime) AddScope(ctx context.Context, name *string, kind *string, attr
 	actorID := actr.GetID()
 
 	s := &models.Scope{
-		ID:            ids.ID(ctx, ids.Scope),
+		ID:            ids.ID(ctx),
 		CreatedAt:     now,
 		CreatedByID:   actorID,
 		CreatedBy:     actr,
@@ -200,6 +209,7 @@ type scopedAttributesSub struct {
 func (r *Runtime) SubScopedAttributes(
 	ctx context.Context,
 	inputs models.ScopedAttributesInputs,
+	global bool,
 ) (
 	<-chan *mgen.SubAttributesPayload,
 	error,
@@ -212,12 +222,20 @@ func (r *Runtime) SubScopedAttributes(
 		return nil, errors.New("ScopedAttributesInputs cannot be null")
 	}
 
-	actr := actor.ForContext(ctx)
-	if actr == nil {
-		return nil, ErrNotAuthorized
-	}
+	var actorID string
+	if global {
+		if len(inputs) != 1 || inputs[0].Name != "global" {
+			return nil, ErrNotAuthorized
+		}
+		actorID = "global-user"
+	} else {
+		actr := actor.ForContext(ctx)
+		if actr == nil {
+			return nil, ErrNotAuthorized
+		}
 
-	actorID := actr.GetID()
+		actorID = actr.GetID()
+	}
 
 	pchan := make(chan *mgen.SubAttributesPayload)
 

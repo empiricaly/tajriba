@@ -23,7 +23,7 @@ func (r *Runtime) AddGroup(ctx context.Context, participantIDs []string) (*model
 	actorID := actr.GetID()
 
 	g := &models.Group{
-		ID:          ids.ID(ctx, ids.Group),
+		ID:          ids.ID(ctx),
 		CreatedAt:   now,
 		CreatedByID: actorID,
 		CreatedBy:   actr,
@@ -40,13 +40,11 @@ func (r *Runtime) AddGroup(ctx context.Context, participantIDs []string) (*model
 		participants[i] = v
 	}
 
-	idp := ids.ForContext(ctx)
-
 	links := make([]*models.Link, 0, len(participants))
 
 	for _, participant := range participants {
 		link := &models.Link{
-			ID:            idp.ID(ids.Link),
+			ID:            ids.ID(ctx),
 			CreatedAt:     now,
 			CreatedByID:   actorID,
 			CreatedBy:     actr,

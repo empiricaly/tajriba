@@ -24,7 +24,7 @@ func (r *Runtime) AddStep(ctx context.Context, duration int) (*models.Step, erro
 	actorID := actr.GetID()
 
 	s := &models.Step{
-		ID:          ids.ID(ctx, ids.Step),
+		ID:          ids.ID(ctx),
 		CreatedAt:   now,
 		CreatedByID: actorID,
 		CreatedBy:   actr,
@@ -67,7 +67,7 @@ func (r *Runtime) Transition(ctx context.Context, stepID string, from, to models
 	}
 
 	t := &models.Transition{
-		ID:          ids.ID(ctx, ids.Transition),
+		ID:          ids.ID(ctx),
 		CreatedAt:   now,
 		CreatedByID: actorID,
 		CreatedBy:   actr,
@@ -100,8 +100,6 @@ func (r *Runtime) Transition(ctx context.Context, stepID string, from, to models
 		r.transitions = append(r.transitions, t)
 		r.transitionsMap[t.ID] = t
 	} else {
-		log.Info().
-			Msg("runtime: create transition 1")
 		last := step.Transitions[len(step.Transitions)-1]
 
 		if last.To != t.From {
@@ -139,9 +137,6 @@ func (r *Runtime) Transition(ctx context.Context, stepID string, from, to models
 			return nil, ErrServerError
 		}
 
-		log.Info().
-			Msg("runtime: create transition 2")
-
 		conn := store.ForContext(ctx)
 
 		if err := conn.Save(t); err != nil {
@@ -154,10 +149,6 @@ func (r *Runtime) Transition(ctx context.Context, stepID string, from, to models
 		r.transitions = append(r.transitions, t)
 		r.transitionsMap[t.ID] = t
 	}
-
-	log.Info().
-		Str("state", step.State.String()).
-		Msg("runtime: create transition 3")
 
 	switch step.State {
 	case models.StateRunning:
@@ -183,20 +174,11 @@ func (r *Runtime) Transition(ctx context.Context, stepID string, from, to models
 		return nil, ErrServerError
 	}
 
-	log.Info().
-		Msg("runtime: create transition 4")
-
 	r.propagateHook(ctx, mgen.EventTypeTransitionAdd, t.ID, t)
-
-	log.Info().
-		Msg("runtime: create transition 5")
 
 	if err := r.pushStep(ctx, step); err != nil {
 		log.Error().Err(err).Msg("runtime: failed to push step transition to participants")
 	}
-
-	log.Info().
-		Msg("runtime: create transition 6")
 
 	return t, nil
 }

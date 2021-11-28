@@ -56,7 +56,7 @@ func (r *Runtime) AddUser(ctx context.Context, username, name, password string) 
 	}
 
 	user = &models.User{
-		ID:        ids.ID(ctx, ids.User),
+		ID:        ids.ID(ctx),
 		Name:      name,
 		Username:  username,
 		Password:  password,

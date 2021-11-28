@@ -81,7 +81,7 @@ func (r *Runtime) prepAttributes(
 		}
 
 		a := &models.Attribute{
-			ID:          ids.ID(ctx, ids.Attribute),
+			ID:          ids.ID(ctx),
 			CreatedAt:   now,
 			CreatedBy:   actr,
 			CreatedByID: actorID,

@@ -152,7 +152,7 @@ func (r *scopeResolver) Links(ctx context.Context, obj *models.Scope, after *str
 func (r *subscriptionResolver) ScopedAttributes(ctx context.Context, input []*models.ScopedAttributesInput) (<-chan *mgen.SubAttributesPayload, error) {
 	rt := runtime.ForContext(ctx)
 
-	c, err := rt.SubScopedAttributes(ctx, input)
+	c, err := rt.SubScopedAttributes(ctx, input, false)
 	if err != nil {
 		return nil, errs.Wrap(err, "sub scoped attributes")
 	}
@@ -165,7 +165,7 @@ func (r *subscriptionResolver) GlobalAttributes(ctx context.Context) (<-chan *mg
 
 	input := []*models.ScopedAttributesInput{{Name: "global"}}
 
-	c, err := rt.SubScopedAttributes(ctx, input)
+	c, err := rt.SubScopedAttributes(ctx, input, true)
 	if err != nil {
 		return nil, errs.Wrap(err, "sub scoped attributes")
 	}

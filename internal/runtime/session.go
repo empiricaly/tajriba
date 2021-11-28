@@ -54,7 +54,7 @@ func (r *Runtime) createSession(ctx context.Context, actr actor.Actor) (*models.
 	}
 
 	s := &models.Session{
-		ID:        ids.ID(ctx, ids.Session),
+		ID:        ids.ID(ctx),
 		Token:     token,
 		UserAgent: http.Header(md.Headers).Get("User-Agent"),
 		ActorID:   id,

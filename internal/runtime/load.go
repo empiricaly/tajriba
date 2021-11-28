@@ -2,14 +2,11 @@ package runtime
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/empiricaly/tajriba/internal/auth/actor"
 	"github.com/empiricaly/tajriba/internal/models"
 	"github.com/empiricaly/tajriba/internal/store"
-	"github.com/empiricaly/tajriba/internal/utils/ids"
 	"github.com/pkg/errors"
-	"github.com/tidwall/gjson"
 )
 
 type objectMap struct {
@@ -74,49 +71,14 @@ const quotedIDLen = 18
 func (o *objectMap) load(ctx context.Context) error {
 	conn := store.ForContext(ctx)
 
-	lists := make(map[ids.IDType][]interface{})
-
-	err := conn.Load(func(b []byte) error {
-		result := gjson.GetBytes(b, "id")
-		var raw []byte
-		if result.Index > 0 {
-			raw = b[result.Index : result.Index+len(result.Raw)]
-		} else {
-			raw = []byte(result.Raw)
-		}
-
-		if len(raw) != quotedIDLen {
-			return errors.New("invalid id")
-		}
-
-		raw = raw[1:17]
-
-		t, err := ids.TypeB(ctx, raw)
-		if err != nil {
-			return errors.Wrap(err, "parse id")
-		}
-
-		v, err := o.newObj(t)
-		if err != nil {
-			return errors.Wrap(err, "init new object")
-		}
-
-		err = json.Unmarshal(b, v)
-		if err != nil {
-			return errors.Wrap(err, "unmarshall json")
-		}
-
-		lists[t] = append(lists[t], v)
-		o.values[string(raw)] = v
-
-		err = o.addObj(v, string(raw))
+	if err := conn.Load(func(obj interface{}) error {
+		err := o.addObj(obj)
 		if err != nil {
 			return errors.Wrap(err, "add obj")
 		}
 
 		return nil
-	})
-	if err != nil {
+	}); err != nil {
 		return errors.Wrap(err, "load db")
 	}
 
@@ -129,68 +91,51 @@ func (o *objectMap) load(ctx context.Context) error {
 	return nil
 }
 
-func (o *objectMap) newObj(t ids.IDType) (interface{}, error) {
-	switch t {
-	case ids.Scope:
-		return new(models.Scope), nil
-	case ids.Step:
-		return new(models.Step), nil
-	case ids.Attribute:
-		return new(models.Attribute), nil
-	case ids.Participant:
-		return new(models.Participant), nil
-	case ids.User:
-		return new(models.User), nil
-	case ids.Link:
-		return new(models.Link), nil
-	case ids.Transition:
-		return new(models.Transition), nil
-	case ids.Service:
-		return new(models.Service), nil
-	case ids.Session:
-		return new(models.Session), nil
-	default:
-		return nil, errors.New("unknown id meta")
-	}
-}
-
-func (o *objectMap) addObj(v interface{}, id string) error {
+func (o *objectMap) addObj(v interface{}) error {
 	switch vv := v.(type) {
 	case *models.Scope:
 		o.scopes = append(o.scopes, vv)
 		o.scopesMap[vv.ID] = vv
+		o.values[vv.ID] = v
 	case *models.Step:
 		o.steps = append(o.steps, vv)
-		o.stepsMap[id] = vv
+		o.stepsMap[vv.ID] = vv
+		o.values[vv.ID] = v
 	case *models.Attribute:
 		o.attributes = append(o.attributes, vv)
-		o.attributesMap[id] = vv
+		o.attributesMap[vv.ID] = vv
+		o.values[vv.ID] = v
 	case *models.Participant:
 		o.participants = append(o.participants, vv)
-		o.participantsMap[id] = vv
+		o.participantsMap[vv.ID] = vv
+		o.values[vv.ID] = v
 	case *models.User:
 		o.users = append(o.users, vv)
 		o.usersMap[vv.Username] = vv
+		o.values[vv.ID] = v
 	case *models.Link:
 		o.links = append(o.links, vv)
-		o.linksMap[id] = vv
+		o.linksMap[vv.ID] = vv
+		o.values[vv.ID] = v
 	case *models.Transition:
 		o.transitions = append(o.transitions, vv)
-		o.transitionsMap[id] = vv
+		o.transitionsMap[vv.ID] = vv
+		o.values[vv.ID] = v
 	case *models.Service:
 		o.services = append(o.services, vv)
-		o.servicesMap[id] = vv
+		o.servicesMap[vv.ID] = vv
+		o.values[vv.ID] = v
 	case *models.Session:
 		o.sessions = append(o.sessions, vv)
 		o.sessionsMap[vv.Token] = vv
+		o.values[vv.ID] = v
 	case *models.Group:
 		o.groups = append(o.groups, vv)
-		o.groupsMap[id] = vv
+		o.groupsMap[vv.ID] = vv
+		o.values[vv.ID] = v
 	default:
 		return errors.New("unknown id meta")
 	}
-
-	o.values[id] = v
 
 	return nil
 }

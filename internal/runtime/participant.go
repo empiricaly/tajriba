@@ -23,7 +23,7 @@ func (r *Runtime) AddParticipant(ctx context.Context, identifier string) (*model
 
 	if participant == nil {
 		participant = &models.Participant{
-			ID:         ids.ID(ctx, ids.Participant),
+			ID:         ids.ID(ctx),
 			CreatedAt:  time.Now(),
 			Identifier: identifier,
 		}

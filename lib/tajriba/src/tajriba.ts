@@ -147,6 +147,7 @@ export class Tajriba {
 
           this._firstConnProm = undefined;
         }
+
         // console.info("connectionCallback", error, result);
       },
       connectionParams: {
