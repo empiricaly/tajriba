@@ -119,12 +119,6 @@ type ComplexityRoot struct {
 		Removed func(childComplexity int) int
 	}
 
-	GlobalAttributesPayload struct {
-		Attribute func(childComplexity int) int
-		Done      func(childComplexity int) int
-		IsNew     func(childComplexity int) int
-	}
-
 	Group struct {
 		CreatedAt func(childComplexity int) int
 		CreatedBy func(childComplexity int) int
@@ -669,27 +663,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.ChangePayload.Removed(childComplexity), true
-
-	case "GlobalAttributesPayload.attribute":
-		if e.complexity.GlobalAttributesPayload.Attribute == nil {
-			break
-		}
-
-		return e.complexity.GlobalAttributesPayload.Attribute(childComplexity), true
-
-	case "GlobalAttributesPayload.done":
-		if e.complexity.GlobalAttributesPayload.Done == nil {
-			break
-		}
-
-		return e.complexity.GlobalAttributesPayload.Done(childComplexity), true
-
-	case "GlobalAttributesPayload.isNew":
-		if e.complexity.GlobalAttributesPayload.IsNew == nil {
-			break
-		}
-
-		return e.complexity.GlobalAttributesPayload.IsNew(childComplexity), true
 
 	case "Group.createdAt":
 		if e.complexity.Group.CreatedAt == nil {
@@ -2425,27 +2398,6 @@ input ScopedAttributesInput {
 SubAttributesPayload is the return payload for the scope attributes subs.
 """
 type SubAttributesPayload {
-  """
-  scope that the participant is added to. Attribute may be null only if the
-  subscription did not match any Scopes and done must be published.
-  """
-  attribute: Attribute
-
-  """
-  done indicates that the state has finished synchorizing.
-  """
-  done: Boolean!
-
-  """
-  isNew returns true if the Attribute for key and nodeID was just created.
-  """
-  isNew: Boolean!
-}
-
-"""
-GlobalAttributesPayload is the return payload for the addScope mutation.
-"""
-type GlobalAttributesPayload {
   """
   scope that the participant is added to. Attribute may be null only if the
   subscription did not match any Scopes and done must be published.
@@ -4833,108 +4785,6 @@ func (ec *executionContext) _ChangePayload_done(ctx context.Context, field graph
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.Done, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(bool)
-	fc.Result = res
-	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _GlobalAttributesPayload_attribute(ctx context.Context, field graphql.CollectedField, obj *mgen.GlobalAttributesPayload) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:     "GlobalAttributesPayload",
-		Field:      field,
-		Args:       nil,
-		IsMethod:   false,
-		IsResolver: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Attribute, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*models.Attribute)
-	fc.Result = res
-	return ec.marshalOAttribute2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋmodelsᚐAttribute(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _GlobalAttributesPayload_done(ctx context.Context, field graphql.CollectedField, obj *mgen.GlobalAttributesPayload) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:     "GlobalAttributesPayload",
-		Field:      field,
-		Args:       nil,
-		IsMethod:   false,
-		IsResolver: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Done, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(bool)
-	fc.Result = res
-	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _GlobalAttributesPayload_isNew(ctx context.Context, field graphql.CollectedField, obj *mgen.GlobalAttributesPayload) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:     "GlobalAttributesPayload",
-		Field:      field,
-		Args:       nil,
-		IsMethod:   false,
-		IsResolver: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.IsNew, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -11792,40 +11642,6 @@ func (ec *executionContext) _ChangePayload(ctx context.Context, sel ast.Selectio
 			}
 		case "done":
 			out.Values[i] = ec._ChangePayload_done(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch()
-	if invalids > 0 {
-		return graphql.Null
-	}
-	return out
-}
-
-var globalAttributesPayloadImplementors = []string{"GlobalAttributesPayload"}
-
-func (ec *executionContext) _GlobalAttributesPayload(ctx context.Context, sel ast.SelectionSet, obj *mgen.GlobalAttributesPayload) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, globalAttributesPayloadImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	var invalids uint32
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("GlobalAttributesPayload")
-		case "attribute":
-			out.Values[i] = ec._GlobalAttributesPayload_attribute(ctx, field, obj)
-		case "done":
-			out.Values[i] = ec._GlobalAttributesPayload_done(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "isNew":
-			out.Values[i] = ec._GlobalAttributesPayload_isNew(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}

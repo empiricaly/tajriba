@@ -111,27 +111,6 @@ type SubAttributesPayload {
   isNew: Boolean!
 }
 
-"""
-GlobalAttributesPayload is the return payload for the addScope mutation.
-"""
-type GlobalAttributesPayload {
-  """
-  scope that the participant is added to. Attribute may be null only if the
-  subscription did not match any Scopes and done must be published.
-  """
-  attribute: Attribute
-
-  """
-  done indicates that the state has finished synchorizing.
-  """
-  done: Boolean!
-
-  """
-  isNew returns true if the Attribute for key and nodeID was just created.
-  """
-  isNew: Boolean!
-}
-
 input KV {
   key: String!
   val: String!

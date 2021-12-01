@@ -100,12 +100,12 @@ func (s *Server) Close() {
 // Enable adds Tajriba GraphQL endpoints to an HTTP router.
 func Enable(
 	ctx context.Context,
-	_ *Config,
+	conf *Config,
 	router *httprouter.Router,
 	schema graphql.ExecutableSchema,
 ) error {
 
-	gqlh := requestMetadata(auth.Middleware(graphqlHandler(ctx, schema)))
+	gqlh := requestMetadata(auth.Middleware(graphqlHandler(ctx, conf, schema), conf.Production))
 	router.GET("/query", gqlh)
 	router.POST("/query", gqlh)
 

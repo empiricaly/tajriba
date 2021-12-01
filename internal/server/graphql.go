@@ -28,6 +28,7 @@ const pingInterval = 10 * time.Second
 // Defining the Graphql handler.
 func graphqlHandler(
 	ctx context.Context,
+	conf *Config,
 	schema graphql.ExecutableSchema,
 ) httprouter.Handle {
 	gqlsrv := handler.New(schema)
@@ -57,7 +58,7 @@ func graphqlHandler(
 			}()
 
 			if ok {
-				user, err := auth.GetAuthentication(ctx, token)
+				user, err := auth.GetAuthentication(ctx, token, conf.Production)
 				if err != nil {
 					return nil, errors.Wrap(err, "check websocket auth")
 				} else if user != nil {
