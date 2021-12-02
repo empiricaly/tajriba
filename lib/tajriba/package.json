@@ -1,6 +1,6 @@
 {
   "name": "@empirica/tajriba",
-  "version": "0.1.1-alpha",
+  "version": "1.0.0-alpha.0",
   "description": "Tajriba client",
   "main": "src/index.ts",
   "repository": {
@@ -34,7 +34,7 @@
     "generate": "graphql-codegen",
     "generate:watch": "graphql-codegen -w",
     "prepublish": "npm run build",
-    "publish:next": "np --tag next --contents pkg/",
+    "publish:alpha": "np --tag alpha --contents pkg/",
     "publish": "np --tag latest --contents pkg/",
     "version": "npm run build"
   },
