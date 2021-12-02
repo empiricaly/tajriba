@@ -730,20 +730,6 @@ export type SubAttributesPayload = {
   isNew: Scalars["Boolean"];
 };
 
-/** GlobalAttributesPayload is the return payload for the addScope mutation. */
-export type GlobalAttributesPayload = {
-  __typename: "GlobalAttributesPayload";
-  /**
-   * scope that the participant is added to. Attribute may be null only if the
-   * subscription did not match any Scopes and done must be published.
-   */
-  attribute?: Maybe<Attribute>;
-  /** done indicates that the state has finished synchorizing. */
-  done: Scalars["Boolean"];
-  /** isNew returns true if the Attribute for key and nodeID was just created. */
-  isNew: Scalars["Boolean"];
-};
-
 export type Kv = {
   key: Scalars["String"];
   val: Scalars["String"];
@@ -9434,17 +9420,6 @@ export type SubAttributesPayloadFieldPolicy = {
   done?: FieldPolicy<any> | FieldReadFunction<any>;
   isNew?: FieldPolicy<any> | FieldReadFunction<any>;
 };
-export type GlobalAttributesPayloadKeySpecifier = (
-  | "attribute"
-  | "done"
-  | "isNew"
-  | GlobalAttributesPayloadKeySpecifier
-)[];
-export type GlobalAttributesPayloadFieldPolicy = {
-  attribute?: FieldPolicy<any> | FieldReadFunction<any>;
-  done?: FieldPolicy<any> | FieldReadFunction<any>;
-  isNew?: FieldPolicy<any> | FieldReadFunction<any>;
-};
 export type ScopeEdgeKeySpecifier = (
   | "node"
   | "cursor"
@@ -9801,13 +9776,6 @@ export type TypedTypePolicies = TypePolicies & {
       | SubAttributesPayloadKeySpecifier
       | (() => undefined | SubAttributesPayloadKeySpecifier);
     fields?: SubAttributesPayloadFieldPolicy;
-  };
-  GlobalAttributesPayload?: Omit<TypePolicy, "fields" | "keyFields"> & {
-    keyFields?:
-      | false
-      | GlobalAttributesPayloadKeySpecifier
-      | (() => undefined | GlobalAttributesPayloadKeySpecifier);
-    fields?: GlobalAttributesPayloadFieldPolicy;
   };
   ScopeEdge?: Omit<TypePolicy, "fields" | "keyFields"> & {
     keyFields?:

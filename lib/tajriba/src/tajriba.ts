@@ -608,7 +608,7 @@ export class TajribaAdmin extends TajribaUser {
 }
 
 export class TajribaParticipant extends TajribaUser {
-  constructor(protected taj: Tajriba, protected participant: Participant) {
+  constructor(protected taj: Tajriba, public participant: Participant) {
     super(taj);
   }
 
