@@ -156,6 +156,11 @@ func graphqlHandler(
 				Str("took", d).
 				RawJSON("json", resp.Data).
 				Msg("graphql: response")
+		} else {
+			log.Trace().
+				Str("op", string(oc.Operation.Operation)).
+				Str("took", d).
+				Msg("graphql: no response")
 		}
 
 		return resp

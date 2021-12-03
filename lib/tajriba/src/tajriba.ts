@@ -5,6 +5,7 @@ import {
   OperationVariables,
   SubscriptionOptions,
   TypedDocumentNode,
+  from,
 } from "@apollo/client/core";
 import { WebSocketLink } from "@apollo/client/link/ws";
 import ws from "isomorphic-ws";
@@ -48,6 +49,7 @@ import {
   TransitionDocument,
   TransitionInput,
 } from "./generated/graphql";
+import { onError } from "@apollo/client/link/error";
 
 const DefaultAddress = "http://localhost:4737/query";
 
@@ -175,11 +177,22 @@ export class Tajriba {
     //   console.info("conn err", payload);
     // });
 
+    // Log any GraphQL errors or network error that occurred
+    const errorLink = onError(({ graphQLErrors, networkError }) => {
+      if (graphQLErrors)
+        graphQLErrors.forEach(({ message, locations, path }) =>
+          console.debug(
+            `[GraphQL error]: Message: ${message}, Location: ${locations}, Path: ${path}`
+          )
+        );
+      if (networkError) console.log(`[Network error]: ${networkError}`);
+    });
+
     const wLink = new WebSocketLink(this.subClient);
 
     const client: ApolloClient<NormalizedCacheObject> = new ApolloClient({
       cache,
-      link: wLink,
+      link: from([errorLink, wLink]),
     });
 
     this._client = client;

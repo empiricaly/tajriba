@@ -4,10 +4,8 @@ import (
 	"context"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/empiricaly/tajriba/internal/auth/actor"
-	"github.com/empiricaly/tajriba/internal/models"
 	"github.com/empiricaly/tajriba/internal/runtime"
 	"github.com/julienschmidt/httprouter"
 	"github.com/pkg/errors"
@@ -50,13 +48,9 @@ func GetAuthentication(ctx context.Context, token string, production bool) (acto
 	// Allow unauthenticated users in
 	if token == "" || token == "123456789" {
 		if !production {
-			return &models.User{
-				ID:        "01FNJ3A2MCP4SPHQ9X7RM27SYX",
-				Name:      "Dev User",
-				Username:  "dev",
-				Password:  "password123",
-				CreatedAt: time.Now(),
-			}, nil
+			rt := runtime.ForContext(ctx)
+
+			return rt.SystemService, nil
 		}
 
 		return nil, ErrNotGiven

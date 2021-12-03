@@ -18,7 +18,7 @@ func (r *mutationResolver) RegisterService(ctx context.Context, input mgen.Regis
 		return nil, runtime.ErrNotAuthorized
 	}
 
-	s, t, err := rt.RegisterService(ctx, input.Name)
+	s, t, err := rt.RegisterService(ctx, input.Name, true)
 	if err != nil {
 		return nil, errs.Wrap(err, "transition step")
 	}

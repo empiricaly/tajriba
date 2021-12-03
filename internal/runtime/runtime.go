@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/empiricaly/tajriba/internal/models"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/sasha-s/go-deadlock"
@@ -15,6 +16,8 @@ type Runtime struct {
 	changesSubs map[string][]*changesSub
 	onEventSubs map[string][]*onEventSub
 	sattrSubs   map[string][]*scopedAttributesSub
+
+	SystemService *models.Service
 
 	deadlock.RWMutex
 }
@@ -33,6 +36,13 @@ func Start(ctx context.Context) (*Runtime, error) {
 	if err := r.load(ctx); err != nil {
 		return nil, errors.Wrap(err, "load values")
 	}
+
+	s, _, err := r.RegisterService(ctx, "system", false)
+	if err != nil {
+		return nil, errors.Wrap(err, "transition step")
+	}
+
+	r.SystemService = s
 
 	return r, nil
 }

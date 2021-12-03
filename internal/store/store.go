@@ -102,6 +102,11 @@ type objekt struct {
 	Obj  interface{} `json:"obj"`
 }
 
+type objektdev struct {
+	Kind Kind            `json:"kind"`
+	Obj  json.RawMessage `json:"obj"`
+}
+
 // Save object.
 func (c *Conn) Save(objs ...interface{}) error {
 	if c.config.UseMemory {
@@ -156,7 +161,7 @@ func (c *Conn) Load(f func(interface{}) error) error {
 		return errors.Wrap(err, "seek")
 	}
 
-	obj := &objekt{}
+	obj := &objektdev{}
 
 	s := bufio.NewScanner(c.f)
 	for s.Scan() {
@@ -173,6 +178,10 @@ func (c *Conn) Load(f func(interface{}) error) error {
 		o, err := newObj(obj.Kind)
 		if err != nil {
 			return errors.Wrap(err, "create object")
+		}
+
+		if err := json.Unmarshal(obj.Obj, o); err != nil {
+			return errors.Wrap(err, "unmarshall")
 		}
 
 		err = f(o)

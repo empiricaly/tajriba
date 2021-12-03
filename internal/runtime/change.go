@@ -32,6 +32,7 @@ func (r *Runtime) pushStep(ctx context.Context, step *models.Step) error {
 
 	if step.State == models.StateRunning {
 		last := step.Transitions[len(step.Transitions)-1]
+
 		r := int(last.Remaining / time.Second)
 		e := int(last.Ellapsed / time.Second)
 

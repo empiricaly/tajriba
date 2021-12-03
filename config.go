@@ -44,7 +44,7 @@ func (c *Config) Validate() error {
 }
 
 // ConfigFlags helps configure cobra and viper flags.
-func ConfigFlags(cmd *cobra.Command, prefix string) error {
+func ConfigFlags(cmd *cobra.Command, prefix, defaultDBFile string) error {
 	if cmd == nil {
 		return errors.New("command required")
 	}
@@ -60,7 +60,7 @@ func ConfigFlags(cmd *cobra.Command, prefix string) error {
 		return errors.Wrap(err, "set server configuration flags")
 	}
 
-	err = store.ConfigFlags(cmd, prefix+"store", "tajriba.json")
+	err = store.ConfigFlags(cmd, prefix+"store", defaultDBFile)
 	if err != nil {
 		return errors.Wrap(err, "set store configuration flags")
 	}

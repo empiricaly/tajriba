@@ -11,7 +11,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (r *Runtime) RegisterService(ctx context.Context, name string) (*models.Service, string, error) {
+func (r *Runtime) RegisterService(ctx context.Context, name string, createSession bool) (*models.Service, string, error) {
 	name = strings.TrimSpace(name)
 
 	if name == "" {
@@ -45,10 +45,16 @@ func (r *Runtime) RegisterService(ctx context.Context, name string) (*models.Ser
 		r.servicesMap[serv.ID] = serv
 	}
 
-	sess, err := r.createSession(ctx, serv)
-	if err != nil {
-		return nil, "", errors.Wrap(err, "create session")
+	var token string
+
+	if createSession {
+		sess, err := r.createSession(ctx, serv)
+		if err != nil {
+			return nil, "", errors.Wrap(err, "create session")
+		}
+
+		token = sess.Token
 	}
 
-	return serv, sess.Token, nil
+	return serv, token, nil
 }

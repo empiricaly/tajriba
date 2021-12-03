@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"context"
+	"time"
 
 	"github.com/empiricaly/tajriba/internal/auth/actor"
 	"github.com/empiricaly/tajriba/internal/models"
@@ -170,6 +171,10 @@ func (o *objectMap) associate() error {
 		return errors.Wrap(err, "associate groups")
 	}
 
+	if err := o.associateTransitions(); err != nil {
+		return errors.Wrap(err, "associate groups")
+	}
+
 	return nil
 }
 
@@ -242,6 +247,32 @@ func (o *objectMap) associateLink(l *models.Link) (err error) {
 	return nil
 }
 
+func (o *objectMap) associateTransitions() error {
+	for _, t := range o.transitions {
+		if err := o.associateTransition(t); err != nil {
+			return errors.Wrap(err, "associate transition")
+		}
+	}
+
+	return nil
+}
+
+func (o *objectMap) associateTransition(t *models.Transition) (err error) {
+	// CreatedBy
+	t.CreatedBy, err = o.findActor(t.ID, t.CreatedByID)
+	if err != nil {
+		return errors.Wrap(err, "createdBy for transition")
+	}
+
+	// Node
+	t.Node, err = o.findNode(t.ID, t.NodeID)
+	if err != nil {
+		return errors.Wrap(err, "node for transition")
+	}
+
+	return nil
+}
+
 func (o *objectMap) associateParticipants() error {
 	for _, p := range o.participants {
 		o.associateParticipant(p)
@@ -252,7 +283,7 @@ func (o *objectMap) associateParticipants() error {
 
 func (o *objectMap) associateParticipant(p *models.Participant) {
 	// Links
-	p.Links = o.findLinks(p.ID)
+	p.Links = o.findParticipantLinks(p.ID)
 }
 
 func (o *objectMap) associateScopes() error {
@@ -303,6 +334,33 @@ func (o *objectMap) associateStep(s *models.Step) (err error) {
 
 	// Transitions
 	s.Transitions = o.findTransitions(s.ID)
+
+	var (
+		ellapsed    time.Duration
+		lastStarted *time.Time
+	)
+
+	for _, t := range s.Transitions {
+		switch t.To {
+		case models.StateRunning:
+			lastStarted = &t.CreatedAt
+		case models.StatePaused:
+			if lastStarted == nil {
+				return errors.New("runtime: invalid transitions: pause before running")
+			}
+
+			e := t.CreatedAt.Sub(*lastStarted)
+			if e < 0 {
+				return errors.New("runtime: invalid transitions: pause before running")
+			}
+
+			ellapsed += e
+			lastStarted = nil
+		}
+
+		t.Ellapsed = ellapsed
+		t.Remaining = time.Second*time.Duration(s.Duration) - ellapsed
+	}
 
 	if len(s.Transitions) == 0 {
 		s.State = models.StateCreated
@@ -421,6 +479,18 @@ func (o *objectMap) findLinks(id string) []*models.Link {
 
 	for _, l := range o.links {
 		if l.NodeID == id {
+			links = append(links, l)
+		}
+	}
+
+	return links
+}
+
+func (o *objectMap) findParticipantLinks(id string) []*models.Link {
+	var links []*models.Link
+
+	for _, l := range o.links {
+		if l.ParticipantID == id {
 			links = append(links, l)
 		}
 	}
