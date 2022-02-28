@@ -68,13 +68,15 @@ func (r *Runtime) Link(ctx context.Context, input mgen.LinkInput) (*mgen.LinkPay
 	links := make([]*models.Link, 0, len(nodes)*len(participants))
 
 	for _, participant := range participants {
+	LOOP:
 		for i, node := range nodes {
 
 			active := activeParticipantLinks(participant.Links)
 
 			for _, link := range active {
 				if link.NodeID == input.NodeIDs[i] && link.Link == input.Link {
-					return nil, ErrAlreadyExists
+					continue LOOP
+					// return nil, ErrAlreadyExists
 				}
 			}
 

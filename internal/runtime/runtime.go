@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/empiricaly/tajriba/internal/auth/actor"
 	"github.com/empiricaly/tajriba/internal/models"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
@@ -43,6 +44,15 @@ func Start(ctx context.Context) (*Runtime, error) {
 	}
 
 	r.SystemService = s
+
+	rCtx := actor.SetContext(ctx, s)
+
+	name := "global"
+	if glbl, err := r.AddScope(rCtx, &name, &name, nil); err != nil {
+		return nil, errors.Wrap(err, "create global context")
+	} else {
+		log.Info().Interface("glbl", glbl).Msg("Global created")
+	}
 
 	return r, nil
 }

@@ -228,7 +228,7 @@ func (r *Runtime) startStep(ctx context.Context, s *models.Step) error {
 		return errors.New("runtime: invalid start state: duration exhausted")
 	}
 
-	log.Info().Str("id", s.ID).Msg("STARTING STEP")
+	// log.Info().Str("id", s.ID).Msg("STARTING STEP")
 
 	if _, ok := r.stepTimers[s.ID]; ok {
 		return errors.New("runtime: step already started")

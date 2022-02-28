@@ -30,7 +30,8 @@ func (r *Runtime) AddScope(ctx context.Context, name *string, kind *string, attr
 	if name != nil {
 		for _, s := range r.scopes {
 			if s.Name != nil && *s.Name == *name {
-				return nil, errors.Errorf("%s (%s)", ErrAlreadyExists.Error(), *name)
+				// return nil, errors.Errorf("%s (%s)", ErrAlreadyExists.Error(), *name)
+				return s, nil
 			}
 		}
 	}
