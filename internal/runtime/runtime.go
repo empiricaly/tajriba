@@ -51,7 +51,7 @@ func Start(ctx context.Context) (*Runtime, error) {
 	if glbl, err := r.AddScope(rCtx, &name, &name, nil); err != nil {
 		return nil, errors.Wrap(err, "create global context")
 	} else {
-		log.Info().Interface("glbl", glbl).Msg("Global created")
+		log.Trace().Interface("glbl", glbl).Msg("runtime: global created")
 	}
 
 	return r, nil
