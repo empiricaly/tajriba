@@ -100,15 +100,15 @@ func graphqlHandler(
 	gqlsrv.AroundOperations(func(ctx context.Context, next graphql.OperationHandler) graphql.ResponseHandler {
 		oc := graphql.GetOperationContext(ctx)
 
+		rt := runtime.ForContext(ctx)
+		rt.Lock()
+		defer rt.Unlock()
+
 		// Add .Str("query", oc.RawQuery) to get query
 		log.Trace().
 			Str("name", oc.OperationName).
 			Interface("vars", oc.Variables).
 			Msg("graphql: request")
-
-		rt := runtime.ForContext(ctx)
-		rt.Lock()
-		defer rt.Unlock()
 
 		defer log.Trace().
 			Str("name", oc.OperationName).
@@ -151,8 +151,12 @@ func graphqlHandler(
 		}
 
 		if resp != nil {
+			var op string
+			if oc.Operation != nil {
+				op = string(oc.Operation.Operation)
+			}
 			log.Trace().
-				Str("op", string(oc.Operation.Operation)).
+				Str("op", op).
 				Str("took", d).
 				RawJSON("json", resp.Data).
 				Msg("graphql: response")
