@@ -26,6 +26,10 @@
   "files": [
     "*"
   ],
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org",
+    "access": "public"
+  },
   "volta": {
     "node": "16.4.1",
     "yarn": "1.22.10",
