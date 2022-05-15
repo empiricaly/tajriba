@@ -250,12 +250,12 @@ func (r *Runtime) startStep(ctx context.Context, s *models.Step) error {
 }
 
 func (r *Runtime) stopStep(ctx context.Context, stepID string) error {
-	log.Info().Str("id", stepID).Msg("step: stopping")
+	// log.Info().Str("id", stepID).Msg("step: stopping")
 	if t, ok := r.stepTimers[stepID]; ok {
 		if !t.Stop() {
 			<-t.C
 		}
-		log.Info().Str("id", stepID).Msg("step: stopped")
+		// log.Info().Str("id", stepID).Msg("step: stopped")
 	}
 
 	return nil

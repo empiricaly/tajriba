@@ -1,15 +1,7 @@
-import {
-  ApolloClient,
-  InMemoryCache,
-  NormalizedCacheObject,
-  OperationVariables,
-  SubscriptionOptions,
-  TypedDocumentNode,
-  from,
-} from "@apollo/client/core";
-import { WebSocketLink } from "@apollo/client/link/ws";
-import ws from "isomorphic-ws";
-import { ClientOptions, SubscriptionClient } from "subscriptions-transport-ws";
+import { TypedDocumentNode } from "@graphql-typed-document-node/core";
+import { Client as WSClient, createClient as createWSClient } from "graphql-ws";
+import { Client, createClient, subscriptionExchange } from "urql";
+import { pipe, subscribe } from "wonka";
 import {
   AddGroupInput,
   AddGroupsDocument,
@@ -49,13 +41,12 @@ import {
   TransitionDocument,
   TransitionInput,
 } from "./generated/graphql";
-import { onError } from "@apollo/client/link/error";
 
 const DefaultAddress = "http://localhost:4737/query";
 
 export class Tajriba {
-  private _client?: ApolloClient<NormalizedCacheObject>;
-  private subClient?: SubscriptionClient;
+  private _client?: Client;
+  private _wsClient?: WSClient;
   private _firstConnProm?: {
     resolve: (value: void) => void;
     reject: (reason?: any) => void;
@@ -99,9 +90,9 @@ export class Tajriba {
   }
 
   get wsURL() {
-    if (this.url.includes("http://")) {
+    if (this.url.startsWith("http://")) {
       return this.url.replace("http://", "ws://");
-    } else if (this.url.includes("https://")) {
+    } else if (this.url.startsWith("https://")) {
       return this.url.replace("https://", "wss://");
     } else {
       throw "invalid URL";
@@ -127,84 +118,71 @@ export class Tajriba {
       return;
     }
 
-    const cache: InMemoryCache = new InMemoryCache({});
-
-    let authToken;
+    let authToken = "";
     if (this.token) {
       authToken = `Bearer ${this.token}`;
     }
 
-    const wsClientOptions: ClientOptions = {
-      timeout: 24 * 60 * 60 * 1000,
-      inactivityTimeout: 24 * 60 * 60 * 1000,
-      lazy: false,
-      reconnect: this.reconnect,
-      connectionCallback: (error: Error[], result?: any) => {
-        if (this._firstConnProm) {
-          if (error) {
-            this._firstConnProm.reject(error);
-          } else {
-            this._firstConnProm.resolve(result);
+    const wsClient = createWSClient({
+      url: this.wsURL,
+      retryAttempts: 10000000000,
+      shouldRetry: () => true,
+      on: {
+        opened: (socket) => {
+          if (this._firstConnProm) {
+            this._firstConnProm.resolve();
+            this._firstConnProm = undefined;
           }
+        },
+        error: (err) => {
+          if (this._firstConnProm) {
+            this._firstConnProm.reject(err);
+            this._firstConnProm = undefined;
+          }
+        },
+      },
+      connectionParams: () => {
+        const params: { [key: string]: string } = {
+          "User-Agent": this.userAgent,
+        };
 
-          this._firstConnProm = undefined;
+        if (authToken) {
+          params["authToken"] = authToken;
         }
 
-        // console.info("connectionCallback", error, result);
+        return params;
       },
-      connectionParams: {
-        authToken,
-        "User-Agent": this.userAgent,
-      },
-    };
-
-    // Work around from: https://github.com/apollographql/apollo-client/issues/7257
-    this.subClient = new SubscriptionClient(this.wsURL, wsClientOptions, ws);
-
-    // this.subClient.onConnected(function (payload) {
-    //   console.info("conn", payload);
-    // });
-
-    // this.subClient.onConnecting(function (payload) {
-    //   console.info("conning", payload);
-    // });
-
-    // this.subClient.onDisconnected(function (payload) {
-    //   console.info("disconn", payload);
-    // });
-
-    // this.subClient.onError(function (payload) {
-    //   console.info("conn err", payload);
-    // });
-
-    // Log any GraphQL errors or network error that occurred
-    const errorLink = onError(({ graphQLErrors, networkError }) => {
-      if (graphQLErrors)
-        graphQLErrors.forEach(({ message, locations, path }) =>
-          console.debug(
-            `[GraphQL error]: Message: ${message}, Location: ${locations}, Path: ${path}`
-          )
-        );
-      if (networkError) console.log(`[Network error]: ${networkError}`);
     });
+    this._wsClient = wsClient;
 
-    const wLink = new WebSocketLink(this.subClient);
-
-    const client: ApolloClient<NormalizedCacheObject> = new ApolloClient({
-      cache,
-      link: from([errorLink, wLink]),
+    this._client = createClient({
+      url: this.url,
+      exchanges: [
+        subscriptionExchange({
+          enableAllOperations: true,
+          forwardSubscription: (operation) => {
+            return {
+              subscribe: (sink) => {
+                const dispose = wsClient.subscribe(operation, sink);
+                return {
+                  unsubscribe: dispose,
+                };
+              },
+            };
+          },
+        }),
+      ],
     });
-
-    this._client = client;
   }
 
   async stop() {
+    if (this._wsClient) {
+      this._wsClient.terminate();
+      delete this._wsClient;
+    }
+
     if (this._client) {
-      this._client.stop();
-      this._client = undefined;
-      if (this.subClient) {
-        this.subClient.close();
-      }
+      delete this._client;
     }
   }
 
@@ -212,15 +190,14 @@ export class Tajriba {
     username: string,
     password: string
   ): Promise<[TajribaAdmin, string]> {
-    const loginRes = await this.client.mutate({
-      mutation: LoginDocument,
-      variables: {
+    const loginRes = await this.client
+      .mutation(LoginDocument, {
         input: {
           username,
           password,
         },
-      },
-    });
+      })
+      .toPromise();
 
     const sessionToken = loginRes.data?.login.sessionToken;
     if (!sessionToken) {
@@ -235,14 +212,13 @@ export class Tajriba {
   async registerParticipant(
     identifier: string
   ): Promise<[TajribaParticipant, string]> {
-    const addPartRes = await this.client.mutate({
-      mutation: AddParticipantDocument,
-      variables: {
+    const addPartRes = await this.client
+      .mutation(AddParticipantDocument, {
         input: {
           identifier,
         },
-      },
-    });
+      })
+      .toPromise();
 
     const addParticipant = addPartRes.data?.addParticipant;
 
@@ -266,15 +242,14 @@ export class Tajriba {
     name: string,
     token: string
   ): Promise<[TajribaAdmin, string]> {
-    const res = await this.client.mutate({
-      mutation: RegisterServiceDocument,
-      variables: {
+    const res = await this.client
+      .mutation(RegisterServiceDocument, {
         input: {
           name,
           token,
         },
-      },
-    });
+      })
+      .toPromise();
 
     const rs = res.data?.registerService;
 
@@ -326,15 +301,12 @@ export class Tajriba {
     );
   }
 
-  async query<T = any, TVariables = OperationVariables, U = any>(
+  async query<T = any, TVariables extends object = {}, U = any>(
     query: TypedDocumentNode<T, TVariables>,
     variables: TVariables,
     data: (res: T) => U
   ): Promise<U> {
-    const res = await this.client.query({
-      query,
-      variables,
-    });
+    const res = await this.client.query(query, variables).toPromise();
 
     if (res.data) {
       const d = data(res.data);
@@ -346,15 +318,12 @@ export class Tajriba {
     throw "no results";
   }
 
-  async mutate<T = any, TVariables = OperationVariables, U = any>(
+  async mutate<T = any, TVariables extends object = {}, U = any>(
     mutation: TypedDocumentNode<T, TVariables>,
     variables: TVariables,
     data: (res: T) => U | undefined
   ) {
-    const res = await this.client.mutate({
-      mutation,
-      variables,
-    });
+    const res = await this.client.mutation(mutation, variables).toPromise();
 
     let r: U | undefined;
 
@@ -369,32 +338,36 @@ export class Tajriba {
     return r;
   }
 
-  subscribe<T = any, TVariables = OperationVariables, U = any>(
+  subscribe<T = any, TVariables extends object = {}, U = any>(
     query: TypedDocumentNode<T, TVariables>,
     variables: TVariables,
     data: (res: T) => U | undefined,
     cb: (response: U, error: Error | undefined) => any
   ) {
-    return this.client
-      .subscribe(<SubscriptionOptions>{ query, variables })
-      .subscribe({
-        next(res) {
-          if (res.data) {
-            const r = data(res.data);
-            if (r) {
-              cb(r, undefined);
-              return;
-            }
+    const { unsubscribe } = pipe(
+      this.client.subscription(query, variables),
+
+      subscribe((res) => {
+        // if (err) {
+        //   cb(<U>{}, err);
+        //   return
+        // }
+
+        if (res.data) {
+          const r = data(res.data);
+          if (r) {
+            cb(r, undefined);
+            return;
           }
+        }
 
-          console.error("data missing", res);
+        console.error("data missing", res);
 
-          cb(<U>{}, new Error("data missing from event"));
-        },
-        error(err) {
-          cb(<U>{}, err);
-        },
-      });
+        cb(<U>{}, new Error("data missing from event"));
+      })
+    );
+
+    return unsubscribe;
   }
 }
 
@@ -423,16 +396,6 @@ export class TajribaUser {
     return this.taj.globalAttributes(cb);
   }
 }
-
-export type LinkUnlinkInput = {
-  /** nodeIDs are the IDs of the Nodes that the Participants should be added to. */
-  nodeIDs: Array<string>;
-  /**
-   * participantIDs are the IDs of the Participants that should be added to the
-   * Nodes.
-   */
-  participantIDs: Array<string>;
-};
 
 export class TajribaAdmin extends TajribaUser {
   constructor(protected taj: Tajriba) {
@@ -540,18 +503,18 @@ export class TajribaAdmin extends TajribaUser {
   }
 
   /** addLink adds Links object between Participants and Nodes. */
-  async addLink(input: LinkInput) {
+  private async addLink(input: LinkInput) {
     return await this.taj.mutate(LinkDocument, { input }, (data) => data?.link);
   }
 
   /** links Participants to Nodes. */
-  async link(input: LinkUnlinkInput) {
-    return await this.addLink({ link: true, ...input });
+  async link(input: LinkInput) {
+    return await this.addLink({ ...input, link: true });
   }
 
   /** unlinks Participants from Nodes. */
-  async unlink(input: LinkUnlinkInput) {
-    return await this.addLink({ link: false, ...input });
+  async unlink(input: LinkInput) {
+    return await this.addLink({ ...input, link: false });
   }
 
   /**
@@ -646,7 +609,7 @@ export class TajribaParticipant extends TajribaUser {
   ) {
     return this.taj.subscribe(
       ChangesDocument,
-      null,
+      {},
       (data) => {
         if (data.changes) {
           return <ChangePayload>data.changes;
