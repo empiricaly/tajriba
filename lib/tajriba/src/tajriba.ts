@@ -1,5 +1,6 @@
 import { TypedDocumentNode } from "@graphql-typed-document-node/core";
 import { Client as WSClient, createClient as createWSClient } from "graphql-ws";
+import WebSocket from "isomorphic-ws";
 import { Client, createClient, subscriptionExchange } from "urql";
 import { pipe, subscribe } from "wonka";
 import {
@@ -69,6 +70,7 @@ export class Tajriba {
       t.stop();
       throw err;
     }
+
     return new TajribaAdmin(t);
   }
 
@@ -126,18 +128,20 @@ export class Tajriba {
     const wsClient = createWSClient({
       url: this.wsURL,
       retryAttempts: 10000000000,
+      lazy: false,
       shouldRetry: () => true,
+      webSocketImpl: WebSocket,
       on: {
-        opened: (socket) => {
+        opened: () => {
           if (this._firstConnProm) {
             this._firstConnProm.resolve();
-            this._firstConnProm = undefined;
+            delete this._firstConnProm;
           }
         },
         error: (err) => {
           if (this._firstConnProm) {
             this._firstConnProm.reject(err);
-            this._firstConnProm = undefined;
+            delete this._firstConnProm;
           }
         },
       },
@@ -153,6 +157,7 @@ export class Tajriba {
         return params;
       },
     });
+
     this._wsClient = wsClient;
 
     this._client = createClient({
@@ -175,7 +180,7 @@ export class Tajriba {
     });
   }
 
-  async stop() {
+  stop() {
     if (this._wsClient) {
       this._wsClient.terminate();
       delete this._wsClient;
@@ -402,7 +407,7 @@ export class TajribaAdmin extends TajribaUser {
     super(taj);
   }
 
-  async stop() {
+  stop() {
     this.taj.stop();
   }
 
@@ -596,7 +601,7 @@ export class TajribaParticipant extends TajribaUser {
     return this.participant.identifier;
   }
 
-  async stop() {
+  stop() {
     this.taj.stop();
   }
 
