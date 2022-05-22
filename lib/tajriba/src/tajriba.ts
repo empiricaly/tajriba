@@ -1,6 +1,6 @@
 import { TypedDocumentNode } from "@graphql-typed-document-node/core";
 import { Client as WSClient, createClient as createWSClient } from "graphql-ws";
-import WebSocket from "isomorphic-ws";
+import WebSocket, { CloseEvent } from "isomorphic-ws";
 import { Client, createClient, subscriptionExchange } from "urql";
 import { pipe, subscribe } from "wonka";
 import {
@@ -43,9 +43,22 @@ import {
   TransitionInput,
 } from "./generated/graphql";
 
+import { TypedEmitter } from "tiny-typed-emitter";
+
 const DefaultAddress = "http://localhost:4737/query";
 
-export class Tajriba {
+interface TajribaEvents {
+  // Connected and ready
+  connected: () => void;
+  // Disconnected will be followed by an automatic reconnection attempt
+  disconnected: () => void;
+  // A closed connection will not reopen
+  closed: () => void;
+  // A request resulted in an access denied error (token likely expired).
+  accessDenied: () => void;
+}
+
+export class Tajriba extends TypedEmitter<TajribaEvents> {
   private _client?: Client;
   private _wsClient?: WSClient;
   private _firstConnProm?: {
@@ -55,7 +68,9 @@ export class Tajriba {
   public reconnect = true;
   public userAgent = "";
 
-  constructor(readonly url: string = DefaultAddress, readonly token?: string) {}
+  constructor(readonly url: string = DefaultAddress, readonly token?: string) {
+    super();
+  }
 
   static async sessionAdmin(
     url: string = DefaultAddress,
@@ -127,18 +142,41 @@ export class Tajriba {
 
     const wsClient = createWSClient({
       url: this.wsURL,
+      connectionAckWaitTimeout: 5000,
       retryAttempts: 10000000000,
       lazy: false,
       shouldRetry: () => true,
       webSocketImpl: WebSocket,
       on: {
-        opened: () => {
-          if (this._firstConnProm) {
+        connecting: () => {
+          console.trace("websocket: connecting");
+        },
+        connected: () => {
+          console.trace("websocket: connected");
+        },
+        opened: (sock) => {
+          console.trace("websocket: established");
+
+          if (
+            this._firstConnProm &&
+            (<WebSocket>sock).readyState === WebSocket.OPEN
+          ) {
             this._firstConnProm.resolve();
             delete this._firstConnProm;
           }
+
+          this.emit("connected");
+        },
+        closed: (event) => {
+          const evt = <CloseEvent>event;
+          if (this._firstConnProm) {
+            this._firstConnProm.reject(evt.reason);
+            delete this._firstConnProm;
+            this.emit("disconnected");
+          }
         },
         error: (err) => {
+          console.trace("websocket: error", err);
           if (this._firstConnProm) {
             this._firstConnProm.reject(err);
             delete this._firstConnProm;
@@ -156,6 +194,13 @@ export class Tajriba {
 
         return params;
       },
+      onNonLazyError: (err) => {
+        console.trace("websocket: error (laz)", err);
+        if (this._firstConnProm) {
+          this._firstConnProm.reject(err);
+          delete this._firstConnProm;
+        }
+      },
     });
 
     this._wsClient = wsClient;
@@ -168,9 +213,8 @@ export class Tajriba {
           forwardSubscription: (operation) => {
             return {
               subscribe: (sink) => {
-                const dispose = wsClient.subscribe(operation, sink);
                 return {
-                  unsubscribe: dispose,
+                  unsubscribe: wsClient.subscribe(operation, sink),
                 };
               },
             };
@@ -189,6 +233,8 @@ export class Tajriba {
     if (this._client) {
       delete this._client;
     }
+
+    this.emit("closed");
   }
 
   async login(
@@ -353,10 +399,22 @@ export class Tajriba {
       this.client.subscription(query, variables),
 
       subscribe((res) => {
-        // if (err) {
-        //   cb(<U>{}, err);
-        //   return
-        // }
+        if (res.error) {
+          for (let err of res.error.graphQLErrors) {
+            if (err.message === "Access Denied") {
+              // Cancel connection
+              this.emit("accessDenied");
+
+              this.stop();
+
+              return;
+            }
+          }
+
+          cb(<U>{}, res.error);
+
+          return;
+        }
 
         if (res.data) {
           const r = data(res.data);
