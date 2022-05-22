@@ -1,8 +1,9 @@
 import { TypedDocumentNode } from "@graphql-typed-document-node/core";
+import { Client, createClient, subscriptionExchange } from "@urql/core";
 import { Client as WSClient, createClient as createWSClient } from "graphql-ws";
 import WebSocket, { CloseEvent } from "isomorphic-ws";
-import { Client, createClient, subscriptionExchange } from "urql";
 import { pipe, subscribe } from "wonka";
+import { enableFancyLogging } from "./console";
 import {
   AddGroupInput,
   AddGroupsDocument,
@@ -42,12 +43,15 @@ import {
   TransitionDocument,
   TransitionInput,
 } from "./generated/graphql";
+import EventEmitter from "events";
+import TypedEmitter from "typed-emitter";
 
-import { TypedEmitter } from "tiny-typed-emitter";
+// Makes logs a bit nicer looking and enables log levels.
+enableFancyLogging();
 
 const DefaultAddress = "http://localhost:4737/query";
 
-interface TajribaEvents {
+export type TajribaEvents = {
   // Connected and ready
   connected: () => void;
   // Disconnected will be followed by an automatic reconnection attempt
@@ -56,9 +60,9 @@ interface TajribaEvents {
   closed: () => void;
   // A request resulted in an access denied error (token likely expired).
   accessDenied: () => void;
-}
+};
 
-export class Tajriba extends TypedEmitter<TajribaEvents> {
+export class Tajriba extends (EventEmitter as new () => TypedEmitter<TajribaEvents>) {
   private _client?: Client;
   private _wsClient?: WSClient;
   private _firstConnProm?: {

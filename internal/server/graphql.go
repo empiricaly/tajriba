@@ -49,6 +49,7 @@ func graphqlHandler(
 			CheckOrigin: func(r *http.Request) bool {
 				return true
 			},
+			EnableCompression: true,
 		},
 		InitFunc: func(ctx context.Context, initPayload transport.InitPayload) (context.Context, error) {
 			token, ok := initPayload["authToken"].(string)
