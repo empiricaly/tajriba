@@ -203,7 +203,7 @@ export type ChangePayload = {
   change: Change;
   /** done indicates that the state has finished synchorizing. */
   done: Scalars["Boolean"];
-  /** removed indicates whether the record was removed from scope. */
+  /** removed indicates whether the record was removed. */
   removed: Scalars["Boolean"];
 };
 
