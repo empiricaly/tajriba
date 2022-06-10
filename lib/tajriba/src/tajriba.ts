@@ -29,7 +29,6 @@ import {
   OnAnyEventInput,
   OnEventDocument,
   OnEventInput,
-  Participant,
   ParticipantsDocument,
   ParticipantsQueryVariables,
   RegisterServiceDocument,
@@ -65,6 +64,7 @@ export type TajribaEvents = {
 export class Tajriba extends (EventEmitter as new () => TypedEmitter<TajribaEvents>) {
   public userAgent = "Tajriba.js";
 
+  private _connected = false;
   private _client?: Client;
   private _wsClient?: WSClient;
   private _firstConnProm?: {
@@ -72,7 +72,7 @@ export class Tajriba extends (EventEmitter as new () => TypedEmitter<TajribaEven
     reject: (reason?: any) => void;
   };
 
-  private constructor(
+  protected constructor(
     readonly url: string = DefaultAddress,
     readonly token?: string
   ) {
@@ -107,7 +107,7 @@ export class Tajriba extends (EventEmitter as new () => TypedEmitter<TajribaEven
     return t;
   }
 
-  private static async authenticated(
+  protected static async authenticated(
     url: string = DefaultAddress,
     token: string
   ) {
@@ -127,23 +127,49 @@ export class Tajriba extends (EventEmitter as new () => TypedEmitter<TajribaEven
   }
 
   async sessionAdmin(sessionToken: string) {
-    const t = await Tajriba.authenticated(this.url, sessionToken);
-    return new TajribaAdmin(t);
+    const t = new TajribaAdmin(this.url, sessionToken);
+
+    const p = t.connectionStatus();
+    t.connect();
+
+    try {
+      await p;
+    } catch (err) {
+      t.stop();
+      throw err;
+    }
+
+    return t;
   }
 
-  async sessionParticipant(sessionToken: string, participant: Participant) {
+  async sessionParticipant(
+    sessionToken: string,
+    participant: ParticipantIdent
+  ) {
     if (!participant) {
       throw "participant required";
     }
 
-    const t = await Tajriba.authenticated(this.url, sessionToken);
-    return new TajribaParticipant(t, participant);
+    const t = new TajribaParticipant(this.url, sessionToken, participant);
+
+    const p = t.connectionStatus();
+    t.connect();
+
+    try {
+      await p;
+    } catch (err) {
+      t.stop();
+      throw err;
+    }
+
+    return t;
   }
 
-  async login(
-    username: string,
-    password: string
-  ): Promise<[TajribaAdmin, string]> {
+  get connected() {
+    return this._connected;
+  }
+
+  async login(username: string, password: string): Promise<string> {
     const loginRes = await this.client
       .mutation(LoginDocument, {
         input: {
@@ -158,44 +184,10 @@ export class Tajriba extends (EventEmitter as new () => TypedEmitter<TajribaEven
       throw "Authentication failed";
     }
 
-    const t = await Tajriba.authenticated(this.url, sessionToken);
-
-    return [new TajribaAdmin(t), sessionToken];
+    return sessionToken;
   }
 
-  async registerParticipant(
-    identifier: string
-  ): Promise<[TajribaParticipant, string]> {
-    const addPartRes = await this.client
-      .mutation(AddParticipantDocument, {
-        input: {
-          identifier,
-        },
-      })
-      .toPromise();
-
-    const addParticipant = addPartRes.data?.addParticipant;
-
-    if (!addParticipant) {
-      throw "Unknown participant";
-    }
-
-    const { sessionToken } = addParticipant;
-    if (!sessionToken) {
-      throw "Authentication failed";
-    }
-
-    const participant = addParticipant.participant;
-
-    const t = await Tajriba.authenticated(this.url, sessionToken);
-
-    return [new TajribaParticipant(t, participant), sessionToken];
-  }
-
-  async registerService(
-    name: string,
-    token: string
-  ): Promise<[TajribaAdmin, string]> {
+  async registerService(name: string, token: string): Promise<string> {
     const res = await this.client
       .mutation(RegisterServiceDocument, {
         input: {
@@ -216,10 +208,32 @@ export class Tajriba extends (EventEmitter as new () => TypedEmitter<TajribaEven
       throw "Authentication failed";
     }
 
-    const t = new Tajriba(this.url, sessionToken);
-    t.userAgent = name;
+    return sessionToken;
+  }
 
-    return [new TajribaAdmin(t), sessionToken];
+  async registerParticipant(
+    identifier: string
+  ): Promise<[string, ParticipantIdent]> {
+    const addPartRes = await this.client
+      .mutation(AddParticipantDocument, {
+        input: {
+          identifier,
+        },
+      })
+      .toPromise();
+
+    const addParticipant = addPartRes.data?.addParticipant;
+
+    if (!addParticipant) {
+      throw "Unknown participant";
+    }
+
+    const { sessionToken, participant } = addParticipant;
+    if (!sessionToken || !participant) {
+      throw "Authentication failed";
+    }
+
+    return [sessionToken, participant];
   }
 
   get wsURL() {
@@ -282,14 +296,17 @@ export class Tajriba extends (EventEmitter as new () => TypedEmitter<TajribaEven
           }
 
           this.emit("connected");
+          this._connected = true;
         },
         closed: (event) => {
           const evt = <CloseEvent>event;
           if (this._firstConnProm) {
             this._firstConnProm.reject(evt.reason);
             delete this._firstConnProm;
-            this.emit("disconnected");
           }
+
+          this.emit("disconnected");
+          this._connected = false;
         },
         error: (err) => {
           console.trace("websocket: error", err);
@@ -457,41 +474,10 @@ export class Tajriba extends (EventEmitter as new () => TypedEmitter<TajribaEven
   }
 }
 
-export class TajribaUser {
-  constructor(protected taj: Tajriba) {}
-
-  async setAttributes(input: SetAttributeInput[]) {
-    return this.taj.setAttributes(input);
-  }
-
-  async setAttribute(input: SetAttributeInput) {
-    return this.taj.setAttribute(input);
-  }
-
-  /**
-   * globalAttributes returns Attributes for the global Scope, which is a singleton
-   * permission-less Scope that any client can access, even if not logged in. The
-   * name of the global Scope is "global" and can only be updated by Users. All
-   * Attributes in this Scope will be returned initially, then any update to
-   * Attributes from this Scopes.
-   */
-  globalAttributes() {
-    return this.taj.globalAttributes();
-  }
-}
-
-export class TajribaAdmin extends TajribaUser {
-  constructor(protected taj: Tajriba) {
-    super(taj);
-  }
-
-  stop() {
-    this.taj.stop();
-  }
-
+export class TajribaAdmin extends Tajriba {
   /** addSteps creates new Steps. */
   async addSteps(input: AddStepInput[]) {
-    return await this.taj.mutate(AddStepsDocument, { input }, (data) =>
+    return await this.mutate(AddStepsDocument, { input }, (data) =>
       data?.addSteps.map((p) => p.step)
     );
   }
@@ -503,16 +489,12 @@ export class TajribaAdmin extends TajribaUser {
 
   /** steps returns all steps */
   async steps(input: StepsQueryVariables) {
-    return await this.taj.query(
-      StepsDocument,
-      { ...input },
-      (data) => data?.steps
-    );
+    return await this.query(StepsDocument, { ...input }, (data) => data?.steps);
   }
 
   /** addGroups creates new Groups. */
   async addGroups(input: AddGroupInput[]) {
-    return await this.taj.mutate(AddGroupsDocument, { input }, (data) =>
+    return await this.mutate(AddGroupsDocument, { input }, (data) =>
       data?.addGroups.map((p) => p.group)
     );
   }
@@ -524,7 +506,7 @@ export class TajribaAdmin extends TajribaUser {
 
   /** groups returns all groups */
   async groups(input: GroupsQueryVariables) {
-    return await this.taj.query(
+    return await this.query(
       GroupsDocument,
       { ...input },
       (data) => data?.groups
@@ -533,7 +515,7 @@ export class TajribaAdmin extends TajribaUser {
 
   /** addScopes creates new Scopes. */
   async addScopes(input: AddScopeInput[]) {
-    return await this.taj.mutate(AddScopesDocument, { input }, (data) =>
+    return await this.mutate(AddScopesDocument, { input }, (data) =>
       data?.addScopes.map((p) => p.scope)
     );
   }
@@ -549,7 +531,7 @@ export class TajribaAdmin extends TajribaUser {
    * ScopedAttributesInput.
    */
   async scopes(input: ScopesQueryVariables) {
-    return await this.taj.query(
+    return await this.query(
       ScopesDocument,
       { ...input },
       (data) => data?.scopes
@@ -560,7 +542,7 @@ export class TajribaAdmin extends TajribaUser {
    * attributes returns all attributes for a scope.
    */
   async attributes(input: AttributesQueryVariables) {
-    return await this.taj.query(
+    return await this.query(
       AttributesDocument,
       { ...input },
       (data) => data?.attributes
@@ -569,7 +551,7 @@ export class TajribaAdmin extends TajribaUser {
 
   /** participants returns all Participants in the system. */
   async participants(input: ParticipantsQueryVariables) {
-    return await this.taj.query(
+    return await this.query(
       ParticipantsDocument,
       { ...input },
       (data) => data?.participants
@@ -578,7 +560,7 @@ export class TajribaAdmin extends TajribaUser {
 
   /** transition transitions a Step from one state to the next. */
   async transition(input: TransitionInput) {
-    return await this.taj.mutate(
+    return await this.mutate(
       TransitionDocument,
       { input },
       (data) => data?.transition.transition
@@ -587,7 +569,7 @@ export class TajribaAdmin extends TajribaUser {
 
   /** addLink adds Links object between Participants and Nodes. */
   private async addLink(input: LinkInput) {
-    return await this.taj.mutate(LinkDocument, { input }, (data) => data?.link);
+    return await this.mutate(LinkDocument, { input }, (data) => data?.link);
   }
 
   /** links Participants to Nodes. */
@@ -610,7 +592,7 @@ export class TajribaAdmin extends TajribaUser {
     /** SubAttributesPayload is the return payload for the addScope mutation. */
     input: ScopedAttributesInput[]
   ) {
-    return this.taj.subscribe(ScopedAttributesDocument, { input }, (data) => {
+    return this.subscribe(ScopedAttributesDocument, { input }, (data) => {
       if (data.scopedAttributes) {
         return <SubAttributesPayload>data.scopedAttributes;
       }
@@ -625,7 +607,7 @@ export class TajribaAdmin extends TajribaUser {
     /** OnEventInput is the input for the onEvent subscription. */
     input: OnEventInput
   ) {
-    return this.taj.subscribe(OnEventDocument, { input }, (data) => {
+    return this.subscribe(OnEventDocument, { input }, (data) => {
       if (data.onEvent) {
         return data.onEvent;
       }
@@ -637,7 +619,7 @@ export class TajribaAdmin extends TajribaUser {
     /** OnAnyEventInput is the input for the onAnyEvent subscription. */
     input: OnAnyEventInput
   ) {
-    return this.taj.subscribe(OnAnyEventDocument, { input }, (data) => {
+    return this.subscribe(OnAnyEventDocument, { input }, (data) => {
       if (data.onAnyEvent) {
         return data.onAnyEvent;
       }
@@ -645,9 +627,18 @@ export class TajribaAdmin extends TajribaUser {
   }
 }
 
-export class TajribaParticipant extends TajribaUser {
-  constructor(protected taj: Tajriba, public participant: Participant) {
-    super(taj);
+export interface ParticipantIdent {
+  id: string;
+  identifier: string;
+}
+
+export class TajribaParticipant extends Tajriba {
+  constructor(
+    readonly url: string = DefaultAddress,
+    readonly token: string,
+    public participant: ParticipantIdent
+  ) {
+    super(url, token);
   }
 
   get id() {
@@ -659,14 +650,14 @@ export class TajribaParticipant extends TajribaUser {
   }
 
   stop() {
-    this.taj.stop();
+    this.stop();
   }
 
   /**
    * changes returns changes of interest for the Participant.
    * */
   changes() {
-    return this.taj.subscribe(ChangesDocument, {}, (data) => {
+    return this.subscribe(ChangesDocument, {}, (data) => {
       if (data.changes) {
         return <ChangePayload>data.changes;
       }
