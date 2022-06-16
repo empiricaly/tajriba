@@ -2,11 +2,10 @@ import { TypedDocumentNode } from "@graphql-typed-document-node/core";
 import { Client, createClient, subscriptionExchange } from "@urql/core";
 import EventEmitter from "events";
 import { Client as WSClient, createClient as createWSClient } from "graphql-ws";
-import WebSocket, { CloseEvent } from "isomorphic-ws";
+import WebSocket from "isomorphic-ws";
 import { Observable } from "rxjs";
 import TypedEmitter from "typed-emitter";
 import { pipe, subscribe } from "wonka";
-import { enableFancyLogging } from "./console";
 import {
   AddGroupInput,
   AddGroupsDocument,
@@ -45,9 +44,6 @@ import {
   TransitionInput,
 } from "./generated/graphql";
 
-// Makes logs a bit nicer looking and enables log levels.
-enableFancyLogging();
-
 const DefaultAddress = "http://localhost:4737/query";
 
 export type TajribaEvents = {
@@ -55,6 +51,8 @@ export type TajribaEvents = {
   connected: () => void;
   // Disconnected will be followed by an automatic reconnection attempt
   disconnected: () => void;
+  // Disconnected will be followed by an automatic reconnection attempt
+  error: (error: Error) => void;
   // A closed connection will not reopen
   closed: () => void;
   // A request resulted in an access denied error (token likely expired).
@@ -79,32 +77,35 @@ export class Tajriba extends (EventEmitter as new () => TypedEmitter<TajribaEven
     super();
   }
 
-  // Create an unauthenticated Tajriba connection. This is always needed for
-  // globalAttributes. Then use one of the authentication methods to get an
-  // authenticated connection:
-  // - sessionParticipant: TajribaParticipant with an existing token
-  // - registerParticipant: TajribaParticipant with an identifier
-  // - sessionAdmin: TajribaAdmin with an existing token
-  // - registerService: TajribaAdmin with a service token
-  // - login: TajribaAdmin with a username and password
-  static async create(url: string = DefaultAddress) {
-    return await this.unauthenticated(url);
+  // create creates a Tajriba instance without initiating a connecting.
+  static create(url: string = DefaultAddress) {
+    return new Tajriba(url);
   }
 
-  private static async unauthenticated(url: string = DefaultAddress) {
+  // connect creates a tajriba connection but does not wait for the connectino.
+  static connect(url: string = DefaultAddress) {
+    const t = new Tajriba(url);
+    t.connect();
+    return t;
+  }
+
+  // createAndAwait creates a connection and waits for the connection to be
+  // ready.
+  static async createAndAwait(url: string = DefaultAddress) {
     const t = new Tajriba(url);
 
     const p = t.connectionStatus();
     t.connect();
 
-    try {
-      await p;
-    } catch (err) {
-      t.stop();
-      throw err;
-    }
+    await p;
 
     return t;
+  }
+
+  async connectAndAwait() {
+    const p = this.connectionStatus();
+    this.connect();
+    await p;
   }
 
   protected static async authenticated(
@@ -279,13 +280,13 @@ export class Tajriba extends (EventEmitter as new () => TypedEmitter<TajribaEven
       webSocketImpl: WebSocket,
       on: {
         connecting: () => {
-          console.trace("websocket: connecting");
+          console.debug("websocket: connecting");
         },
         connected: () => {
-          console.trace("websocket: connected");
+          console.debug("websocket: connected");
         },
         opened: (sock) => {
-          console.trace("websocket: established");
+          console.debug("websocket: established");
 
           if (
             this._firstConnProm &&
@@ -299,21 +300,12 @@ export class Tajriba extends (EventEmitter as new () => TypedEmitter<TajribaEven
           this._connected = true;
         },
         closed: (event) => {
-          const evt = <CloseEvent>event;
-          if (this._firstConnProm) {
-            this._firstConnProm.reject(evt.reason);
-            delete this._firstConnProm;
-          }
-
           this.emit("disconnected");
           this._connected = false;
         },
         error: (err) => {
-          console.trace("websocket: error", err);
-          if (this._firstConnProm) {
-            this._firstConnProm.reject(err);
-            delete this._firstConnProm;
-          }
+          console.debug("websocket: error", err);
+          this.emit("error", err as Error);
         },
       },
       connectionParams: () => {
@@ -328,7 +320,7 @@ export class Tajriba extends (EventEmitter as new () => TypedEmitter<TajribaEven
         return params;
       },
       onNonLazyError: (err) => {
-        console.trace("websocket: error (laz)", err);
+        console.debug("websocket: error (laz)", err);
         if (this._firstConnProm) {
           this._firstConnProm.reject(err);
           delete this._firstConnProm;

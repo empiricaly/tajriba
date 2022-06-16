@@ -1,4 +1,5 @@
 union Actor = User | Service | Participant
+union Admin = User | Service
 
 enum Role {
   "ADMIN is priviledged access for Users and Services."
