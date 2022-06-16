@@ -1,12 +1,13 @@
 import {
   ApolloClient,
+  from,
   InMemoryCache,
   NormalizedCacheObject,
   OperationVariables,
   SubscriptionOptions,
   TypedDocumentNode,
-  from,
 } from "@apollo/client/core";
+import { onError } from "@apollo/client/link/error";
 import { WebSocketLink } from "@apollo/client/link/ws";
 import ws from "isomorphic-ws";
 import { ClientOptions, SubscriptionClient } from "subscriptions-transport-ws";
@@ -49,7 +50,6 @@ import {
   TransitionDocument,
   TransitionInput,
 } from "./generated/graphql";
-import { onError } from "@apollo/client/link/error";
 
 const DefaultAddress = "http://localhost:4737/query";
 
@@ -378,7 +378,7 @@ export class Tajriba {
     return this.client
       .subscribe(<SubscriptionOptions>{ query, variables })
       .subscribe({
-        next(res) {
+        next(res: { data: T }) {
           if (res.data) {
             const r = data(res.data);
             if (r) {
@@ -391,7 +391,7 @@ export class Tajriba {
 
           cb(<U>{}, new Error("data missing from event"));
         },
-        error(err) {
+        error(err: Error) {
           cb(<U>{}, err);
         },
       });
