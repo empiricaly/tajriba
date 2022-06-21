@@ -2,7 +2,14 @@
   "name": "@empirica/tajriba",
   "version": "1.0.0-alpha.3",
   "description": "Tajriba client",
-  "main": "src/index.ts",
+  "source": "src/index.ts",
+  "module": "dist/module.mjs",
+  "types": "dist/types.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/module.mjs"
+    }
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/empiricaly/tajriba.git"
@@ -24,82 +31,61 @@
   "author": "Nicolas Paton <nicolas.paton@gmail.com>",
   "license": "Apache-2.0",
   "files": [
-    "*"
+    "dist"
   ],
   "publishConfig": {
     "registry": "https://registry.npmjs.org",
     "access": "public"
   },
   "volta": {
-    "node": "16.4.1",
-    "yarn": "1.22.10",
-    "npm": "7.19.1"
+    "node": "16.15.0",
+    "npm": "8.10.0"
   },
-  "np": {
-    "contents": "pkg"
+  "engines": {
+    "node": ">= 16.15.0"
   },
   "scripts": {
-    "build": "pika build",
+    "pkg": "parcel build",
+    "prebuild": "npm run generate",
+    "check": "tsc --noEmit",
+    "build": "npm run pkg",
     "generate": "graphql-codegen",
     "generate:watch": "graphql-codegen -w",
-    "prerelease": "yarn run build",
-    "release:next": "np --tag next --contents pkg/",
-    "release": "np --tag latest --contents pkg/",
-    "postversion": "cd pkg && yarn version --new-version $npm_package_version --no-git-tag-version --no-commit-hooks"
-  },
-  "@pika/pack": {
-    "pipeline": [
-      [
-        "@pika/plugin-ts-standard-pkg"
-      ],
-      [
-        "pika-plugin-package.json",
-        {
-          "+volta": "^",
-          "+author": "^",
-          "-devDependencies": {}
-        }
-      ],
-      [
-        "@pika/plugin-build-types"
-      ],
-      [
-        "@pika/plugin-build-web"
-      ],
-      [
-        "@pika/plugin-build-node"
-      ],
-      [
-        "@pika/plugin-build-deno"
-      ]
-    ]
+    "prerelease": "npm run build",
+    "release:next": "np --tag next",
+    "release": "np --tag latest",
+    "postversion": "npm version --no-git-tag-version --no-commit-hooks $npm_package_version",
+    "test": "ava"
   },
   "devDependencies": {
-    "@graphql-codegen/cli": "1.20.1",
-    "@graphql-codegen/fragment-matcher": "2.0.1",
-    "@graphql-codegen/introspection": "1.18.1",
-    "@graphql-codegen/typed-document-node": "1.18.2",
-    "@graphql-codegen/typescript": "1.20.2",
-    "@graphql-codegen/typescript-apollo-client-helpers": "1.1.2",
-    "@graphql-codegen/typescript-operations": "1.17.14",
-    "@graphql-typed-document-node/core": "3.1.0",
-    "@pika/pack": "0.5.0",
-    "@pika/plugin-build-deno": "0.9.2",
-    "@pika/plugin-build-node": "0.9.2",
-    "@pika/plugin-build-types": "0.9.2",
-    "@pika/plugin-build-web": "0.9.2",
-    "@pika/plugin-ts-standard-pkg": "0.9.2",
-    "np": "7.5.0",
+    "@graphql-codegen/cli": "2.6.2",
+    "@graphql-codegen/introspection": "2.1.1",
+    "@graphql-codegen/typed-document-node": "2.2.13",
+    "@graphql-codegen/typescript": "2.5.1",
+    "@graphql-codegen/typescript-operations": "2.4.2",
+    "@graphql-codegen/typescript-urql": "3.5.12",
+    "@graphql-typed-document-node/core": "3.1.1",
+    "@parcel/packager-ts": "2.6.1",
+    "@parcel/transformer-typescript-types": "2.6.1",
+    "ava": "4.3.0",
+    "graphql-codegen-typescript-validation-schema": "0.5.0",
+    "np": "7.6.1",
+    "parcel": "2.6.1",
     "pika-plugin-package.json": "1.0.2",
-    "prettier": "2.2.1",
-    "typescript": "4.1.3"
+    "prettier": "2.7.1",
+    "typescript": "4.7.4"
   },
   "dependencies": {
-    "@apollo/client": "3.3.7",
-    "graphql": "15.5.0",
-    "graphql-ws": "^5.3.0",
-    "isomorphic-ws": "^4.0.1",
-    "subscriptions-transport-ws": "0.9.18",
-    "websocket": "1.0.33"
+    "@urql/core": "2.5.0",
+    "events": "3.3.0",
+    "graphql": "16.5.0",
+    "graphql-tag": "2.12.6",
+    "graphql-ws": "5.9.0",
+    "isomorphic-ws": "4.0.1",
+    "rxjs": "7.5.5",
+    "typed-emitter": "2.1.0",
+    "websocket": "1.0.34",
+    "wonka": "4.0.15",
+    "zod": "3.17.3"
   }
 }

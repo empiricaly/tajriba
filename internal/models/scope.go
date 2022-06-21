@@ -43,11 +43,14 @@ type KV struct {
 // ScopedAttributesInput subscribes to attributes in matching scopes. Either keys
 // or kvs exclusively must be provided.
 type ScopedAttributesInput struct {
-	// name of the matching Scope.
-	Name string `json:"name"`
+	// ids of the matching Scopes.
+	IDs []string `json:"ids"`
 
-	// kind of the matching Scope.
-	Kind string `json:"kind"`
+	// names of the matching Scopes.
+	Names []string `json:"names"`
+
+	// kinds of the matching Scopes.
+	Kinds []string `json:"kinds"`
 
 	// keys to Attributes in matching Scope.
 	Keys []string `json:"keys"`
@@ -66,11 +69,11 @@ func (s *ScopedAttributesInput) Validate(noneOK bool) error {
 		filters++
 	}
 
-	if len(s.Name) > 0 {
+	if len(s.Names) > 0 {
 		filters++
 	}
 
-	if len(s.Kind) > 0 {
+	if len(s.Kinds) > 0 {
 		filters++
 	}
 
@@ -86,12 +89,34 @@ func (s *ScopedAttributesInput) Validate(noneOK bool) error {
 }
 
 func (s *ScopedAttributesInput) Match(scope *Scope) bool {
-	if len(s.Name) > 0 && scope.Name != nil {
-		return s.Name == *scope.Name
+	if len(s.IDs) > 0 {
+		for _, id := range s.IDs {
+			if id == scope.ID {
+				return true
+			}
+		}
+
+		return false
 	}
 
-	if len(s.Kind) > 0 && scope.Kind != nil {
-		return s.Kind == *scope.Kind
+	if len(s.Names) > 0 && scope.Name != nil {
+		for _, name := range s.Names {
+			if name == *scope.Name {
+				return true
+			}
+		}
+
+		return false
+	}
+
+	if len(s.Kinds) > 0 && scope.Kind != nil {
+		for _, kind := range s.Kinds {
+			if kind == *scope.Kind {
+				return true
+			}
+		}
+
+		return false
 	}
 
 	if len(s.Keys) > 0 {

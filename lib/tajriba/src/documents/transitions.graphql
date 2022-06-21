@@ -10,6 +10,10 @@ fragment transitionFields on Transition {
   node {
     ... on Step {
       id
+      duration
+      state
+      startedAt
+      endedAt
     }
   }
 }

@@ -10,7 +10,6 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler/apollotracing"
 	"github.com/99designs/gqlgen/graphql/handler/extension"
 	"github.com/gorilla/websocket"
-	"github.com/pkg/errors"
 	"github.com/vektah/gqlparser/v2/ast"
 
 	"github.com/99designs/gqlgen/graphql/handler/transport"
@@ -40,11 +39,17 @@ func graphqlHandler(
 	// 	KeepAlivePingInterval: pingInterval,
 	// })
 	gqlsrv.AddTransport(transport.Websocket{
+		ErrorFunc: func(ctx context.Context, err error) {
+			log.Error().Err(err).Msg("graphql: websocket error")
+		},
 		KeepAlivePingInterval: pingInterval,
 		Upgrader: websocket.Upgrader{
+			// Force new proto
+			// Subprotocols: []string{"graphql-transport-ws"},
 			CheckOrigin: func(r *http.Request) bool {
 				return true
 			},
+			EnableCompression: true,
 		},
 		InitFunc: func(ctx context.Context, initPayload transport.InitPayload) (context.Context, error) {
 			token, ok := initPayload["authToken"].(string)
@@ -60,7 +65,12 @@ func graphqlHandler(
 			if ok {
 				user, err := auth.GetAuthentication(ctx, token, conf.Production)
 				if err != nil {
-					return nil, errors.Wrap(err, "check websocket auth")
+					log.Trace().
+						Err(err).
+						Str("token", token).
+						Msg("graphql: websocket auth failed")
+
+					ctx = transport.AppendCloseReason(ctx, "auth failed")
 				} else if user != nil {
 					ctx = actor.SetContext(ctx, user)
 				}

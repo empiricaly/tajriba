@@ -8,15 +8,13 @@ generates:
       skipDocumentsValidation: true
       flattenGeneratedTypes: true
       nonOptionalTypename: true
+      schema: zod
     plugins:
       - "typescript"
       - "typescript-operations"
-      - "fragment-matcher"
       - "typed-document-node"
-      - "typescript-apollo-client-helpers"
-  ./graphql.schema.json:
-    plugins:
-      - "introspection"
+      - "typescript-validation-schema"
+      # - "typescript-urql"
 
 hooks:
   afterAllFileWrite:

@@ -4,3 +4,4 @@
 .tajriba.toml
 .tajriba.json
 internal/vendored/transport
+go.work

@@ -13,6 +13,7 @@ type User struct {
 }
 
 func (*User) IsActor() {}
+func (*User) IsAdmin() {}
 func (u *User) GetID() string {
 	return u.ID
 }
