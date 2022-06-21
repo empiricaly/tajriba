@@ -16,7 +16,6 @@ import {
   AddStepsDocument,
   AttributesDocument,
   AttributesQueryVariables,
-  ChangePayload,
   ChangesDocument,
   GlobalAttributesDocument,
   GroupsDocument,
@@ -39,9 +38,8 @@ import {
   SetAttributesDocument,
   StepsDocument,
   StepsQueryVariables,
-  SubAttributesPayload,
   TransitionDocument,
-  TransitionInput,
+  TransitionInput
 } from "./generated/graphql";
 
 const DefaultAddress = "http://localhost:4737/query";
@@ -639,10 +637,6 @@ export class TajribaParticipant extends Tajriba {
 
   get identifier() {
     return this.participant.identifier;
-  }
-
-  stop() {
-    this.stop();
   }
 
   /**

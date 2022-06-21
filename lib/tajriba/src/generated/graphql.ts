@@ -5,10 +5,12 @@ export type InputMaybe<T> = Maybe<T>;
 export type Exact<T extends { [key: string]: unknown }> = {
   [K in keyof T]: T[K];
 };
-export type MakeOptional<T, K extends keyof T> = Omit<T, K> &
-  { [SubKey in K]?: Maybe<T[SubKey]> };
-export type MakeMaybe<T, K extends keyof T> = Omit<T, K> &
-  { [SubKey in K]: Maybe<T[SubKey]> };
+export type MakeOptional<T, K extends keyof T> = Omit<T, K> & {
+  [SubKey in K]?: Maybe<T[SubKey]>;
+};
+export type MakeMaybe<T, K extends keyof T> = Omit<T, K> & {
+  [SubKey in K]: Maybe<T[SubKey]>;
+};
 /** All built-in and custom scalars, mapped to their actual values */
 export type Scalars = {
   ID: string;
@@ -2554,7 +2556,7 @@ export type LoginMutation = {
   };
 };
 
-export const AttributesDocument = ({
+export const AttributesDocument = {
   kind: "Document",
   definitions: [
     {
@@ -2901,8 +2903,8 @@ export const AttributesDocument = ({
       },
     },
   ],
-} as unknown) as DocumentNode<AttributesQuery, AttributesQueryVariables>;
-export const SetAttributesDocument = ({
+} as unknown as DocumentNode<AttributesQuery, AttributesQueryVariables>;
+export const SetAttributesDocument = {
   kind: "Document",
   definitions: [
     {
@@ -3128,11 +3130,11 @@ export const SetAttributesDocument = ({
       },
     },
   ],
-} as unknown) as DocumentNode<
+} as unknown as DocumentNode<
   SetAttributesMutation,
   SetAttributesMutationVariables
 >;
-export const ChangesDocument = ({
+export const ChangesDocument = {
   kind: "Document",
   definitions: [
     {
@@ -3294,11 +3296,8 @@ export const ChangesDocument = ({
       },
     },
   ],
-} as unknown) as DocumentNode<
-  ChangesSubscription,
-  ChangesSubscriptionVariables
->;
-export const AddGroupsDocument = ({
+} as unknown as DocumentNode<ChangesSubscription, ChangesSubscriptionVariables>;
+export const AddGroupsDocument = {
   kind: "Document",
   definitions: [
     {
@@ -3363,8 +3362,8 @@ export const AddGroupsDocument = ({
       },
     },
   ],
-} as unknown) as DocumentNode<AddGroupsMutation, AddGroupsMutationVariables>;
-export const GroupsDocument = ({
+} as unknown as DocumentNode<AddGroupsMutation, AddGroupsMutationVariables>;
+export const GroupsDocument = {
   kind: "Document",
   definitions: [
     {
@@ -3611,8 +3610,8 @@ export const GroupsDocument = ({
       },
     },
   ],
-} as unknown) as DocumentNode<GroupsQuery, GroupsQueryVariables>;
-export const OnEventDocument = ({
+} as unknown as DocumentNode<GroupsQuery, GroupsQueryVariables>;
+export const OnEventDocument = {
   kind: "Document",
   definitions: [
     {
@@ -5270,11 +5269,8 @@ export const OnEventDocument = ({
       },
     },
   ],
-} as unknown) as DocumentNode<
-  OnEventSubscription,
-  OnEventSubscriptionVariables
->;
-export const OnAnyEventDocument = ({
+} as unknown as DocumentNode<OnEventSubscription, OnEventSubscriptionVariables>;
+export const OnAnyEventDocument = {
   kind: "Document",
   definitions: [
     {
@@ -6932,11 +6928,11 @@ export const OnAnyEventDocument = ({
       },
     },
   ],
-} as unknown) as DocumentNode<
+} as unknown as DocumentNode<
   OnAnyEventSubscription,
   OnAnyEventSubscriptionVariables
 >;
-export const LinkDocument = ({
+export const LinkDocument = {
   kind: "Document",
   definitions: [
     {
@@ -7005,8 +7001,8 @@ export const LinkDocument = ({
       },
     },
   ],
-} as unknown) as DocumentNode<LinkMutation, LinkMutationVariables>;
-export const ParticipantsDocument = ({
+} as unknown as DocumentNode<LinkMutation, LinkMutationVariables>;
+export const ParticipantsDocument = {
   kind: "Document",
   definitions: [
     {
@@ -7154,8 +7150,8 @@ export const ParticipantsDocument = ({
       },
     },
   ],
-} as unknown) as DocumentNode<ParticipantsQuery, ParticipantsQueryVariables>;
-export const AddParticipantDocument = ({
+} as unknown as DocumentNode<ParticipantsQuery, ParticipantsQueryVariables>;
+export const AddParticipantDocument = {
   kind: "Document",
   definitions: [
     {
@@ -7230,11 +7226,11 @@ export const AddParticipantDocument = ({
       },
     },
   ],
-} as unknown) as DocumentNode<
+} as unknown as DocumentNode<
   AddParticipantMutation,
   AddParticipantMutationVariables
 >;
-export const AddScopesDocument = ({
+export const AddScopesDocument = {
   kind: "Document",
   definitions: [
     {
@@ -7731,8 +7727,8 @@ export const AddScopesDocument = ({
       },
     },
   ],
-} as unknown) as DocumentNode<AddScopesMutation, AddScopesMutationVariables>;
-export const ScopesDocument = ({
+} as unknown as DocumentNode<AddScopesMutation, AddScopesMutationVariables>;
+export const ScopesDocument = {
   kind: "Document",
   definitions: [
     {
@@ -8371,8 +8367,8 @@ export const ScopesDocument = ({
       },
     },
   ],
-} as unknown) as DocumentNode<ScopesQuery, ScopesQueryVariables>;
-export const ScopedAttributesDocument = ({
+} as unknown as DocumentNode<ScopesQuery, ScopesQueryVariables>;
+export const ScopedAttributesDocument = {
   kind: "Document",
   definitions: [
     {
@@ -8600,11 +8596,11 @@ export const ScopedAttributesDocument = ({
       },
     },
   ],
-} as unknown) as DocumentNode<
+} as unknown as DocumentNode<
   ScopedAttributesSubscription,
   ScopedAttributesSubscriptionVariables
 >;
-export const GlobalAttributesDocument = ({
+export const GlobalAttributesDocument = {
   kind: "Document",
   definitions: [
     {
@@ -8800,11 +8796,11 @@ export const GlobalAttributesDocument = ({
       },
     },
   ],
-} as unknown) as DocumentNode<
+} as unknown as DocumentNode<
   GlobalAttributesSubscription,
   GlobalAttributesSubscriptionVariables
 >;
-export const RegisterServiceDocument = ({
+export const RegisterServiceDocument = {
   kind: "Document",
   definitions: [
     {
@@ -8876,11 +8872,11 @@ export const RegisterServiceDocument = ({
       },
     },
   ],
-} as unknown) as DocumentNode<
+} as unknown as DocumentNode<
   RegisterServiceMutation,
   RegisterServiceMutationVariables
 >;
-export const AddStepsDocument = ({
+export const AddStepsDocument = {
   kind: "Document",
   definitions: [
     {
@@ -9339,8 +9335,8 @@ export const AddStepsDocument = ({
       },
     },
   ],
-} as unknown) as DocumentNode<AddStepsMutation, AddStepsMutationVariables>;
-export const StepsDocument = ({
+} as unknown as DocumentNode<AddStepsMutation, AddStepsMutationVariables>;
+export const StepsDocument = {
   kind: "Document",
   definitions: [
     {
@@ -9914,8 +9910,8 @@ export const StepsDocument = ({
       },
     },
   ],
-} as unknown) as DocumentNode<StepsQuery, StepsQueryVariables>;
-export const TransitionDocument = ({
+} as unknown as DocumentNode<StepsQuery, StepsQueryVariables>;
+export const TransitionDocument = {
   kind: "Document",
   definitions: [
     {
@@ -10110,8 +10106,8 @@ export const TransitionDocument = ({
       },
     },
   ],
-} as unknown) as DocumentNode<TransitionMutation, TransitionMutationVariables>;
-export const LoginDocument = ({
+} as unknown as DocumentNode<TransitionMutation, TransitionMutationVariables>;
+export const LoginDocument = {
   kind: "Document",
   definitions: [
     {
@@ -10187,13 +10183,11 @@ export const LoginDocument = ({
       },
     },
   ],
-} as unknown) as DocumentNode<LoginMutation, LoginMutationVariables>;
+} as unknown as DocumentNode<LoginMutation, LoginMutationVariables>;
 
-type Properties<T> = Required<
-  {
-    [K in keyof T]: z.ZodType<T[K], any, T[K]>;
-  }
->;
+type Properties<T> = Required<{
+  [K in keyof T]: z.ZodType<T[K], any, T[K]>;
+}>;
 
 type definedNonNullAny = {};
 

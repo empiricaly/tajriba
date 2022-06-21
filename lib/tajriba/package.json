@@ -3,13 +3,11 @@
   "version": "1.0.0-alpha.3",
   "description": "Tajriba client",
   "source": "src/index.ts",
-  "main": "dist/main.js",
   "module": "dist/module.mjs",
   "types": "dist/types.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/module.mjs",
-      "require": "./dist/main.js"
+      "import": "./dist/module.mjs"
     }
   },
   "repository": {
@@ -62,32 +60,32 @@
   "devDependencies": {
     "@graphql-codegen/cli": "2.6.2",
     "@graphql-codegen/introspection": "2.1.1",
-    "@graphql-codegen/typed-document-node": "2.2.11",
-    "@graphql-codegen/typescript": "2.4.11",
-    "@graphql-codegen/typescript-operations": "2.4.0",
-    "@graphql-codegen/typescript-urql": "3.5.10",
+    "@graphql-codegen/typed-document-node": "2.2.13",
+    "@graphql-codegen/typescript": "2.5.1",
+    "@graphql-codegen/typescript-operations": "2.4.2",
+    "@graphql-codegen/typescript-urql": "3.5.12",
     "@graphql-typed-document-node/core": "3.1.1",
-    "@parcel/packager-ts": "2.5.0",
-    "@parcel/transformer-typescript-types": "2.5.0",
-    "ava": "4.2.0",
+    "@parcel/packager-ts": "2.6.1",
+    "@parcel/transformer-typescript-types": "2.6.1",
+    "ava": "4.3.0",
     "graphql-codegen-typescript-validation-schema": "0.5.0",
-    "np": "7.5.0",
-    "parcel": "2.5.0",
+    "np": "7.6.1",
+    "parcel": "2.6.1",
     "pika-plugin-package.json": "1.0.2",
-    "prettier": "2.2.1",
-    "typescript": "4.6.4"
+    "prettier": "2.7.1",
+    "typescript": "4.7.4"
   },
   "dependencies": {
-    "@urql/core": "2.4.4",
+    "@urql/core": "2.5.0",
     "events": "3.3.0",
-    "graphql": "15.8.0",
+    "graphql": "16.5.0",
     "graphql-tag": "2.12.6",
-    "graphql-ws": "5.8.2",
+    "graphql-ws": "5.9.0",
     "isomorphic-ws": "4.0.1",
     "rxjs": "7.5.5",
     "typed-emitter": "2.1.0",
     "websocket": "1.0.34",
     "wonka": "4.0.15",
-    "zod": "3.16.0"
+    "zod": "3.17.3"
   }
 }
