@@ -10,6 +10,10 @@ import (
 	"github.com/empiricaly/tajriba/internal/models"
 )
 
+type Admin interface {
+	IsAdmin()
+}
+
 type Change interface {
 	IsChange()
 }
@@ -84,7 +88,7 @@ type AttributeEdge struct {
 type ChangePayload struct {
 	// change is the Change.
 	Change Change `json:"change"`
-	// removed indicates whether the record was removed from scope.
+	// removed indicates whether the record was removed.
 	Removed bool `json:"removed"`
 	// done indicates that the state has finished synchorizing.
 	Done bool `json:"done"`
@@ -151,8 +155,7 @@ type LoginPayload struct {
 
 // OnAnyEventInput is the input for the onAnyEvent subscription.
 type OnAnyEventInput struct {
-	// nodeID is an optional node ID of the node to listen to. If nodeID is
-	// specified, nodeType must also be given.
+	// nodeID is an optional node ID of the node to listen to.
 	NodeID *string `json:"nodeID"`
 }
 
@@ -160,8 +163,7 @@ type OnAnyEventInput struct {
 type OnEventInput struct {
 	// eventsTypes speficies which events to listen to.
 	EventTypes []EventType `json:"eventTypes"`
-	// nodeID is an optional node ID of the node to listen to. If nodeID is
-	// specified, nodeType must also be given.
+	// nodeID is an optional node ID of the node to listen to.
 	NodeID *string `json:"nodeID"`
 }
 

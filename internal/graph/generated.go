@@ -1701,6 +1701,7 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 
 var sources = []*ast.Source{
 	{Name: "schema/actor.graphqls", Input: `union Actor = User | Service | Participant
+union Admin = User | Service
 
 enum Role {
   "ADMIN is priviledged access for Users and Services."
@@ -1914,7 +1915,7 @@ type ChangePayload {
   "change is the Change."
   change: Change!
 
-  "removed indicates whether the record was removed from scope."
+  "removed indicates whether the record was removed."
   removed: Boolean!
 
   """
@@ -2111,8 +2112,7 @@ input OnEventInput {
   eventTypes: [EventType!]!
 
   """
-  nodeID is an optional node ID of the node to listen to. If nodeID is
-  specified, nodeType must also be given.
+  nodeID is an optional node ID of the node to listen to.
   """
   nodeID: ID
 }
@@ -2120,8 +2120,7 @@ input OnEventInput {
 "OnAnyEventInput is the input for the onAnyEvent subscription."
 input OnAnyEventInput {
   """
-  nodeID is an optional node ID of the node to listen to. If nodeID is
-  specified, nodeType must also be given.
+  nodeID is an optional node ID of the node to listen to.
   """
   nodeID: ID
 }
@@ -2370,18 +2369,23 @@ type AddScopePayload {
 
 """
 ScopedAttributesInput subscribes to attributes in matching scopes. Either name,
-keys or kvs exclusively can be provided.
+kind, keys or kvs exclusively can be provided.
 """
 input ScopedAttributesInput {
   """
-  name of the matching Scope.
+  ids of the matching Scopes.
   """
-  name: String
+  ids: [ID!]
 
   """
-  kind of the matching Scope.
+  names of the matching Scopes.
   """
-  kind: String
+  names: [String!]
+
+  """
+  kinds of the matching Scopes.
+  """
+  kinds: [String!]
 
   """
   keys to Attributes in matching Scope.
@@ -11090,19 +11094,27 @@ func (ec *executionContext) unmarshalInputScopedAttributesInput(ctx context.Cont
 
 	for k, v := range asMap {
 		switch k {
-		case "name":
+		case "ids":
 			var err error
 
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
-			it.Name, err = ec.unmarshalOString2string(ctx, v)
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("ids"))
+			it.IDs, err = ec.unmarshalOID2ᚕstringᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
-		case "kind":
+		case "names":
 			var err error
 
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("kind"))
-			it.Kind, err = ec.unmarshalOString2string(ctx, v)
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("names"))
+			it.Names, err = ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "kinds":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("kinds"))
+			it.Kinds, err = ec.unmarshalOString2ᚕstringᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -11316,6 +11328,25 @@ func (ec *executionContext) _Actor(ctx context.Context, sel ast.SelectionSet, ob
 			return graphql.Null
 		}
 		return ec._Participant(ctx, sel, obj)
+	default:
+		panic(fmt.Errorf("unexpected type %T", obj))
+	}
+}
+
+func (ec *executionContext) _Admin(ctx context.Context, sel ast.SelectionSet, obj mgen.Admin) graphql.Marshaler {
+	switch obj := (obj).(type) {
+	case nil:
+		return graphql.Null
+	case *models.User:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._User(ctx, sel, obj)
+	case *models.Service:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._Service(ctx, sel, obj)
 	default:
 		panic(fmt.Errorf("unexpected type %T", obj))
 	}
@@ -13230,7 +13261,7 @@ func (ec *executionContext) _ScopeEdge(ctx context.Context, sel ast.SelectionSet
 	return out
 }
 
-var serviceImplementors = []string{"Service", "Actor"}
+var serviceImplementors = []string{"Service", "Actor", "Admin"}
 
 func (ec *executionContext) _Service(ctx context.Context, sel ast.SelectionSet, obj *models.Service) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, serviceImplementors)
@@ -13881,7 +13912,7 @@ func (ec *executionContext) _TransitionPayload(ctx context.Context, sel ast.Sele
 	return out
 }
 
-var userImplementors = []string{"User", "Actor", "Node"}
+var userImplementors = []string{"User", "Actor", "Admin", "Node"}
 
 func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj *models.User) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, userImplementors)
@@ -16012,6 +16043,44 @@ func (ec *executionContext) marshalOGroupConnection2ᚖgithubᚗcomᚋempiricaly
 	return ec._GroupConnection(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalOID2ᚕstringᚄ(ctx context.Context, v interface{}) ([]string, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []interface{}
+	if v != nil {
+		vSlice = graphql.CoerceList(v)
+	}
+	var err error
+	res := make([]string, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNID2string(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalOID2ᚕstringᚄ(ctx context.Context, sel ast.SelectionSet, v []string) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	for i := range v {
+		ret[i] = ec.marshalNID2string(ctx, sel, v[i])
+	}
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
 func (ec *executionContext) unmarshalOID2ᚖstring(ctx context.Context, v interface{}) (*string, error) {
 	if v == nil {
 		return nil, nil
@@ -16169,16 +16238,6 @@ func (ec *executionContext) marshalOStepOrderField2ᚖgithubᚗcomᚋempiricaly�
 		return graphql.Null
 	}
 	return v
-}
-
-func (ec *executionContext) unmarshalOString2string(ctx context.Context, v interface{}) (string, error) {
-	res, err := graphql.UnmarshalString(v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalOString2string(ctx context.Context, sel ast.SelectionSet, v string) graphql.Marshaler {
-	res := graphql.MarshalString(v)
-	return res
 }
 
 func (ec *executionContext) unmarshalOString2ᚕstringᚄ(ctx context.Context, v interface{}) ([]string, error) {

@@ -16,7 +16,12 @@ fragment attributeFields on Attribute {
   version
   vector
   node {
+    __typename
     id
+    ... on Scope {
+      kind
+      name
+    }
   }
 }
 

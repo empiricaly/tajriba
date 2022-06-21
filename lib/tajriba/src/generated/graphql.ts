@@ -87,6 +87,8 @@ export type AddStepPayload = {
   step: Step;
 };
 
+export type Admin = Service | User;
+
 /**
  * Attribute is a single piece of custom data set on a Node. Attributes
  * with the same key can be grouped into an array through the use of a unique
@@ -413,10 +415,7 @@ export type Node = {
 
 /** OnAnyEventInput is the input for the onAnyEvent subscription. */
 export type OnAnyEventInput = {
-  /**
-   * nodeID is an optional node ID of the node to listen to. If nodeID is
-   * specified, nodeType must also be given.
-   */
+  /** nodeID is an optional node ID of the node to listen to. */
   nodeID?: InputMaybe<Scalars["ID"]>;
 };
 
@@ -424,10 +423,7 @@ export type OnAnyEventInput = {
 export type OnEventInput = {
   /** eventsTypes speficies which events to listen to. */
   eventTypes: Array<EventType>;
-  /**
-   * nodeID is an optional node ID of the node to listen to. If nodeID is
-   * specified, nodeType must also be given.
-   */
+  /** nodeID is an optional node ID of the node to listen to. */
   nodeID?: InputMaybe<Scalars["ID"]>;
 };
 
@@ -648,17 +644,19 @@ export type ScopeEdge = {
 
 /**
  * ScopedAttributesInput subscribes to attributes in matching scopes. Either name,
- * keys or kvs exclusively can be provided.
+ * kind, keys or kvs exclusively can be provided.
  */
 export type ScopedAttributesInput = {
+  /** ids of the matching Scopes. */
+  ids?: InputMaybe<Array<Scalars["ID"]>>;
   /** keys to Attributes in matching Scope. */
   keys?: InputMaybe<Array<Scalars["String"]>>;
-  /** kind of the matching Scope. */
-  kind?: InputMaybe<Scalars["String"]>;
+  /** kinds of the matching Scopes. */
+  kinds?: InputMaybe<Array<Scalars["String"]>>;
   /** kvs to Attributes in matching Scope. */
   kvs?: InputMaybe<Array<Kv>>;
-  /** name of the matching Scope. */
-  name?: InputMaybe<Scalars["String"]>;
+  /** names of the matching Scopes. */
+  names?: InputMaybe<Array<Scalars["String"]>>;
 };
 
 export type Service = {
@@ -993,14 +991,25 @@ export type AttributesQuery = {
               identifier: string;
               createdAt: any;
             }
-          | { __typename: "Service"; id: string; name: string }
-          | { __typename: "User"; id: string; username: string; name: string };
+          | { __typename: "Service"; id: string; name: string; createdAt: any }
+          | {
+              __typename: "User";
+              id: string;
+              username: string;
+              name: string;
+              createdAt: any;
+            };
         node:
           | { __typename: "Attribute"; id: string }
           | { __typename: "Group"; id: string }
           | { __typename: "Link"; id: string }
           | { __typename: "Participant"; id: string }
-          | { __typename: "Scope"; id: string }
+          | {
+              __typename: "Scope";
+              kind?: string | null;
+              name?: string | null;
+              id: string;
+            }
           | { __typename: "Step"; id: string }
           | { __typename: "Transition"; id: string }
           | { __typename: "User"; id: string };
@@ -1038,14 +1047,25 @@ export type SetAttributesMutation = {
             identifier: string;
             createdAt: any;
           }
-        | { __typename: "Service"; id: string; name: string }
-        | { __typename: "User"; id: string; username: string; name: string };
+        | { __typename: "Service"; id: string; name: string; createdAt: any }
+        | {
+            __typename: "User";
+            id: string;
+            username: string;
+            name: string;
+            createdAt: any;
+          };
       node:
         | { __typename: "Attribute"; id: string }
         | { __typename: "Group"; id: string }
         | { __typename: "Link"; id: string }
         | { __typename: "Participant"; id: string }
-        | { __typename: "Scope"; id: string }
+        | {
+            __typename: "Scope";
+            kind?: string | null;
+            name?: string | null;
+            id: string;
+          }
         | { __typename: "Step"; id: string }
         | { __typename: "Transition"; id: string }
         | { __typename: "User"; id: string };
@@ -1130,8 +1150,14 @@ export type GroupsQuery = {
               identifier: string;
               createdAt: any;
             }
-          | { __typename: "Service"; id: string; name: string }
-          | { __typename: "User"; id: string; username: string; name: string };
+          | { __typename: "Service"; id: string; name: string; createdAt: any }
+          | {
+              __typename: "User";
+              id: string;
+              username: string;
+              name: string;
+              createdAt: any;
+            };
       };
     }>;
     pageInfo: {
@@ -1176,19 +1202,30 @@ export type OnEventSubscription = {
                 identifier: string;
                 createdAt: any;
               }
-            | { __typename: "Service"; id: string; name: string }
+            | {
+                __typename: "Service";
+                id: string;
+                name: string;
+                createdAt: any;
+              }
             | {
                 __typename: "User";
                 id: string;
                 username: string;
                 name: string;
+                createdAt: any;
               };
           node:
             | { __typename: "Attribute"; id: string }
             | { __typename: "Group"; id: string }
             | { __typename: "Link"; id: string }
             | { __typename: "Participant"; id: string }
-            | { __typename: "Scope"; id: string }
+            | {
+                __typename: "Scope";
+                kind?: string | null;
+                name?: string | null;
+                id: string;
+              }
             | { __typename: "Step"; id: string }
             | { __typename: "Transition"; id: string }
             | { __typename: "User"; id: string };
@@ -1204,12 +1241,18 @@ export type OnEventSubscription = {
                 identifier: string;
                 createdAt: any;
               }
-            | { __typename: "Service"; id: string; name: string }
+            | {
+                __typename: "Service";
+                id: string;
+                name: string;
+                createdAt: any;
+              }
             | {
                 __typename: "User";
                 id: string;
                 username: string;
                 name: string;
+                createdAt: any;
               };
         }
       | {
@@ -1224,12 +1267,18 @@ export type OnEventSubscription = {
                 identifier: string;
                 createdAt: any;
               }
-            | { __typename: "Service"; id: string; name: string }
+            | {
+                __typename: "Service";
+                id: string;
+                name: string;
+                createdAt: any;
+              }
             | {
                 __typename: "User";
                 id: string;
                 username: string;
                 name: string;
+                createdAt: any;
               };
           participant: { __typename: "Participant"; id: string };
           node:
@@ -1261,12 +1310,18 @@ export type OnEventSubscription = {
                 identifier: string;
                 createdAt: any;
               }
-            | { __typename: "Service"; id: string; name: string }
+            | {
+                __typename: "Service";
+                id: string;
+                name: string;
+                createdAt: any;
+              }
             | {
                 __typename: "User";
                 id: string;
                 username: string;
                 name: string;
+                createdAt: any;
               };
           attributes: {
             __typename: "AttributeConnection";
@@ -1302,19 +1357,30 @@ export type OnEventSubscription = {
                       identifier: string;
                       createdAt: any;
                     }
-                  | { __typename: "Service"; id: string; name: string }
+                  | {
+                      __typename: "Service";
+                      id: string;
+                      name: string;
+                      createdAt: any;
+                    }
                   | {
                       __typename: "User";
                       id: string;
                       username: string;
                       name: string;
+                      createdAt: any;
                     };
                 node:
                   | { __typename: "Attribute"; id: string }
                   | { __typename: "Group"; id: string }
                   | { __typename: "Link"; id: string }
                   | { __typename: "Participant"; id: string }
-                  | { __typename: "Scope"; id: string }
+                  | {
+                      __typename: "Scope";
+                      kind?: string | null;
+                      name?: string | null;
+                      id: string;
+                    }
                   | { __typename: "Step"; id: string }
                   | { __typename: "Transition"; id: string }
                   | { __typename: "User"; id: string };
@@ -1337,12 +1403,18 @@ export type OnEventSubscription = {
                 identifier: string;
                 createdAt: any;
               }
-            | { __typename: "Service"; id: string; name: string }
+            | {
+                __typename: "Service";
+                id: string;
+                name: string;
+                createdAt: any;
+              }
             | {
                 __typename: "User";
                 id: string;
                 username: string;
                 name: string;
+                createdAt: any;
               };
           transitions: {
             __typename: "TransitionConnection";
@@ -1370,12 +1442,18 @@ export type OnEventSubscription = {
                       identifier: string;
                       createdAt: any;
                     }
-                  | { __typename: "Service"; id: string; name: string }
+                  | {
+                      __typename: "Service";
+                      id: string;
+                      name: string;
+                      createdAt: any;
+                    }
                   | {
                       __typename: "User";
                       id: string;
                       username: string;
                       name: string;
+                      createdAt: any;
                     };
                 node:
                   | { __typename: "Attribute" }
@@ -1383,7 +1461,14 @@ export type OnEventSubscription = {
                   | { __typename: "Link" }
                   | { __typename: "Participant" }
                   | { __typename: "Scope" }
-                  | { __typename: "Step"; id: string }
+                  | {
+                      __typename: "Step";
+                      id: string;
+                      duration: number;
+                      state: State;
+                      startedAt?: any | null;
+                      endedAt?: any | null;
+                    }
                   | { __typename: "Transition" }
                   | { __typename: "User" };
               };
@@ -1403,12 +1488,18 @@ export type OnEventSubscription = {
                 identifier: string;
                 createdAt: any;
               }
-            | { __typename: "Service"; id: string; name: string }
+            | {
+                __typename: "Service";
+                id: string;
+                name: string;
+                createdAt: any;
+              }
             | {
                 __typename: "User";
                 id: string;
                 username: string;
                 name: string;
+                createdAt: any;
               };
           node:
             | { __typename: "Attribute" }
@@ -1416,7 +1507,14 @@ export type OnEventSubscription = {
             | { __typename: "Link" }
             | { __typename: "Participant" }
             | { __typename: "Scope" }
-            | { __typename: "Step"; id: string }
+            | {
+                __typename: "Step";
+                id: string;
+                duration: number;
+                state: State;
+                startedAt?: any | null;
+                endedAt?: any | null;
+              }
             | { __typename: "Transition" }
             | { __typename: "User" };
         }
@@ -1456,19 +1554,30 @@ export type OnAnyEventSubscription = {
                 identifier: string;
                 createdAt: any;
               }
-            | { __typename: "Service"; id: string; name: string }
+            | {
+                __typename: "Service";
+                id: string;
+                name: string;
+                createdAt: any;
+              }
             | {
                 __typename: "User";
                 id: string;
                 username: string;
                 name: string;
+                createdAt: any;
               };
           node:
             | { __typename: "Attribute"; id: string }
             | { __typename: "Group"; id: string }
             | { __typename: "Link"; id: string }
             | { __typename: "Participant"; id: string }
-            | { __typename: "Scope"; id: string }
+            | {
+                __typename: "Scope";
+                kind?: string | null;
+                name?: string | null;
+                id: string;
+              }
             | { __typename: "Step"; id: string }
             | { __typename: "Transition"; id: string }
             | { __typename: "User"; id: string };
@@ -1484,12 +1593,18 @@ export type OnAnyEventSubscription = {
                 identifier: string;
                 createdAt: any;
               }
-            | { __typename: "Service"; id: string; name: string }
+            | {
+                __typename: "Service";
+                id: string;
+                name: string;
+                createdAt: any;
+              }
             | {
                 __typename: "User";
                 id: string;
                 username: string;
                 name: string;
+                createdAt: any;
               };
         }
       | {
@@ -1504,12 +1619,18 @@ export type OnAnyEventSubscription = {
                 identifier: string;
                 createdAt: any;
               }
-            | { __typename: "Service"; id: string; name: string }
+            | {
+                __typename: "Service";
+                id: string;
+                name: string;
+                createdAt: any;
+              }
             | {
                 __typename: "User";
                 id: string;
                 username: string;
                 name: string;
+                createdAt: any;
               };
           participant: { __typename: "Participant"; id: string };
           node:
@@ -1541,12 +1662,18 @@ export type OnAnyEventSubscription = {
                 identifier: string;
                 createdAt: any;
               }
-            | { __typename: "Service"; id: string; name: string }
+            | {
+                __typename: "Service";
+                id: string;
+                name: string;
+                createdAt: any;
+              }
             | {
                 __typename: "User";
                 id: string;
                 username: string;
                 name: string;
+                createdAt: any;
               };
           attributes: {
             __typename: "AttributeConnection";
@@ -1582,19 +1709,30 @@ export type OnAnyEventSubscription = {
                       identifier: string;
                       createdAt: any;
                     }
-                  | { __typename: "Service"; id: string; name: string }
+                  | {
+                      __typename: "Service";
+                      id: string;
+                      name: string;
+                      createdAt: any;
+                    }
                   | {
                       __typename: "User";
                       id: string;
                       username: string;
                       name: string;
+                      createdAt: any;
                     };
                 node:
                   | { __typename: "Attribute"; id: string }
                   | { __typename: "Group"; id: string }
                   | { __typename: "Link"; id: string }
                   | { __typename: "Participant"; id: string }
-                  | { __typename: "Scope"; id: string }
+                  | {
+                      __typename: "Scope";
+                      kind?: string | null;
+                      name?: string | null;
+                      id: string;
+                    }
                   | { __typename: "Step"; id: string }
                   | { __typename: "Transition"; id: string }
                   | { __typename: "User"; id: string };
@@ -1617,12 +1755,18 @@ export type OnAnyEventSubscription = {
                 identifier: string;
                 createdAt: any;
               }
-            | { __typename: "Service"; id: string; name: string }
+            | {
+                __typename: "Service";
+                id: string;
+                name: string;
+                createdAt: any;
+              }
             | {
                 __typename: "User";
                 id: string;
                 username: string;
                 name: string;
+                createdAt: any;
               };
           transitions: {
             __typename: "TransitionConnection";
@@ -1650,12 +1794,18 @@ export type OnAnyEventSubscription = {
                       identifier: string;
                       createdAt: any;
                     }
-                  | { __typename: "Service"; id: string; name: string }
+                  | {
+                      __typename: "Service";
+                      id: string;
+                      name: string;
+                      createdAt: any;
+                    }
                   | {
                       __typename: "User";
                       id: string;
                       username: string;
                       name: string;
+                      createdAt: any;
                     };
                 node:
                   | { __typename: "Attribute" }
@@ -1663,7 +1813,14 @@ export type OnAnyEventSubscription = {
                   | { __typename: "Link" }
                   | { __typename: "Participant" }
                   | { __typename: "Scope" }
-                  | { __typename: "Step"; id: string }
+                  | {
+                      __typename: "Step";
+                      id: string;
+                      duration: number;
+                      state: State;
+                      startedAt?: any | null;
+                      endedAt?: any | null;
+                    }
                   | { __typename: "Transition" }
                   | { __typename: "User" };
               };
@@ -1683,12 +1840,18 @@ export type OnAnyEventSubscription = {
                 identifier: string;
                 createdAt: any;
               }
-            | { __typename: "Service"; id: string; name: string }
+            | {
+                __typename: "Service";
+                id: string;
+                name: string;
+                createdAt: any;
+              }
             | {
                 __typename: "User";
                 id: string;
                 username: string;
                 name: string;
+                createdAt: any;
               };
           node:
             | { __typename: "Attribute" }
@@ -1696,7 +1859,14 @@ export type OnAnyEventSubscription = {
             | { __typename: "Link" }
             | { __typename: "Participant" }
             | { __typename: "Scope" }
-            | { __typename: "Step"; id: string }
+            | {
+                __typename: "Step";
+                id: string;
+                duration: number;
+                state: State;
+                startedAt?: any | null;
+                endedAt?: any | null;
+              }
             | { __typename: "Transition" }
             | { __typename: "User" };
         }
@@ -1796,8 +1966,14 @@ export type AddScopesMutation = {
             identifier: string;
             createdAt: any;
           }
-        | { __typename: "Service"; id: string; name: string }
-        | { __typename: "User"; id: string; username: string; name: string };
+        | { __typename: "Service"; id: string; name: string; createdAt: any }
+        | {
+            __typename: "User";
+            id: string;
+            username: string;
+            name: string;
+            createdAt: any;
+          };
       attributes: {
         __typename: "AttributeConnection";
         totalCount: number;
@@ -1832,19 +2008,30 @@ export type AddScopesMutation = {
                   identifier: string;
                   createdAt: any;
                 }
-              | { __typename: "Service"; id: string; name: string }
+              | {
+                  __typename: "Service";
+                  id: string;
+                  name: string;
+                  createdAt: any;
+                }
               | {
                   __typename: "User";
                   id: string;
                   username: string;
                   name: string;
+                  createdAt: any;
                 };
             node:
               | { __typename: "Attribute"; id: string }
               | { __typename: "Group"; id: string }
               | { __typename: "Link"; id: string }
               | { __typename: "Participant"; id: string }
-              | { __typename: "Scope"; id: string }
+              | {
+                  __typename: "Scope";
+                  kind?: string | null;
+                  name?: string | null;
+                  id: string;
+                }
               | { __typename: "Step"; id: string }
               | { __typename: "Transition"; id: string }
               | { __typename: "User"; id: string };
@@ -1883,8 +2070,14 @@ export type ScopesQuery = {
               identifier: string;
               createdAt: any;
             }
-          | { __typename: "Service"; id: string; name: string }
-          | { __typename: "User"; id: string; username: string; name: string };
+          | { __typename: "Service"; id: string; name: string; createdAt: any }
+          | {
+              __typename: "User";
+              id: string;
+              username: string;
+              name: string;
+              createdAt: any;
+            };
         attributes: {
           __typename: "AttributeConnection";
           totalCount: number;
@@ -1919,19 +2112,30 @@ export type ScopesQuery = {
                     identifier: string;
                     createdAt: any;
                   }
-                | { __typename: "Service"; id: string; name: string }
+                | {
+                    __typename: "Service";
+                    id: string;
+                    name: string;
+                    createdAt: any;
+                  }
                 | {
                     __typename: "User";
                     id: string;
                     username: string;
                     name: string;
+                    createdAt: any;
                   };
               node:
                 | { __typename: "Attribute"; id: string }
                 | { __typename: "Group"; id: string }
                 | { __typename: "Link"; id: string }
                 | { __typename: "Participant"; id: string }
-                | { __typename: "Scope"; id: string }
+                | {
+                    __typename: "Scope";
+                    kind?: string | null;
+                    name?: string | null;
+                    id: string;
+                  }
                 | { __typename: "Step"; id: string }
                 | { __typename: "Transition"; id: string }
                 | { __typename: "User"; id: string };
@@ -1981,14 +2185,25 @@ export type ScopedAttributesSubscription = {
             identifier: string;
             createdAt: any;
           }
-        | { __typename: "Service"; id: string; name: string }
-        | { __typename: "User"; id: string; username: string; name: string };
+        | { __typename: "Service"; id: string; name: string; createdAt: any }
+        | {
+            __typename: "User";
+            id: string;
+            username: string;
+            name: string;
+            createdAt: any;
+          };
       node:
         | { __typename: "Attribute"; id: string }
         | { __typename: "Group"; id: string }
         | { __typename: "Link"; id: string }
         | { __typename: "Participant"; id: string }
-        | { __typename: "Scope"; id: string }
+        | {
+            __typename: "Scope";
+            kind?: string | null;
+            name?: string | null;
+            id: string;
+          }
         | { __typename: "Step"; id: string }
         | { __typename: "Transition"; id: string }
         | { __typename: "User"; id: string };
@@ -2027,14 +2242,25 @@ export type GlobalAttributesSubscription = {
             identifier: string;
             createdAt: any;
           }
-        | { __typename: "Service"; id: string; name: string }
-        | { __typename: "User"; id: string; username: string; name: string };
+        | { __typename: "Service"; id: string; name: string; createdAt: any }
+        | {
+            __typename: "User";
+            id: string;
+            username: string;
+            name: string;
+            createdAt: any;
+          };
       node:
         | { __typename: "Attribute"; id: string }
         | { __typename: "Group"; id: string }
         | { __typename: "Link"; id: string }
         | { __typename: "Participant"; id: string }
-        | { __typename: "Scope"; id: string }
+        | {
+            __typename: "Scope";
+            kind?: string | null;
+            name?: string | null;
+            id: string;
+          }
         | { __typename: "Step"; id: string }
         | { __typename: "Transition"; id: string }
         | { __typename: "User"; id: string };
@@ -2083,8 +2309,14 @@ export type AddStepsMutation = {
             identifier: string;
             createdAt: any;
           }
-        | { __typename: "Service"; id: string; name: string }
-        | { __typename: "User"; id: string; username: string; name: string };
+        | { __typename: "Service"; id: string; name: string; createdAt: any }
+        | {
+            __typename: "User";
+            id: string;
+            username: string;
+            name: string;
+            createdAt: any;
+          };
       transitions: {
         __typename: "TransitionConnection";
         totalCount: number;
@@ -2111,12 +2343,18 @@ export type AddStepsMutation = {
                   identifier: string;
                   createdAt: any;
                 }
-              | { __typename: "Service"; id: string; name: string }
+              | {
+                  __typename: "Service";
+                  id: string;
+                  name: string;
+                  createdAt: any;
+                }
               | {
                   __typename: "User";
                   id: string;
                   username: string;
                   name: string;
+                  createdAt: any;
                 };
             node:
               | { __typename: "Attribute" }
@@ -2124,7 +2362,14 @@ export type AddStepsMutation = {
               | { __typename: "Link" }
               | { __typename: "Participant" }
               | { __typename: "Scope" }
-              | { __typename: "Step"; id: string }
+              | {
+                  __typename: "Step";
+                  id: string;
+                  duration: number;
+                  state: State;
+                  startedAt?: any | null;
+                  endedAt?: any | null;
+                }
               | { __typename: "Transition" }
               | { __typename: "User" };
           };
@@ -2163,8 +2408,14 @@ export type StepsQuery = {
               identifier: string;
               createdAt: any;
             }
-          | { __typename: "Service"; id: string; name: string }
-          | { __typename: "User"; id: string; username: string; name: string };
+          | { __typename: "Service"; id: string; name: string; createdAt: any }
+          | {
+              __typename: "User";
+              id: string;
+              username: string;
+              name: string;
+              createdAt: any;
+            };
         transitions: {
           __typename: "TransitionConnection";
           totalCount: number;
@@ -2191,12 +2442,18 @@ export type StepsQuery = {
                     identifier: string;
                     createdAt: any;
                   }
-                | { __typename: "Service"; id: string; name: string }
+                | {
+                    __typename: "Service";
+                    id: string;
+                    name: string;
+                    createdAt: any;
+                  }
                 | {
                     __typename: "User";
                     id: string;
                     username: string;
                     name: string;
+                    createdAt: any;
                   };
               node:
                 | { __typename: "Attribute" }
@@ -2204,7 +2461,14 @@ export type StepsQuery = {
                 | { __typename: "Link" }
                 | { __typename: "Participant" }
                 | { __typename: "Scope" }
-                | { __typename: "Step"; id: string }
+                | {
+                    __typename: "Step";
+                    id: string;
+                    duration: number;
+                    state: State;
+                    startedAt?: any | null;
+                    endedAt?: any | null;
+                  }
                 | { __typename: "Transition" }
                 | { __typename: "User" };
             };
@@ -2243,15 +2507,28 @@ export type TransitionMutation = {
             identifier: string;
             createdAt: any;
           }
-        | { __typename: "Service"; id: string; name: string }
-        | { __typename: "User"; id: string; username: string; name: string };
+        | { __typename: "Service"; id: string; name: string; createdAt: any }
+        | {
+            __typename: "User";
+            id: string;
+            username: string;
+            name: string;
+            createdAt: any;
+          };
       node:
         | { __typename: "Attribute" }
         | { __typename: "Group" }
         | { __typename: "Link" }
         | { __typename: "Participant" }
         | { __typename: "Scope" }
-        | { __typename: "Step"; id: string }
+        | {
+            __typename: "Step";
+            id: string;
+            duration: number;
+            state: State;
+            startedAt?: any | null;
+            endedAt?: any | null;
+          }
         | { __typename: "Transition" }
         | { __typename: "User" };
     };
@@ -2457,6 +2734,13 @@ export const AttributesDocument = ({
                                           kind: "Field",
                                           name: { kind: "Name", value: "name" },
                                         },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "createdAt",
+                                          },
+                                        },
                                       ],
                                     },
                                   },
@@ -2476,6 +2760,13 @@ export const AttributesDocument = ({
                                         {
                                           kind: "Field",
                                           name: { kind: "Name", value: "name" },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "createdAt",
+                                          },
                                         },
                                       ],
                                     },
@@ -2564,7 +2855,31 @@ export const AttributesDocument = ({
                                 selections: [
                                   {
                                     kind: "Field",
+                                    name: { kind: "Name", value: "__typename" },
+                                  },
+                                  {
+                                    kind: "Field",
                                     name: { kind: "Name", value: "id" },
+                                  },
+                                  {
+                                    kind: "InlineFragment",
+                                    typeCondition: {
+                                      kind: "NamedType",
+                                      name: { kind: "Name", value: "Scope" },
+                                    },
+                                    selectionSet: {
+                                      kind: "SelectionSet",
+                                      selections: [
+                                        {
+                                          kind: "Field",
+                                          name: { kind: "Name", value: "kind" },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: { kind: "Name", value: "name" },
+                                        },
+                                      ],
+                                    },
                                   },
                                 ],
                               },
@@ -2677,6 +2992,10 @@ export const SetAttributesDocument = ({
                                     kind: "Field",
                                     name: { kind: "Name", value: "name" },
                                   },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "createdAt" },
+                                  },
                                 ],
                               },
                             },
@@ -2696,6 +3015,10 @@ export const SetAttributesDocument = ({
                                   {
                                     kind: "Field",
                                     name: { kind: "Name", value: "name" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "createdAt" },
                                   },
                                 ],
                               },
@@ -2766,7 +3089,31 @@ export const SetAttributesDocument = ({
                           selections: [
                             {
                               kind: "Field",
+                              name: { kind: "Name", value: "__typename" },
+                            },
+                            {
+                              kind: "Field",
                               name: { kind: "Name", value: "id" },
+                            },
+                            {
+                              kind: "InlineFragment",
+                              typeCondition: {
+                                kind: "NamedType",
+                                name: { kind: "Name", value: "Scope" },
+                              },
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "kind" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "name" },
+                                  },
+                                ],
+                              },
                             },
                           ],
                         },
@@ -3152,6 +3499,13 @@ export const GroupsDocument = ({
                                           kind: "Field",
                                           name: { kind: "Name", value: "name" },
                                         },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "createdAt",
+                                          },
+                                        },
                                       ],
                                     },
                                   },
@@ -3171,6 +3525,13 @@ export const GroupsDocument = ({
                                         {
                                           kind: "Field",
                                           name: { kind: "Name", value: "name" },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "createdAt",
+                                          },
                                         },
                                       ],
                                     },
@@ -3366,6 +3727,13 @@ export const OnEventDocument = ({
                                           kind: "Field",
                                           name: { kind: "Name", value: "name" },
                                         },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "createdAt",
+                                          },
+                                        },
                                       ],
                                     },
                                   },
@@ -3385,6 +3753,13 @@ export const OnEventDocument = ({
                                         {
                                           kind: "Field",
                                           name: { kind: "Name", value: "name" },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "createdAt",
+                                          },
                                         },
                                       ],
                                     },
@@ -3473,7 +3848,31 @@ export const OnEventDocument = ({
                                 selections: [
                                   {
                                     kind: "Field",
+                                    name: { kind: "Name", value: "__typename" },
+                                  },
+                                  {
+                                    kind: "Field",
                                     name: { kind: "Name", value: "id" },
+                                  },
+                                  {
+                                    kind: "InlineFragment",
+                                    typeCondition: {
+                                      kind: "NamedType",
+                                      name: { kind: "Name", value: "Scope" },
+                                    },
+                                    selectionSet: {
+                                      kind: "SelectionSet",
+                                      selections: [
+                                        {
+                                          kind: "Field",
+                                          name: { kind: "Name", value: "kind" },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: { kind: "Name", value: "name" },
+                                        },
+                                      ],
+                                    },
                                   },
                                 ],
                               },
@@ -3524,6 +3923,13 @@ export const OnEventDocument = ({
                                           kind: "Field",
                                           name: { kind: "Name", value: "name" },
                                         },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "createdAt",
+                                          },
+                                        },
                                       ],
                                     },
                                   },
@@ -3543,6 +3949,13 @@ export const OnEventDocument = ({
                                         {
                                           kind: "Field",
                                           name: { kind: "Name", value: "name" },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "createdAt",
+                                          },
                                         },
                                       ],
                                     },
@@ -3728,6 +4141,14 @@ export const OnEventDocument = ({
                                                               value: "name",
                                                             },
                                                           },
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value:
+                                                                "createdAt",
+                                                            },
+                                                          },
                                                         ],
                                                       },
                                                     },
@@ -3755,6 +4176,14 @@ export const OnEventDocument = ({
                                                             name: {
                                                               kind: "Name",
                                                               value: "name",
+                                                            },
+                                                          },
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value:
+                                                                "createdAt",
                                                             },
                                                           },
                                                         ],
@@ -3843,6 +4272,35 @@ export const OnEventDocument = ({
                                                               value: "id",
                                                             },
                                                           },
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value: "duration",
+                                                            },
+                                                          },
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value: "state",
+                                                            },
+                                                          },
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value:
+                                                                "startedAt",
+                                                            },
+                                                          },
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value: "endedAt",
+                                                            },
+                                                          },
                                                         ],
                                                       },
                                                     },
@@ -3911,6 +4369,13 @@ export const OnEventDocument = ({
                                           kind: "Field",
                                           name: { kind: "Name", value: "name" },
                                         },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "createdAt",
+                                          },
+                                        },
                                       ],
                                     },
                                   },
@@ -3930,6 +4395,13 @@ export const OnEventDocument = ({
                                         {
                                           kind: "Field",
                                           name: { kind: "Name", value: "name" },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "createdAt",
+                                          },
                                         },
                                       ],
                                     },
@@ -4024,6 +4496,13 @@ export const OnEventDocument = ({
                                           kind: "Field",
                                           name: { kind: "Name", value: "name" },
                                         },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "createdAt",
+                                          },
+                                        },
                                       ],
                                     },
                                   },
@@ -4043,6 +4522,13 @@ export const OnEventDocument = ({
                                         {
                                           kind: "Field",
                                           name: { kind: "Name", value: "name" },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "createdAt",
+                                          },
                                         },
                                       ],
                                     },
@@ -4212,6 +4698,14 @@ export const OnEventDocument = ({
                                                               value: "name",
                                                             },
                                                           },
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value:
+                                                                "createdAt",
+                                                            },
+                                                          },
                                                         ],
                                                       },
                                                     },
@@ -4239,6 +4733,14 @@ export const OnEventDocument = ({
                                                             name: {
                                                               kind: "Name",
                                                               value: "name",
+                                                            },
+                                                          },
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value:
+                                                                "createdAt",
                                                             },
                                                           },
                                                         ],
@@ -4368,7 +4870,43 @@ export const OnEventDocument = ({
                                                       kind: "Field",
                                                       name: {
                                                         kind: "Name",
+                                                        value: "__typename",
+                                                      },
+                                                    },
+                                                    {
+                                                      kind: "Field",
+                                                      name: {
+                                                        kind: "Name",
                                                         value: "id",
+                                                      },
+                                                    },
+                                                    {
+                                                      kind: "InlineFragment",
+                                                      typeCondition: {
+                                                        kind: "NamedType",
+                                                        name: {
+                                                          kind: "Name",
+                                                          value: "Scope",
+                                                        },
+                                                      },
+                                                      selectionSet: {
+                                                        kind: "SelectionSet",
+                                                        selections: [
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value: "kind",
+                                                            },
+                                                          },
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value: "name",
+                                                            },
+                                                          },
+                                                        ],
                                                       },
                                                     },
                                                   ],
@@ -4436,6 +4974,13 @@ export const OnEventDocument = ({
                                           kind: "Field",
                                           name: { kind: "Name", value: "name" },
                                         },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "createdAt",
+                                          },
+                                        },
                                       ],
                                     },
                                   },
@@ -4455,6 +5000,13 @@ export const OnEventDocument = ({
                                         {
                                           kind: "Field",
                                           name: { kind: "Name", value: "name" },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "createdAt",
+                                          },
                                         },
                                       ],
                                     },
@@ -4522,6 +5074,34 @@ export const OnEventDocument = ({
                                           kind: "Field",
                                           name: { kind: "Name", value: "id" },
                                         },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "duration",
+                                          },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "state",
+                                          },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "startedAt",
+                                          },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "endedAt",
+                                          },
+                                        },
                                       ],
                                     },
                                   },
@@ -4574,6 +5154,13 @@ export const OnEventDocument = ({
                                           kind: "Field",
                                           name: { kind: "Name", value: "name" },
                                         },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "createdAt",
+                                          },
+                                        },
                                       ],
                                     },
                                   },
@@ -4593,6 +5180,13 @@ export const OnEventDocument = ({
                                         {
                                           kind: "Field",
                                           name: { kind: "Name", value: "name" },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "createdAt",
+                                          },
                                         },
                                       ],
                                     },
@@ -4795,6 +5389,13 @@ export const OnAnyEventDocument = ({
                                           kind: "Field",
                                           name: { kind: "Name", value: "name" },
                                         },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "createdAt",
+                                          },
+                                        },
                                       ],
                                     },
                                   },
@@ -4814,6 +5415,13 @@ export const OnAnyEventDocument = ({
                                         {
                                           kind: "Field",
                                           name: { kind: "Name", value: "name" },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "createdAt",
+                                          },
                                         },
                                       ],
                                     },
@@ -4902,7 +5510,31 @@ export const OnAnyEventDocument = ({
                                 selections: [
                                   {
                                     kind: "Field",
+                                    name: { kind: "Name", value: "__typename" },
+                                  },
+                                  {
+                                    kind: "Field",
                                     name: { kind: "Name", value: "id" },
+                                  },
+                                  {
+                                    kind: "InlineFragment",
+                                    typeCondition: {
+                                      kind: "NamedType",
+                                      name: { kind: "Name", value: "Scope" },
+                                    },
+                                    selectionSet: {
+                                      kind: "SelectionSet",
+                                      selections: [
+                                        {
+                                          kind: "Field",
+                                          name: { kind: "Name", value: "kind" },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: { kind: "Name", value: "name" },
+                                        },
+                                      ],
+                                    },
                                   },
                                 ],
                               },
@@ -4953,6 +5585,13 @@ export const OnAnyEventDocument = ({
                                           kind: "Field",
                                           name: { kind: "Name", value: "name" },
                                         },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "createdAt",
+                                          },
+                                        },
                                       ],
                                     },
                                   },
@@ -4972,6 +5611,13 @@ export const OnAnyEventDocument = ({
                                         {
                                           kind: "Field",
                                           name: { kind: "Name", value: "name" },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "createdAt",
+                                          },
                                         },
                                       ],
                                     },
@@ -5157,6 +5803,14 @@ export const OnAnyEventDocument = ({
                                                               value: "name",
                                                             },
                                                           },
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value:
+                                                                "createdAt",
+                                                            },
+                                                          },
                                                         ],
                                                       },
                                                     },
@@ -5184,6 +5838,14 @@ export const OnAnyEventDocument = ({
                                                             name: {
                                                               kind: "Name",
                                                               value: "name",
+                                                            },
+                                                          },
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value:
+                                                                "createdAt",
                                                             },
                                                           },
                                                         ],
@@ -5272,6 +5934,35 @@ export const OnAnyEventDocument = ({
                                                               value: "id",
                                                             },
                                                           },
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value: "duration",
+                                                            },
+                                                          },
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value: "state",
+                                                            },
+                                                          },
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value:
+                                                                "startedAt",
+                                                            },
+                                                          },
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value: "endedAt",
+                                                            },
+                                                          },
                                                         ],
                                                       },
                                                     },
@@ -5340,6 +6031,13 @@ export const OnAnyEventDocument = ({
                                           kind: "Field",
                                           name: { kind: "Name", value: "name" },
                                         },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "createdAt",
+                                          },
+                                        },
                                       ],
                                     },
                                   },
@@ -5359,6 +6057,13 @@ export const OnAnyEventDocument = ({
                                         {
                                           kind: "Field",
                                           name: { kind: "Name", value: "name" },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "createdAt",
+                                          },
                                         },
                                       ],
                                     },
@@ -5453,6 +6158,13 @@ export const OnAnyEventDocument = ({
                                           kind: "Field",
                                           name: { kind: "Name", value: "name" },
                                         },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "createdAt",
+                                          },
+                                        },
                                       ],
                                     },
                                   },
@@ -5472,6 +6184,13 @@ export const OnAnyEventDocument = ({
                                         {
                                           kind: "Field",
                                           name: { kind: "Name", value: "name" },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "createdAt",
+                                          },
                                         },
                                       ],
                                     },
@@ -5641,6 +6360,14 @@ export const OnAnyEventDocument = ({
                                                               value: "name",
                                                             },
                                                           },
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value:
+                                                                "createdAt",
+                                                            },
+                                                          },
                                                         ],
                                                       },
                                                     },
@@ -5668,6 +6395,14 @@ export const OnAnyEventDocument = ({
                                                             name: {
                                                               kind: "Name",
                                                               value: "name",
+                                                            },
+                                                          },
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value:
+                                                                "createdAt",
                                                             },
                                                           },
                                                         ],
@@ -5797,7 +6532,43 @@ export const OnAnyEventDocument = ({
                                                       kind: "Field",
                                                       name: {
                                                         kind: "Name",
+                                                        value: "__typename",
+                                                      },
+                                                    },
+                                                    {
+                                                      kind: "Field",
+                                                      name: {
+                                                        kind: "Name",
                                                         value: "id",
+                                                      },
+                                                    },
+                                                    {
+                                                      kind: "InlineFragment",
+                                                      typeCondition: {
+                                                        kind: "NamedType",
+                                                        name: {
+                                                          kind: "Name",
+                                                          value: "Scope",
+                                                        },
+                                                      },
+                                                      selectionSet: {
+                                                        kind: "SelectionSet",
+                                                        selections: [
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value: "kind",
+                                                            },
+                                                          },
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value: "name",
+                                                            },
+                                                          },
+                                                        ],
                                                       },
                                                     },
                                                   ],
@@ -5865,6 +6636,13 @@ export const OnAnyEventDocument = ({
                                           kind: "Field",
                                           name: { kind: "Name", value: "name" },
                                         },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "createdAt",
+                                          },
+                                        },
                                       ],
                                     },
                                   },
@@ -5884,6 +6662,13 @@ export const OnAnyEventDocument = ({
                                         {
                                           kind: "Field",
                                           name: { kind: "Name", value: "name" },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "createdAt",
+                                          },
                                         },
                                       ],
                                     },
@@ -5951,6 +6736,34 @@ export const OnAnyEventDocument = ({
                                           kind: "Field",
                                           name: { kind: "Name", value: "id" },
                                         },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "duration",
+                                          },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "state",
+                                          },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "startedAt",
+                                          },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "endedAt",
+                                          },
+                                        },
                                       ],
                                     },
                                   },
@@ -6003,6 +6816,13 @@ export const OnAnyEventDocument = ({
                                           kind: "Field",
                                           name: { kind: "Name", value: "name" },
                                         },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "createdAt",
+                                          },
+                                        },
                                       ],
                                     },
                                   },
@@ -6022,6 +6842,13 @@ export const OnAnyEventDocument = ({
                                         {
                                           kind: "Field",
                                           name: { kind: "Name", value: "name" },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "createdAt",
+                                          },
                                         },
                                       ],
                                     },
@@ -6499,6 +7326,10 @@ export const AddScopesDocument = ({
                                     kind: "Field",
                                     name: { kind: "Name", value: "name" },
                                   },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "createdAt" },
+                                  },
                                 ],
                               },
                             },
@@ -6518,6 +7349,10 @@ export const AddScopesDocument = ({
                                   {
                                     kind: "Field",
                                     name: { kind: "Name", value: "name" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "createdAt" },
                                   },
                                 ],
                               },
@@ -6672,6 +7507,13 @@ export const AddScopesDocument = ({
                                                         value: "name",
                                                       },
                                                     },
+                                                    {
+                                                      kind: "Field",
+                                                      name: {
+                                                        kind: "Name",
+                                                        value: "createdAt",
+                                                      },
+                                                    },
                                                   ],
                                                 },
                                               },
@@ -6699,6 +7541,13 @@ export const AddScopesDocument = ({
                                                       name: {
                                                         kind: "Name",
                                                         value: "name",
+                                                      },
+                                                    },
+                                                    {
+                                                      kind: "Field",
+                                                      name: {
+                                                        kind: "Name",
+                                                        value: "createdAt",
                                                       },
                                                     },
                                                   ],
@@ -6817,7 +7666,43 @@ export const AddScopesDocument = ({
                                                 kind: "Field",
                                                 name: {
                                                   kind: "Name",
+                                                  value: "__typename",
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
                                                   value: "id",
+                                                },
+                                              },
+                                              {
+                                                kind: "InlineFragment",
+                                                typeCondition: {
+                                                  kind: "NamedType",
+                                                  name: {
+                                                    kind: "Name",
+                                                    value: "Scope",
+                                                  },
+                                                },
+                                                selectionSet: {
+                                                  kind: "SelectionSet",
+                                                  selections: [
+                                                    {
+                                                      kind: "Field",
+                                                      name: {
+                                                        kind: "Name",
+                                                        value: "kind",
+                                                      },
+                                                    },
+                                                    {
+                                                      kind: "Field",
+                                                      name: {
+                                                        kind: "Name",
+                                                        value: "name",
+                                                      },
+                                                    },
+                                                  ],
                                                 },
                                               },
                                             ],
@@ -7015,6 +7900,13 @@ export const ScopesDocument = ({
                                           kind: "Field",
                                           name: { kind: "Name", value: "name" },
                                         },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "createdAt",
+                                          },
+                                        },
                                       ],
                                     },
                                   },
@@ -7034,6 +7926,13 @@ export const ScopesDocument = ({
                                         {
                                           kind: "Field",
                                           name: { kind: "Name", value: "name" },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "createdAt",
+                                          },
                                         },
                                       ],
                                     },
@@ -7203,6 +8102,14 @@ export const ScopesDocument = ({
                                                               value: "name",
                                                             },
                                                           },
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value:
+                                                                "createdAt",
+                                                            },
+                                                          },
                                                         ],
                                                       },
                                                     },
@@ -7230,6 +8137,14 @@ export const ScopesDocument = ({
                                                             name: {
                                                               kind: "Name",
                                                               value: "name",
+                                                            },
+                                                          },
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value:
+                                                                "createdAt",
                                                             },
                                                           },
                                                         ],
@@ -7359,7 +8274,43 @@ export const ScopesDocument = ({
                                                       kind: "Field",
                                                       name: {
                                                         kind: "Name",
+                                                        value: "__typename",
+                                                      },
+                                                    },
+                                                    {
+                                                      kind: "Field",
+                                                      name: {
+                                                        kind: "Name",
                                                         value: "id",
+                                                      },
+                                                    },
+                                                    {
+                                                      kind: "InlineFragment",
+                                                      typeCondition: {
+                                                        kind: "NamedType",
+                                                        name: {
+                                                          kind: "Name",
+                                                          value: "Scope",
+                                                        },
+                                                      },
+                                                      selectionSet: {
+                                                        kind: "SelectionSet",
+                                                        selections: [
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value: "kind",
+                                                            },
+                                                          },
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value: "name",
+                                                            },
+                                                          },
+                                                        ],
                                                       },
                                                     },
                                                   ],
@@ -7511,6 +8462,10 @@ export const ScopedAttributesDocument = ({
                                     kind: "Field",
                                     name: { kind: "Name", value: "name" },
                                   },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "createdAt" },
+                                  },
                                 ],
                               },
                             },
@@ -7530,6 +8485,10 @@ export const ScopedAttributesDocument = ({
                                   {
                                     kind: "Field",
                                     name: { kind: "Name", value: "name" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "createdAt" },
                                   },
                                 ],
                               },
@@ -7600,7 +8559,31 @@ export const ScopedAttributesDocument = ({
                           selections: [
                             {
                               kind: "Field",
+                              name: { kind: "Name", value: "__typename" },
+                            },
+                            {
+                              kind: "Field",
                               name: { kind: "Name", value: "id" },
+                            },
+                            {
+                              kind: "InlineFragment",
+                              typeCondition: {
+                                kind: "NamedType",
+                                name: { kind: "Name", value: "Scope" },
+                              },
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "kind" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "name" },
+                                  },
+                                ],
+                              },
                             },
                           ],
                         },
@@ -7679,6 +8662,10 @@ export const GlobalAttributesDocument = ({
                                     kind: "Field",
                                     name: { kind: "Name", value: "name" },
                                   },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "createdAt" },
+                                  },
                                 ],
                               },
                             },
@@ -7698,6 +8685,10 @@ export const GlobalAttributesDocument = ({
                                   {
                                     kind: "Field",
                                     name: { kind: "Name", value: "name" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "createdAt" },
                                   },
                                 ],
                               },
@@ -7768,7 +8759,31 @@ export const GlobalAttributesDocument = ({
                           selections: [
                             {
                               kind: "Field",
+                              name: { kind: "Name", value: "__typename" },
+                            },
+                            {
+                              kind: "Field",
                               name: { kind: "Name", value: "id" },
+                            },
+                            {
+                              kind: "InlineFragment",
+                              typeCondition: {
+                                kind: "NamedType",
+                                name: { kind: "Name", value: "Scope" },
+                              },
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "kind" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "name" },
+                                  },
+                                ],
+                              },
                             },
                           ],
                         },
@@ -7955,6 +8970,10 @@ export const AddStepsDocument = ({
                                     kind: "Field",
                                     name: { kind: "Name", value: "name" },
                                   },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "createdAt" },
+                                  },
                                 ],
                               },
                             },
@@ -7974,6 +8993,10 @@ export const AddStepsDocument = ({
                                   {
                                     kind: "Field",
                                     name: { kind: "Name", value: "name" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "createdAt" },
                                   },
                                 ],
                               },
@@ -8141,6 +9164,13 @@ export const AddStepsDocument = ({
                                                         value: "name",
                                                       },
                                                     },
+                                                    {
+                                                      kind: "Field",
+                                                      name: {
+                                                        kind: "Name",
+                                                        value: "createdAt",
+                                                      },
+                                                    },
                                                   ],
                                                 },
                                               },
@@ -8168,6 +9198,13 @@ export const AddStepsDocument = ({
                                                       name: {
                                                         kind: "Name",
                                                         value: "name",
+                                                      },
+                                                    },
+                                                    {
+                                                      kind: "Field",
+                                                      name: {
+                                                        kind: "Name",
+                                                        value: "createdAt",
                                                       },
                                                     },
                                                   ],
@@ -8243,6 +9280,34 @@ export const AddStepsDocument = ({
                                                       name: {
                                                         kind: "Name",
                                                         value: "id",
+                                                      },
+                                                    },
+                                                    {
+                                                      kind: "Field",
+                                                      name: {
+                                                        kind: "Name",
+                                                        value: "duration",
+                                                      },
+                                                    },
+                                                    {
+                                                      kind: "Field",
+                                                      name: {
+                                                        kind: "Name",
+                                                        value: "state",
+                                                      },
+                                                    },
+                                                    {
+                                                      kind: "Field",
+                                                      name: {
+                                                        kind: "Name",
+                                                        value: "startedAt",
+                                                      },
+                                                    },
+                                                    {
+                                                      kind: "Field",
+                                                      name: {
+                                                        kind: "Name",
+                                                        value: "endedAt",
                                                       },
                                                     },
                                                   ],
@@ -8410,6 +9475,13 @@ export const StepsDocument = ({
                                           kind: "Field",
                                           name: { kind: "Name", value: "name" },
                                         },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "createdAt",
+                                          },
+                                        },
                                       ],
                                     },
                                   },
@@ -8429,6 +9501,13 @@ export const StepsDocument = ({
                                         {
                                           kind: "Field",
                                           name: { kind: "Name", value: "name" },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
+                                            value: "createdAt",
+                                          },
                                         },
                                       ],
                                     },
@@ -8614,6 +9693,14 @@ export const StepsDocument = ({
                                                               value: "name",
                                                             },
                                                           },
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value:
+                                                                "createdAt",
+                                                            },
+                                                          },
                                                         ],
                                                       },
                                                     },
@@ -8641,6 +9728,14 @@ export const StepsDocument = ({
                                                             name: {
                                                               kind: "Name",
                                                               value: "name",
+                                                            },
+                                                          },
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value:
+                                                                "createdAt",
                                                             },
                                                           },
                                                         ],
@@ -8727,6 +9822,35 @@ export const StepsDocument = ({
                                                             name: {
                                                               kind: "Name",
                                                               value: "id",
+                                                            },
+                                                          },
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value: "duration",
+                                                            },
+                                                          },
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value: "state",
+                                                            },
+                                                          },
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value:
+                                                                "startedAt",
+                                                            },
+                                                          },
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value: "endedAt",
                                                             },
                                                           },
                                                         ],
@@ -8875,6 +9999,10 @@ export const TransitionDocument = ({
                                     kind: "Field",
                                     name: { kind: "Name", value: "name" },
                                   },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "createdAt" },
+                                  },
                                 ],
                               },
                             },
@@ -8894,6 +10022,10 @@ export const TransitionDocument = ({
                                   {
                                     kind: "Field",
                                     name: { kind: "Name", value: "name" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "createdAt" },
                                   },
                                 ],
                               },
@@ -8945,6 +10077,22 @@ export const TransitionDocument = ({
                                   {
                                     kind: "Field",
                                     name: { kind: "Name", value: "id" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "duration" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "state" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "startedAt" },
+                                  },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "endedAt" },
                                   },
                                 ],
                               },
@@ -9140,10 +10288,11 @@ export function ScopedAttributesInputSchema(): z.ZodObject<
   Properties<ScopedAttributesInput>
 > {
   return z.object({
+    ids: z.array(z.string()).nullish(),
     keys: z.array(z.string()).nullish(),
-    kind: z.string().nullish(),
+    kinds: z.array(z.string()).nullish(),
     kvs: z.array(KvSchema()).nullish(),
-    name: z.string().nullish(),
+    names: z.array(z.string()).nullish(),
   });
 }
 

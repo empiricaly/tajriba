@@ -9,6 +9,7 @@ type Service struct {
 	Sessions  []*Session `json:"-"`
 }
 
+func (*Service) IsAdmin() {}
 func (*Service) IsActor() {}
 func (s *Service) GetID() string {
 	return s.ID

@@ -163,7 +163,7 @@ func (r *subscriptionResolver) ScopedAttributes(ctx context.Context, input []*mo
 func (r *subscriptionResolver) GlobalAttributes(ctx context.Context) (<-chan *mgen.SubAttributesPayload, error) {
 	rt := runtime.ForContext(ctx)
 
-	input := []*models.ScopedAttributesInput{{Name: "global"}}
+	input := []*models.ScopedAttributesInput{{Names: []string{"global"}}}
 
 	c, err := rt.SubScopedAttributes(ctx, input, true)
 	if err != nil {

@@ -225,7 +225,7 @@ func (r *Runtime) SubScopedAttributes(
 
 	var actorID string
 	if global {
-		if len(inputs) != 1 || inputs[0].Name != "global" {
+		if len(inputs) != 1 || len(inputs[0].Names) != 1 || inputs[0].Names[0] != "global" {
 			return nil, ErrNotAuthorized
 		}
 		actorID = "global-user"

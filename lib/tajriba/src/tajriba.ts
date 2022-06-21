@@ -382,7 +382,7 @@ export class Tajriba extends (EventEmitter as new () => TypedEmitter<TajribaEven
   globalAttributes() {
     return this.subscribe(GlobalAttributesDocument, {}, (data) => {
       if (data.globalAttributes) {
-        return <SubAttributesPayload>data.globalAttributes;
+        return data.globalAttributes;
       }
     });
   }
@@ -586,7 +586,7 @@ export class TajribaAdmin extends Tajriba {
   ) {
     return this.subscribe(ScopedAttributesDocument, { input }, (data) => {
       if (data.scopedAttributes) {
-        return <SubAttributesPayload>data.scopedAttributes;
+        return data.scopedAttributes;
       }
     });
   }
@@ -651,7 +651,7 @@ export class TajribaParticipant extends Tajriba {
   changes() {
     return this.subscribe(ChangesDocument, {}, (data) => {
       if (data.changes) {
-        return <ChangePayload>data.changes;
+        return data.changes;
       }
     });
   }

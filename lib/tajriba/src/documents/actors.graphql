@@ -3,10 +3,12 @@ fragment actorFields on Actor {
     id
     username
     name
+    createdAt
   }
   ... on Service {
     id
     name
+    createdAt
   }
   ... on Participant {
     id

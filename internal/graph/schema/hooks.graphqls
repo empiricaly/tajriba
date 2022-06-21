@@ -43,8 +43,7 @@ input OnEventInput {
   eventTypes: [EventType!]!
 
   """
-  nodeID is an optional node ID of the node to listen to. If nodeID is
-  specified, nodeType must also be given.
+  nodeID is an optional node ID of the node to listen to.
   """
   nodeID: ID
 }
@@ -52,8 +51,7 @@ input OnEventInput {
 "OnAnyEventInput is the input for the onAnyEvent subscription."
 input OnAnyEventInput {
   """
-  nodeID is an optional node ID of the node to listen to. If nodeID is
-  specified, nodeType must also be given.
+  nodeID is an optional node ID of the node to listen to.
   """
   nodeID: ID
 }
