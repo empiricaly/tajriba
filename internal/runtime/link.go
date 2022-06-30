@@ -15,7 +15,7 @@ import (
 
 func (r *Runtime) Link(ctx context.Context, input mgen.LinkInput) (*mgen.LinkPayload, error) {
 	if !input.Link {
-		log.Warn().Msg("runtime: unlinking is not tested")
+		log.Debug().Msg("runtime: unlinking is untested")
 	}
 
 	actr := actor.ForContext(ctx)

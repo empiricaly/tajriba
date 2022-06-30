@@ -39,7 +39,7 @@ import {
   StepsDocument,
   StepsQueryVariables,
   TransitionDocument,
-  TransitionInput
+  TransitionInput,
 } from "./generated/graphql";
 
 const DefaultAddress = "http://localhost:4737/query";
@@ -278,13 +278,16 @@ export class Tajriba extends (EventEmitter as new () => TypedEmitter<TajribaEven
       webSocketImpl: WebSocket,
       on: {
         connecting: () => {
-          console.debug("websocket: connecting");
+          // console.debug("websocket: connecting");
         },
         connected: () => {
-          console.debug("websocket: connected");
+          // console.debug("websocket: connected");
         },
+        // message: (message) => {
+        //   console.info("message", message);
+        // },
         opened: (sock) => {
-          console.debug("websocket: established");
+          // console.debug("websocket: established");
 
           if (
             this._firstConnProm &&
@@ -558,7 +561,7 @@ export class TajribaAdmin extends Tajriba {
   }
 
   /** addLink adds Links object between Participants and Nodes. */
-  private async addLink(input: LinkInput) {
+  async addLink(input: LinkInput) {
     return await this.mutate(LinkDocument, { input }, (data) => data?.link);
   }
 

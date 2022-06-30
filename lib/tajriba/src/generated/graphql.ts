@@ -4253,6 +4253,13 @@ export const OnEventDocument = {
                                                   kind: "SelectionSet",
                                                   selections: [
                                                     {
+                                                      kind: "Field",
+                                                      name: {
+                                                        kind: "Name",
+                                                        value: "__typename",
+                                                      },
+                                                    },
+                                                    {
                                                       kind: "InlineFragment",
                                                       typeCondition: {
                                                         kind: "NamedType",
@@ -5060,6 +5067,10 @@ export const OnEventDocument = {
                               selectionSet: {
                                 kind: "SelectionSet",
                                 selections: [
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "__typename" },
+                                  },
                                   {
                                     kind: "InlineFragment",
                                     typeCondition: {
@@ -5912,6 +5923,13 @@ export const OnAnyEventDocument = {
                                                   kind: "SelectionSet",
                                                   selections: [
                                                     {
+                                                      kind: "Field",
+                                                      name: {
+                                                        kind: "Name",
+                                                        value: "__typename",
+                                                      },
+                                                    },
+                                                    {
                                                       kind: "InlineFragment",
                                                       typeCondition: {
                                                         kind: "NamedType",
@@ -6719,6 +6737,10 @@ export const OnAnyEventDocument = {
                               selectionSet: {
                                 kind: "SelectionSet",
                                 selections: [
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "__typename" },
+                                  },
                                   {
                                     kind: "InlineFragment",
                                     typeCondition: {
@@ -9260,6 +9282,13 @@ export const AddStepsDocument = {
                                             kind: "SelectionSet",
                                             selections: [
                                               {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "__typename",
+                                                },
+                                              },
+                                              {
                                                 kind: "InlineFragment",
                                                 typeCondition: {
                                                   kind: "NamedType",
@@ -9802,6 +9831,13 @@ export const StepsDocument = {
                                                   kind: "SelectionSet",
                                                   selections: [
                                                     {
+                                                      kind: "Field",
+                                                      name: {
+                                                        kind: "Name",
+                                                        value: "__typename",
+                                                      },
+                                                    },
+                                                    {
                                                       kind: "InlineFragment",
                                                       typeCondition: {
                                                         kind: "NamedType",
@@ -10061,6 +10097,10 @@ export const TransitionDocument = {
                         selectionSet: {
                           kind: "SelectionSet",
                           selections: [
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "__typename" },
+                            },
                             {
                               kind: "InlineFragment",
                               typeCondition: {

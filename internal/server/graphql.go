@@ -40,7 +40,7 @@ func graphqlHandler(
 	// })
 	gqlsrv.AddTransport(transport.Websocket{
 		ErrorFunc: func(ctx context.Context, err error) {
-			log.Error().Err(err).Msg("graphql: websocket error")
+			log.Trace().Err(err).Msg("graphql: websocket error")
 		},
 		KeepAlivePingInterval: pingInterval,
 		Upgrader: websocket.Upgrader{
@@ -165,11 +165,16 @@ func graphqlHandler(
 			if oc.Operation != nil {
 				op = string(oc.Operation.Operation)
 			}
-			log.Trace().
+
+			l := log.Trace().
 				Str("op", op).
-				Str("took", d).
-				RawJSON("json", resp.Data).
-				Msg("graphql: response")
+				Str("took", d)
+
+			if len(resp.Data) > 0 {
+				l = l.RawJSON("json", resp.Data)
+			}
+
+			l.Msg("graphql: response")
 		} else {
 			log.Trace().
 				Str("op", string(oc.Operation.Operation)).

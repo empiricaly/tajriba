@@ -156,8 +156,18 @@ func (r *Runtime) pushLinks(ctx context.Context, links []*models.Link) error {
 			}
 
 			last := v.Transitions[len(v.Transitions)-1]
-			r := int(last.Remaining / time.Second)
-			e := int(last.Ellapsed / time.Second)
+			ellapsedSinceLastStart := time.Since(last.CreatedAt)
+			ellapsed := int((ellapsedSinceLastStart + last.Ellapsed) / time.Second)
+			remaining := v.Duration - ellapsed
+
+			if remaining < 0 {
+				remaining = 0
+			}
+
+			running := true
+			if remaining == 0 {
+				running = false
+			}
 
 			changes[pID] = append(changes[pID], &mgen.ChangePayload{
 				Removed: !link.Link,
@@ -165,9 +175,9 @@ func (r *Runtime) pushLinks(ctx context.Context, links []*models.Link) error {
 					ID:        v.ID,
 					State:     v.State,
 					Since:     &last.CreatedAt,
-					Remaining: &r,
-					Ellapsed:  &e,
-					Running:   true,
+					Remaining: &remaining,
+					Ellapsed:  &ellapsed,
+					Running:   running, // see above, only sent when running
 				},
 			})
 		case *models.Group:

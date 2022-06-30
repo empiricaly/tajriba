@@ -109,12 +109,12 @@ func (r *Runtime) prepAttributes(
 				return nil, errors.New("cannot mutate vector")
 			}
 
-			if (a.Private && !last.Private) || (!a.Private && last.Private) {
-				return nil, errors.New("cannot mutate private")
+			if last.Private {
+				a.Private = true
 			}
 
-			if (a.Protected && !last.Protected) || (!a.Protected && last.Protected) {
-				return nil, errors.New("cannot mutate protected")
+			if last.Protected {
+				a.Protected = true
 			}
 
 			// Check protected
@@ -164,7 +164,10 @@ func (r *Runtime) setAttributes(
 					check++
 
 					if check > 1 {
-						panic("double attribute!")
+						log.Warn().
+							Interface("attr1", a).
+							Interface("attr2", attr).
+							Msg("double attribute!")
 					}
 				}
 			}

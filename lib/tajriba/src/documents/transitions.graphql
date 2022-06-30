@@ -8,6 +8,7 @@ fragment transitionFields on Transition {
   from
   to
   node {
+    __typename
     ... on Step {
       id
       duration

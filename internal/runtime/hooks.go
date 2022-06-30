@@ -24,13 +24,13 @@ func (r *Runtime) propagateHook(ctx context.Context, eventType mgen.EventType, n
 
 	// log.Info().Interface("subs", r.onEventSubs).Interface("eventType", eventType).Msg("PROPAGATUON")
 
-	md := metadata.RequestForContext(ctx)
+	// md := metadata.RequestForContext(ctx)
 
 	for _, subs := range r.onEventSubs {
 		for _, sub := range subs {
-			if md != nil && md.Request == sub.req {
-				continue
-			}
+			// if md != nil && md.Request == sub.req {
+			// 	continue
+			// }
 
 			if sub.et[eventType] {
 				if sub.nodeID != nil && *sub.nodeID != nodeID {
@@ -104,7 +104,18 @@ func (r *Runtime) SubOnEvent(
 					continue
 				}
 
-				r.propagateHook(ctx, mgen.EventTypeParticipantConnected, pID, subs[0].p)
+				eventID, err := generateRandomKey(eventIDLen)
+				if err != nil {
+					log.Error().Err(err).Msg("runtime: failed to generate eventID")
+
+					continue
+				}
+
+				c.c <- &mgen.OnEventPayload{
+					EventID:   eventID,
+					EventType: mgen.EventTypeParticipantConnected,
+					Node:      subs[0].p,
+				}
 			}
 		}
 
