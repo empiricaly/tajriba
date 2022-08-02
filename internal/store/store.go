@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"io"
 	"os"
 	"reflect"
 	"time"
@@ -18,11 +17,12 @@ import (
 
 // Conn represents a datastore connection.
 type Conn struct {
-	config *Config
-	done   chan bool
-	buf    *bufio.Writer
-	dirty  bool
-	f      *os.File
+	config   *Config
+	done     chan bool
+	buf      *bufio.Writer
+	dirty    bool
+	f        *os.File
+	opaqueMD []byte
 
 	deadlock.Mutex
 }
@@ -38,13 +38,9 @@ func Connect(_ context.Context, config *Config) (*Conn, error) {
 
 	if !config.UseMemory {
 		if config.File != "" {
-			f, err := os.OpenFile(config.File, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0644)
-			if err != nil {
-				return nil, errors.Wrap(err, "open db file")
+			if err := c.openFile(); err != nil {
+				return nil, errors.Wrap(err, "open file")
 			}
-
-			c.f = f
-			c.buf = bufio.NewWriterSize(f, fbuffer)
 
 			go c.flusher()
 		} else {
@@ -55,6 +51,149 @@ func Connect(_ context.Context, config *Config) (*Conn, error) {
 	log.Debug().Msg("store: started")
 
 	return c, nil
+}
+
+func (c *Conn) OpaqueMetadata() []byte {
+	return c.opaqueMD
+}
+
+const defaultFilePerm = 0o666
+
+func (c *Conn) openFile() error {
+	var created bool
+
+	if _, err := os.Stat(c.config.File); errors.Is(err, os.ErrNotExist) {
+		if c.f, err = os.Create(c.config.File); err != nil {
+			return errors.Wrap(err, "create file")
+		}
+
+		created = true
+	} else {
+		c.f, err = os.OpenFile(c.config.File, os.O_RDWR, defaultFilePerm)
+		if err != nil {
+			return errors.Wrap(err, "open file")
+		}
+	}
+
+	if created {
+		if err := c.writeFileMetadata(); err != nil {
+			return errors.Wrap(err, "write metadata")
+		}
+	} else {
+		if err := c.readFileMetadata(); err != nil {
+			return errors.Wrap(err, "read metadata")
+		}
+	}
+
+	c.buf = bufio.NewWriterSize(c.f, fbuffer)
+
+	return nil
+}
+
+//go:generate go-enum -f=$GOFILE --marshal --lower --names --noprefix
+
+// Compression is enumeration of compression options.
+// ENUM(NoCompression)
+type Compression uint8
+
+// Encoding is enumeration of encoding options.
+// ENUM(JSON)
+type Encoding uint8
+
+// FileFormatVersion indicates which version of the Tajriba file format this
+// build supports. It should be incremented any time there is a non-backward
+// compatible change made to the format of the data.
+const FileFormatVersion = 0
+
+// FileMetadata
+type FileMetadata struct {
+	Version     int         `json:"version"`
+	Encoding    Encoding    `json:"format"`
+	Compression Compression `json:"compression"`
+}
+
+func (c *Conn) writeFileMetadata() error {
+	if _, err := c.f.Write(bytes.TrimSpace(c.config.Metadata)); err != nil {
+		return errors.Wrap(err, "write opaque metadata")
+	}
+
+	if _, err := c.f.Write([]byte("\n")); err != nil {
+		return errors.Wrap(err, "write opaque metadata")
+	}
+
+	fmd := &FileMetadata{Version: FileFormatVersion}
+
+	b, err := json.Marshal(fmd)
+	if err != nil {
+		return errors.Wrap(err, "serialize tajriba metadata")
+	}
+
+	if _, err := c.f.Write(b); err != nil {
+		return errors.Wrap(err, "write tajriba metadata")
+	}
+
+	if _, err := c.f.Write([]byte("\n")); err != nil {
+		return errors.Wrap(err, "write opaque metadata")
+	}
+
+	return nil
+}
+
+func (c *Conn) readFileMetadata() error {
+	s := bufio.NewScanner(c.f)
+
+	// First line, opaque metadata
+	s.Scan()
+
+	c.opaqueMD = s.Bytes()
+	if len(c.opaqueMD) == 0 {
+		return errors.New("opaque metadata missing")
+	}
+
+	// Second line, tajriba metadata
+	s.Scan()
+
+	fmd := &FileMetadata{}
+	if err := json.Unmarshal(s.Bytes(), &fmd); err != nil {
+		return errors.Wrap(err, "deserialize tajriba metadata")
+	}
+
+	if err := s.Err(); err != nil {
+		return errors.Wrap(err, "read metadata")
+	}
+
+	if fmd.Version != FileFormatVersion {
+		str := "expected file format version (%d) is different from data file (%d)"
+
+		return errors.Errorf(str, FileFormatVersion, fmd.Version)
+	}
+
+	if fmd.Encoding != c.config.Encoding {
+		str := "expected encoding (%s) is different from data file (%s)"
+
+		return errors.Errorf(str, c.config.Encoding, fmd.Encoding)
+	}
+
+	if fmd.Compression != c.config.Compression {
+		str := "expected compression (%s) is different from data file (%s)"
+
+		return errors.Errorf(str, c.config.Compression, fmd.Compression)
+	}
+
+	return nil
+}
+
+func (c *Conn) flusher() {
+	for {
+		select {
+		case <-time.After(time.Second):
+			c.flush()
+		case <-c.done:
+			c.flush()
+
+			return
+		}
+	}
 }
 
 func (c *Conn) flush() {
@@ -82,19 +221,6 @@ func (c *Conn) flush() {
 	c.dirty = false
 
 	log.Trace().Msg("store: flushed")
-}
-
-func (c *Conn) flusher() {
-	for {
-		select {
-		case <-time.After(time.Second):
-			c.flush()
-		case <-c.done:
-			c.flush()
-
-			return
-		}
-	}
 }
 
 type objekt struct {
@@ -156,11 +282,6 @@ func (c *Conn) Load(f func(interface{}) error) error {
 		return nil
 	}
 
-	_, err := c.f.Seek(0, io.SeekStart)
-	if err != nil {
-		return errors.Wrap(err, "seek")
-	}
-
 	obj := &objektdev{}
 
 	s := bufio.NewScanner(c.f)
@@ -205,8 +326,6 @@ func (c *Conn) Close() error {
 
 	return nil
 }
-
-//go:generate go-enum -f=$GOFILE --marshal --lower --names --noprefix
 
 // Kind is enumneration of object kinds.
 // ENUM(Scope, Step, Attribute, Participant, User, Link, Transition, Service, Session, Group)

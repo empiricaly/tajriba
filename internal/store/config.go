@@ -9,13 +9,43 @@ import (
 
 // Config is store configuration.
 type Config struct {
-	File      string `mapstructure:"file"`
-	UseMemory bool   `mapstructure:"mem"`
-	Debug     bool   `mapstructure:"debug"`
+	// UseMemory forces the Store to use in-memory storage, which is lost on
+	// restart. Ideal for testing.
+	UseMemory bool `mapstructure:"mem"`
+
+	// File is the location of the data file where the Store main data is
+	// stored.
+	File string `mapstructure:"file"`
+
+	// Metadata is opaque metadata attached to Store by the client of Tajriba.
+	// This metadata is opaque to Tajriba. It can be used to store extra info
+	// about the data that Tajriba might not understand, such as higher level
+	// data versioning.
+	// It should not contain any new line characters (\n).
+	Metadata []byte `mapstructure:"-"`
+
+	// Encoding to use in data file
+	Encoding Encoding `json:"format"`
+
+	// Compression of data in data file
+	Compression Compression `json:"compression"`
 }
+
+var (
+	ErrUnknownCompression = errors.New("unknown compression")
+	ErrUnknownEncoding    = errors.New("unknown encoding")
+)
 
 // Validate configuration is ok.
 func (c *Config) Validate() error {
+	if _, ok := _CompressionMap[c.Compression]; !ok {
+		return ErrUnknownCompression
+	}
+
+	if _, ok := _EncodingMap[c.Encoding]; !ok {
+		return ErrUnknownEncoding
+	}
+
 	return nil
 }
 
@@ -45,11 +75,6 @@ func ConfigFlags(cmd *cobra.Command, prefix, defaultDBFile string) error {
 	bval := false
 	cmd.Flags().Bool(flag, bval, "Use in-memory db")
 	viper.SetDefault(flag, bval)
-
-	// flag = prefix + ".debug"
-	// bval = false
-	// cmd.Flags().Bool(flag, bval, "show queries debug logs")
-	// viper.SetDefault(flag, bval)
 
 	return nil
 }
