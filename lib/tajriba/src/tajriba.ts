@@ -305,7 +305,7 @@ export class Tajriba extends (EventEmitter as new () => TypedEmitter<TajribaEven
           this._connected = false;
         },
         error: (err) => {
-          console.debug("websocket: error", err);
+          console.error("websocket: error", err);
           this.emit("error", err as Error);
         },
       },
@@ -352,7 +352,7 @@ export class Tajriba extends (EventEmitter as new () => TypedEmitter<TajribaEven
 
   stop() {
     if (this._wsClient) {
-      this._wsClient.terminate();
+      this._wsClient.dispose();
       delete this._wsClient;
     }
 
