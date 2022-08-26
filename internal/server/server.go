@@ -48,16 +48,27 @@ func Start(
 
 	router.GET("/", index)
 
+	l, err := net.Listen("tcp", config.Addr)
+	if err != nil {
+		return nil, errors.Wrap(err, "listen addr")
+	}
+
 	srv := &http.Server{
-		Addr:        config.Addr,
-		Handler:     cors.Default().Handler(router),
-		BaseContext: func(_ net.Listener) context.Context { return ctx },
+		Handler:           cors.Default().Handler(router),
+		BaseContext:       func(_ net.Listener) context.Context { return ctx },
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      2 * time.Minute,
+		IdleTimeout:       5 * time.Minute,
 	}
 
 	s.wg.Add(1)
 
 	go func() {
-		log.Debug().Str("addr", config.Addr).Msg("Started Tajriba server")
+		log.Debug().
+			Str("addr", config.Addr).
+			Int("port", l.Addr().(*net.TCPAddr).Port).
+			Msg("Started Tajriba server")
 
 		<-ctx.Done()
 
@@ -81,7 +92,7 @@ func Start(
 	}()
 
 	go func() {
-		err := srv.ListenAndServe()
+		err := srv.Serve(l)
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Error().Err(err).Msg("Failed start Tajriba server")
 		}
@@ -104,7 +115,6 @@ func Enable(
 	router *httprouter.Router,
 	schema graphql.ExecutableSchema,
 ) error {
-
 	gqlh := requestMetadata(auth.Middleware(graphqlHandler(ctx, conf, schema), conf.Production))
 	router.GET("/query", gqlh)
 	router.POST("/query", gqlh)
