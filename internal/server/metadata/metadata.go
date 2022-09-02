@@ -3,6 +3,8 @@ package metadata
 import (
 	"context"
 	"net/http"
+
+	"github.com/empiricaly/tajriba/internal/auth/actor"
 )
 
 type request int
@@ -24,4 +26,6 @@ func SetRequestForContext(ctx context.Context, r *Request) context.Context {
 type Request struct {
 	Headers map[string][]string
 	Request *http.Request
+	Token   string
+	Actor   actor.Actor
 }

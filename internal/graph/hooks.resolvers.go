@@ -11,6 +11,7 @@ import (
 	errs "github.com/pkg/errors"
 )
 
+// OnEvent is the resolver for the onEvent field.
 func (r *subscriptionResolver) OnEvent(ctx context.Context, input *mgen.OnEventInput) (<-chan *mgen.OnEventPayload, error) {
 	rt := runtime.ForContext(ctx)
 
@@ -22,6 +23,7 @@ func (r *subscriptionResolver) OnEvent(ctx context.Context, input *mgen.OnEventI
 	return c, nil
 }
 
+// OnAnyEvent is the resolver for the onAnyEvent field.
 func (r *subscriptionResolver) OnAnyEvent(ctx context.Context, input *mgen.OnAnyEventInput) (<-chan *mgen.OnEventPayload, error) {
 	rt := runtime.ForContext(ctx)
 

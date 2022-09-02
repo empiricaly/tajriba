@@ -261,11 +261,12 @@ func (r *Runtime) SubScopedAttributes(
 
 		for _, s := range c.scopes {
 			for _, a := range s.AttributesMap {
-				attrs = append(attrs, a)
+				attrs = append(attrs, a.DeepCopy())
 			}
 		}
 
 		l := len(attrs)
+		r.Unlock()
 
 		for i, attr := range attrs {
 			c.c <- &mgen.SubAttributesPayload{
@@ -279,8 +280,6 @@ func (r *Runtime) SubScopedAttributes(
 				Done: true,
 			}
 		}
-
-		r.Unlock()
 
 		<-ctx.Done()
 		r.Lock()
@@ -352,7 +351,7 @@ func (r *Runtime) pushAttributesForScopedAttributes(ctx context.Context, attrs [
 
 		for i, attr := range attrs {
 			sub.c <- &mgen.SubAttributesPayload{
-				Attribute: attr,
+				Attribute: attr.DeepCopy(),
 				IsNew:     attr.Version == 1,
 				Done:      l == i+1,
 			}

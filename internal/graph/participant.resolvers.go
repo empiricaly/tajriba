@@ -12,6 +12,7 @@ import (
 	errs "github.com/pkg/errors"
 )
 
+// AddParticipant is the resolver for the addParticipant field.
 func (r *mutationResolver) AddParticipant(ctx context.Context, input mgen.AddParticipantInput) (*mgen.AddParticipantPayload, error) {
 	rt := runtime.ForContext(ctx)
 
@@ -23,6 +24,7 @@ func (r *mutationResolver) AddParticipant(ctx context.Context, input mgen.AddPar
 	return &mgen.AddParticipantPayload{Participant: p, SessionToken: session}, nil
 }
 
+// Links is the resolver for the links field.
 func (r *participantResolver) Links(ctx context.Context, obj *models.Participant, after *string, first *int, before *string, last *int) (*mgen.LinkConnection, error) {
 	rt := runtime.ForContext(ctx)
 
@@ -63,6 +65,7 @@ func (r *participantResolver) Links(ctx context.Context, obj *models.Participant
 	}, nil
 }
 
+// Participants is the resolver for the participants field.
 func (r *queryResolver) Participants(ctx context.Context, after *string, first *int, before *string, last *int) (*mgen.ParticipantConnection, error) {
 	rt := runtime.ForContext(ctx)
 

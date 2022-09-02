@@ -12,6 +12,7 @@ import (
 	errs "github.com/pkg/errors"
 )
 
+// AddSteps is the resolver for the addSteps field.
 func (r *mutationResolver) AddSteps(ctx context.Context, input []*mgen.AddStepInput) ([]*mgen.AddStepPayload, error) {
 	rt := runtime.ForContext(ctx)
 
@@ -29,6 +30,7 @@ func (r *mutationResolver) AddSteps(ctx context.Context, input []*mgen.AddStepIn
 	return p, nil
 }
 
+// Steps is the resolver for the steps field.
 func (r *queryResolver) Steps(ctx context.Context, after *string, first *int, before *string, last *int) (*mgen.StepConnection, error) {
 	rt := runtime.ForContext(ctx)
 
@@ -69,6 +71,7 @@ func (r *queryResolver) Steps(ctx context.Context, after *string, first *int, be
 	}, nil
 }
 
+// Transitions is the resolver for the transitions field.
 func (r *stepResolver) Transitions(ctx context.Context, obj *models.Step, after *string, first *int, before *string, last *int) (*mgen.TransitionConnection, error) {
 	rt := runtime.ForContext(ctx)
 
@@ -109,6 +112,7 @@ func (r *stepResolver) Transitions(ctx context.Context, obj *models.Step, after 
 	}, nil
 }
 
+// Links is the resolver for the links field.
 func (r *stepResolver) Links(ctx context.Context, obj *models.Step, after *string, first *int, before *string, last *int) (*mgen.LinkConnection, error) {
 	rt := runtime.ForContext(ctx)
 

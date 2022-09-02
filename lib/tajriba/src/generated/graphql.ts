@@ -433,6 +433,12 @@ export type OnEventInput = {
 export type OnEventPayload = {
   __typename: "OnEventPayload";
   /**
+   * done indicates that the state has finished synchorizing. This is only valid
+   * for events that synchronize state on start of subscription (e.g.
+   * PARTICIPANT_CONNECTED).
+   */
+  done: Scalars["Boolean"];
+  /**
    * eventID is a unique identifier for the current event. Each OnEventPayload for
    * a single client will have a different eventID. eventID will be the same for
    * different clients on the same event.
@@ -1182,6 +1188,7 @@ export type OnEventSubscription = {
     __typename: "OnEventPayload";
     eventID: string;
     eventType: EventType;
+    done: boolean;
     node:
       | {
           __typename: "Attribute";
@@ -1534,6 +1541,7 @@ export type OnAnyEventSubscription = {
     __typename: "OnEventPayload";
     eventID: string;
     eventType: EventType;
+    done: boolean;
     node:
       | {
           __typename: "Attribute";
@@ -3652,6 +3660,7 @@ export const OnEventDocument = {
               selections: [
                 { kind: "Field", name: { kind: "Name", value: "eventID" } },
                 { kind: "Field", name: { kind: "Name", value: "eventType" } },
+                { kind: "Field", name: { kind: "Name", value: "done" } },
                 {
                   kind: "Field",
                   name: { kind: "Name", value: "node" },
@@ -5322,6 +5331,7 @@ export const OnAnyEventDocument = {
               selections: [
                 { kind: "Field", name: { kind: "Name", value: "eventID" } },
                 { kind: "Field", name: { kind: "Name", value: "eventType" } },
+                { kind: "Field", name: { kind: "Name", value: "done" } },
                 {
                   kind: "Field",
                   name: { kind: "Name", value: "node" },

@@ -11,6 +11,7 @@ import (
 	errs "github.com/pkg/errors"
 )
 
+// RegisterService is the resolver for the registerService field.
 func (r *mutationResolver) RegisterService(ctx context.Context, input mgen.RegisterServiceInput) (*mgen.RegisterServicePayload, error) {
 	rt := runtime.ForContext(ctx)
 

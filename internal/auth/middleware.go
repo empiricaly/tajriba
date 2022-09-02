@@ -7,6 +7,7 @@ import (
 
 	"github.com/empiricaly/tajriba/internal/auth/actor"
 	"github.com/empiricaly/tajriba/internal/runtime"
+	"github.com/empiricaly/tajriba/internal/server/metadata"
 	"github.com/julienschmidt/httprouter"
 	"github.com/pkg/errors"
 )
@@ -44,6 +45,8 @@ var (
 
 func GetAuthentication(ctx context.Context, token string, production bool) (actor.Actor, error) {
 	token = strings.TrimSpace(strings.TrimPrefix(token, "Bearer "))
+	md := metadata.RequestForContext(ctx)
+	md.Token = token
 
 	// Allow unauthenticated users in
 	if token == "" || token == "123456789" {
@@ -58,10 +61,15 @@ func GetAuthentication(ctx context.Context, token string, production bool) (acto
 
 	rt := runtime.ForContext(ctx)
 
+	rt.Lock()
+	defer rt.Unlock()
+
 	s, err := rt.FindSession(ctx, token)
 	if err != nil {
 		return nil, errors.Wrap(err, "find session")
 	}
+
+	md.Actor = s.Actor
 
 	return s.Actor, nil
 }

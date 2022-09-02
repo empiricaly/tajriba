@@ -1,6 +1,41 @@
 package models
 
-import "time"
+import (
+	"time"
+)
+
+type ChangeDeepCopier interface {
+	DeepCopy() DeepCopier
+	IsChange()
+}
+
+type Change interface {
+	IsChange()
+}
+
+type ChangePayload struct {
+	// change is the Change.
+	Change Change `json:"change"`
+	// removed indicates whether the record was removed.
+	Removed bool `json:"removed"`
+	// done indicates that the state has finished synchorizing.
+	Done bool `json:"done"`
+}
+
+// // MarshalGQLContext implements the graphql.ContextMarshaler interface
+// func (c ChangePayload) MarshalGQLContext(ctx context.Context, w io.Writer) error {
+// 	rt := runtime.ForContext(ctx)
+// 	rt.RLock()
+// 	defer rt.RUnlock()
+
+// 	s, err := l.FormatContext(ctx)
+// 	if err != nil {
+// 		return err
+// 	}
+
+// 	w.Write([]byte(strconv.Quote(s)))
+// 	return nil
+// }
 
 type ParticipantChange struct {
 	// id is the unique globally identifier for the Participant.

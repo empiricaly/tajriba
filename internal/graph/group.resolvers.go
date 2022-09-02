@@ -12,6 +12,7 @@ import (
 	errs "github.com/pkg/errors"
 )
 
+// Links is the resolver for the links field.
 func (r *groupResolver) Links(ctx context.Context, obj *models.Group, after *string, first *int, before *string, last *int) (*mgen.LinkConnection, error) {
 	rt := runtime.ForContext(ctx)
 
@@ -52,6 +53,7 @@ func (r *groupResolver) Links(ctx context.Context, obj *models.Group, after *str
 	}, nil
 }
 
+// AddGroups is the resolver for the addGroups field.
 func (r *mutationResolver) AddGroups(ctx context.Context, input []*mgen.AddGroupInput) ([]*mgen.AddGroupPayload, error) {
 	rt := runtime.ForContext(ctx)
 
@@ -69,6 +71,7 @@ func (r *mutationResolver) AddGroups(ctx context.Context, input []*mgen.AddGroup
 	return p, nil
 }
 
+// Groups is the resolver for the groups field.
 func (r *queryResolver) Groups(ctx context.Context, after *string, first *int, before *string, last *int) (*mgen.GroupConnection, error) {
 	rt := runtime.ForContext(ctx)
 
