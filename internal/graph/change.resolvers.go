@@ -6,12 +6,13 @@ package graph
 import (
 	"context"
 
-	"github.com/empiricaly/tajriba/internal/graph/mgen"
+	"github.com/empiricaly/tajriba/internal/models"
 	"github.com/empiricaly/tajriba/internal/runtime"
 	errs "github.com/pkg/errors"
 )
 
-func (r *subscriptionResolver) Changes(ctx context.Context) (<-chan *mgen.ChangePayload, error) {
+// Changes is the resolver for the changes field.
+func (r *subscriptionResolver) Changes(ctx context.Context) (<-chan *models.ChangePayload, error) {
 	rt := runtime.ForContext(ctx)
 
 	c, err := rt.SubChanges(ctx)

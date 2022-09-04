@@ -14,7 +14,7 @@ import (
 
 type changesSub struct {
 	p *models.Participant
-	c chan *mgen.ChangePayload
+	c chan *models.ChangePayload
 
 	// Map of co-participantIDs to which groupIDs they were added from.
 	// When stepIDs is empty map, participant removed change sent.
@@ -28,7 +28,7 @@ func (r *Runtime) pushStep(ctx context.Context, step *models.Step) error {
 		return errors.New("invalid step transitions")
 	}
 
-	var c mgen.Change
+	var c models.Change
 
 	if step.State == models.StateRunning {
 		last := step.Transitions[len(step.Transitions)-1]
@@ -52,7 +52,7 @@ func (r *Runtime) pushStep(ctx context.Context, step *models.Step) error {
 		}
 	}
 
-	chg := &mgen.ChangePayload{
+	chg := &models.ChangePayload{
 		Change: c,
 		Done:   true,
 	}
@@ -68,7 +68,7 @@ func (r *Runtime) pushStep(ctx context.Context, step *models.Step) error {
 }
 
 func (r *Runtime) pushAttributesForChanges(ctx context.Context, attrs []*models.Attribute) error {
-	changes := make(map[string][]*mgen.ChangePayload)
+	changes := make(map[string][]*models.ChangePayload)
 
 	for _, attr := range attrs {
 		scope, ok := attr.Node.(*models.Scope)
@@ -76,7 +76,7 @@ func (r *Runtime) pushAttributesForChanges(ctx context.Context, attrs []*models.
 			return ErrInvalidNode
 		}
 
-		ac := &mgen.ChangePayload{
+		ac := &models.ChangePayload{
 			Change: &models.AttributeChange{
 				ID:      attr.ID,
 				NodeID:  scope.ID,
@@ -109,7 +109,7 @@ func (r *Runtime) pushAttributesForChanges(ctx context.Context, attrs []*models.
 }
 
 func (r *Runtime) pushLinks(ctx context.Context, links []*models.Link) error {
-	changes := make(map[string][]*mgen.ChangePayload)
+	changes := make(map[string][]*models.ChangePayload)
 
 	for _, link := range links {
 		pID := link.ParticipantID
@@ -119,7 +119,7 @@ func (r *Runtime) pushLinks(ctx context.Context, links []*models.Link) error {
 
 		switch v := link.Node.(type) {
 		case *models.Scope:
-			ac := &mgen.ChangePayload{
+			ac := &models.ChangePayload{
 				Removed: !link.Link,
 				Change: &models.ScopeChange{
 					ID:   v.ID,
@@ -130,7 +130,7 @@ func (r *Runtime) pushLinks(ctx context.Context, links []*models.Link) error {
 			changes[pID] = append(changes[pID], ac)
 
 			for _, attr := range v.Attributes {
-				ac := &mgen.ChangePayload{
+				ac := &models.ChangePayload{
 					Removed: !link.Link,
 					Change: &models.AttributeChange{
 						ID:      attr.ID,
@@ -169,7 +169,7 @@ func (r *Runtime) pushLinks(ctx context.Context, links []*models.Link) error {
 				running = false
 			}
 
-			changes[pID] = append(changes[pID], &mgen.ChangePayload{
+			changes[pID] = append(changes[pID], &models.ChangePayload{
 				Removed: !link.Link,
 				Change: &models.StepChange{
 					ID:        v.ID,
@@ -189,7 +189,7 @@ func (r *Runtime) pushLinks(ctx context.Context, links []*models.Link) error {
 					continue
 				}
 
-				changes[pID] = append(changes[pID], &mgen.ChangePayload{
+				changes[pID] = append(changes[pID], &models.ChangePayload{
 					Removed: removed,
 					Change: &models.ParticipantChange{
 						ID:     link.ParticipantID,
@@ -197,7 +197,7 @@ func (r *Runtime) pushLinks(ctx context.Context, links []*models.Link) error {
 					},
 				})
 
-				changes[link.ParticipantID] = append(changes[link.ParticipantID], &mgen.ChangePayload{
+				changes[link.ParticipantID] = append(changes[link.ParticipantID], &models.ChangePayload{
 					Removed: removed,
 					Change: &models.ParticipantChange{
 						ID:     pID,
@@ -220,7 +220,7 @@ func (r *Runtime) pushLinks(ctx context.Context, links []*models.Link) error {
 	return nil
 }
 
-func (c *changesSub) publish(ctx context.Context, changes []*mgen.ChangePayload) error {
+func (c *changesSub) publish(ctx context.Context, changes []*models.ChangePayload) error {
 	n := 0
 
 	// Tracking participant changes
@@ -278,6 +278,7 @@ func (c *changesSub) publish(ctx context.Context, changes []*mgen.ChangePayload)
 	l := len(changes)
 
 	for i, change := range changes {
+		change = change.DeepCopy()
 		change.Done = i+1 == l
 		c.c <- change
 	}
@@ -285,7 +286,7 @@ func (c *changesSub) publish(ctx context.Context, changes []*mgen.ChangePayload)
 	return nil
 }
 
-func (r *Runtime) SubChanges(ctx context.Context) (<-chan *mgen.ChangePayload, error) {
+func (r *Runtime) SubChanges(ctx context.Context) (<-chan *models.ChangePayload, error) {
 	actr := actor.ForContext(ctx)
 	if actr == nil {
 		return nil, ErrNotAuthorized
@@ -296,7 +297,7 @@ func (r *Runtime) SubChanges(ctx context.Context) (<-chan *mgen.ChangePayload, e
 		return nil, errors.New("changes only for participants")
 	}
 
-	pchan := make(chan *mgen.ChangePayload)
+	pchan := make(chan *models.ChangePayload)
 
 	go func() {
 		r.Lock()
@@ -311,6 +312,7 @@ func (r *Runtime) SubChanges(ctx context.Context) (<-chan *mgen.ChangePayload, e
 
 		if len(r.changesSubs[p.ID]) == 1 {
 			r.propagateHook(ctx, mgen.EventTypeParticipantConnect, p.ID, p)
+			r.propagateHook(ctx, mgen.EventTypeParticipantConnected, p.ID, p)
 		}
 
 		err := r.pushLinks(ctx, activeParticipantLinks(p.Links))

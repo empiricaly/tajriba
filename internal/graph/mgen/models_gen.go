@@ -14,10 +14,6 @@ type Admin interface {
 	IsAdmin()
 }
 
-type Change interface {
-	IsChange()
-}
-
 // AddGroupInput creates a new Group.
 type AddGroupInput struct {
 	// participantIDs are the IDs of the Participants to link with the Group.
@@ -83,15 +79,6 @@ type AttributeConnection struct {
 type AttributeEdge struct {
 	Node   *models.Attribute `json:"node"`
 	Cursor string            `json:"cursor"`
-}
-
-type ChangePayload struct {
-	// change is the Change.
-	Change Change `json:"change"`
-	// removed indicates whether the record was removed.
-	Removed bool `json:"removed"`
-	// done indicates that the state has finished synchorizing.
-	Done bool `json:"done"`
 }
 
 type GroupConnection struct {
@@ -177,6 +164,10 @@ type OnEventPayload struct {
 	EventType EventType `json:"eventType"`
 	// node is the node that triggered the event
 	Node models.Node `json:"node"`
+	// done indicates that the state has finished synchorizing. This is only valid
+	// for events that synchronize state on start of subscription (e.g.
+	// PARTICIPANT_CONNECTED).
+	Done bool `json:"done"`
 }
 
 type PageInfo struct {

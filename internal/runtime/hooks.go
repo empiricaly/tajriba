@@ -37,10 +37,16 @@ func (r *Runtime) propagateHook(ctx context.Context, eventType mgen.EventType, n
 					continue
 				}
 
+				dc, ok := node.(models.DeepCopier)
+				if ok {
+					node = dc.DeepCopy()
+				}
+
 				sub.c <- &mgen.OnEventPayload{
 					EventID:   eventID,
 					EventType: eventType,
 					Node:      node,
+					Done:      true,
 				}
 			}
 		}
@@ -85,9 +91,10 @@ func (r *Runtime) SubOnEvent(
 		md := metadata.RequestForContext(ctx)
 
 		c := &onEventSub{
-			c:   pchan,
-			et:  et,
-			req: md.Request,
+			c:      pchan,
+			et:     et,
+			req:    md.Request,
+			nodeID: input.NodeID,
 		}
 
 		r.Lock()
@@ -95,7 +102,12 @@ func (r *Runtime) SubOnEvent(
 		r.onEventSubs[actorID] = append(r.onEventSubs[actorID], c)
 
 		if et[mgen.EventTypeParticipantConnected] {
+			last := len(r.changesSubs)
+			count := 0
+
 			for pID, subs := range r.changesSubs {
+				count++
+
 				if len(subs) == 0 {
 					log.Warn().
 						Str("participantID", pID).
@@ -111,11 +123,31 @@ func (r *Runtime) SubOnEvent(
 					continue
 				}
 
+				part := subs[0].p.DeepCopy()
+				r.Unlock()
 				c.c <- &mgen.OnEventPayload{
 					EventID:   eventID,
 					EventType: mgen.EventTypeParticipantConnected,
-					Node:      subs[0].p,
+					Node:      part,
+					Done:      count == last,
 				}
+				r.Lock()
+			}
+
+			if last == 0 {
+				eventID, err := generateRandomKey(eventIDLen)
+				if err != nil {
+					log.Error().Err(err).Msg("runtime: failed to generate eventID")
+				} else {
+					r.Unlock()
+					c.c <- &mgen.OnEventPayload{
+						EventID:   eventID,
+						EventType: mgen.EventTypeParticipantConnected,
+						Done:      true,
+					}
+					r.Lock()
+				}
+
 			}
 		}
 

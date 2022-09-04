@@ -11,6 +11,7 @@ import (
 	errs "github.com/pkg/errors"
 )
 
+// Transition is the resolver for the transition field.
 func (r *mutationResolver) Transition(ctx context.Context, input mgen.TransitionInput) (*mgen.TransitionPayload, error) {
 	rt := runtime.ForContext(ctx)
 

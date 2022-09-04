@@ -10,6 +10,7 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler/apollotracing"
 	"github.com/99designs/gqlgen/graphql/handler/extension"
 	"github.com/gorilla/websocket"
+	"github.com/sasha-s/go-deadlock"
 	"github.com/vektah/gqlparser/v2/ast"
 
 	"github.com/99designs/gqlgen/graphql/handler/transport"
@@ -24,6 +25,10 @@ import (
 // pingInterval is the interval at which a ping is sent to client.
 const pingInterval = 10 * time.Second
 
+func init() {
+	deadlock.Opts.DeadlockTimeout = 3 * time.Second
+}
+
 // Defining the Graphql handler.
 func graphqlHandler(
 	ctx context.Context,
@@ -35,9 +40,6 @@ func graphqlHandler(
 	gqlsrv.AddTransport(transport.Options{})
 	gqlsrv.AddTransport(transport.GET{})
 	gqlsrv.AddTransport(transport.POST{})
-	// gqlsrv.AddTransport(vtransport.Websocket{
-	// 	KeepAlivePingInterval: pingInterval,
-	// })
 	gqlsrv.AddTransport(transport.Websocket{
 		ErrorFunc: func(ctx context.Context, err error) {
 			log.Trace().Err(err).Msg("graphql: websocket error")
@@ -82,31 +84,6 @@ func graphqlHandler(
 	gqlsrv.Use(extension.Introspection{})
 	gqlsrv.Use(apollotracing.Tracer{})
 
-	// gqlsrv.AroundFields(func(ctx context.Context, next graphql.Resolver) (res interface{}, err error) {
-	// 	oc := graphql.GetOperationContext(ctx)
-	// 	if oc.OperationName == "IntrospectionQuery" || oc.Operation.Operation != ast.Subscription {
-	// 		return next(ctx)
-	// 	}
-
-	// 	fc := graphql.GetFieldContext(ctx)
-	// 	// if !fc.IsResolver || fc.Field.Name != "changes" {
-	// 	// 	return next(ctx)
-	// 	// }
-
-	// 	// Add .Str("query", oc.RawQuery) to get query
-	// 	log.Trace().Str("field", fc.Field.Name).Bool("resolver", fc.IsResolver).Bool("method", fc.IsMethod).Interface("type", fc.Field.Definition.Type.String()).Msg("graphql: sub push")
-
-	// 	// rt := runtime.ForContext(ctx)
-	// 	// rt.RLock()
-	// 	// defer rt.RUnlock()
-
-	// 	defer func() {
-	// 		log.Trace().Str("field", fc.Field.Name).Interface("res", fc.Result).Msg("graphql: sub push end")
-	// 	}()
-
-	// 	return next(ctx)
-	// })
-
 	gqlsrv.AroundOperations(func(ctx context.Context, next graphql.OperationHandler) graphql.ResponseHandler {
 		oc := graphql.GetOperationContext(ctx)
 
@@ -135,8 +112,6 @@ func graphqlHandler(
 		}
 
 		skipLock := oc.Operation == nil || oc.Operation.Operation == ast.Subscription
-		// skipLock := false
-		// spew.Dump(oc)
 
 		var rt *runtime.Runtime
 		if !skipLock {

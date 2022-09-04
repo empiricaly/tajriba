@@ -69,7 +69,14 @@ type OnEventPayload {
   eventType: EventType!
 
   "node is the node that triggered the event"
-  node: Node!
+  node: Node
+
+  """
+  done indicates that the state has finished synchorizing. This is only valid
+  for events that synchronize state on start of subscription (e.g.
+  PARTICIPANT_CONNECTED).
+  """
+  done: Boolean!
 }
 
 extend type Subscription {

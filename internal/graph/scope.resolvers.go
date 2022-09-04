@@ -12,6 +12,7 @@ import (
 	errs "github.com/pkg/errors"
 )
 
+// AddScopes is the resolver for the addScopes field.
 func (r *mutationResolver) AddScopes(ctx context.Context, input []*mgen.AddScopeInput) ([]*mgen.AddScopePayload, error) {
 	rt := runtime.ForContext(ctx)
 
@@ -29,6 +30,7 @@ func (r *mutationResolver) AddScopes(ctx context.Context, input []*mgen.AddScope
 	return p, nil
 }
 
+// Scopes is the resolver for the scopes field.
 func (r *queryResolver) Scopes(ctx context.Context, filter []*models.ScopedAttributesInput, after *string, first *int, before *string, last *int) (*mgen.ScopeConnection, error) {
 	rt := runtime.ForContext(ctx)
 
@@ -69,6 +71,7 @@ func (r *queryResolver) Scopes(ctx context.Context, filter []*models.ScopedAttri
 	}, nil
 }
 
+// Attributes is the resolver for the attributes field.
 func (r *scopeResolver) Attributes(ctx context.Context, obj *models.Scope, deleted *bool, after *string, first *int, before *string, last *int) (*mgen.AttributeConnection, error) {
 	rt := runtime.ForContext(ctx)
 
@@ -109,6 +112,7 @@ func (r *scopeResolver) Attributes(ctx context.Context, obj *models.Scope, delet
 	}, nil
 }
 
+// Links is the resolver for the links field.
 func (r *scopeResolver) Links(ctx context.Context, obj *models.Scope, after *string, first *int, before *string, last *int) (*mgen.LinkConnection, error) {
 	rt := runtime.ForContext(ctx)
 
@@ -149,6 +153,7 @@ func (r *scopeResolver) Links(ctx context.Context, obj *models.Scope, after *str
 	}, nil
 }
 
+// ScopedAttributes is the resolver for the scopedAttributes field.
 func (r *subscriptionResolver) ScopedAttributes(ctx context.Context, input []*models.ScopedAttributesInput) (<-chan *mgen.SubAttributesPayload, error) {
 	rt := runtime.ForContext(ctx)
 
@@ -160,6 +165,7 @@ func (r *subscriptionResolver) ScopedAttributes(ctx context.Context, input []*mo
 	return c, nil
 }
 
+// GlobalAttributes is the resolver for the globalAttributes field.
 func (r *subscriptionResolver) GlobalAttributes(ctx context.Context) (<-chan *mgen.SubAttributesPayload, error) {
 	rt := runtime.ForContext(ctx)
 

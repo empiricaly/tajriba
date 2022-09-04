@@ -11,6 +11,7 @@ import (
 	errs "github.com/pkg/errors"
 )
 
+// Link is the resolver for the link field.
 func (r *mutationResolver) Link(ctx context.Context, input mgen.LinkInput) (*mgen.LinkPayload, error) {
 	rt := runtime.ForContext(ctx)
 

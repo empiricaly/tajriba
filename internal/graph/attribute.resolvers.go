@@ -13,6 +13,7 @@ import (
 	errs "github.com/pkg/errors"
 )
 
+// Versions is the resolver for the versions field.
 func (r *attributeResolver) Versions(ctx context.Context, obj *models.Attribute, after *string, first *int, before *string, last *int) (*mgen.AttributeConnection, error) {
 	rt := runtime.ForContext(ctx)
 
@@ -53,6 +54,7 @@ func (r *attributeResolver) Versions(ctx context.Context, obj *models.Attribute,
 	}, nil
 }
 
+// SetAttributes is the resolver for the setAttributes field.
 func (r *mutationResolver) SetAttributes(ctx context.Context, input []*mgen.SetAttributeInput) ([]*mgen.SetAttributePayload, error) {
 	rt := runtime.ForContext(ctx)
 
@@ -72,6 +74,7 @@ func (r *mutationResolver) SetAttributes(ctx context.Context, input []*mgen.SetA
 	return aa, nil
 }
 
+// Attributes is the resolver for the attributes field.
 func (r *queryResolver) Attributes(ctx context.Context, scopeID string, after *string, first *int, before *string, last *int) (*mgen.AttributeConnection, error) {
 	panic(fmt.Errorf("not implemented"))
 }

@@ -4,9 +4,11 @@ import (
 	"context"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/empiricaly/tajriba/internal/auth/actor"
 	"github.com/empiricaly/tajriba/internal/graph/mgen"
 	"github.com/empiricaly/tajriba/internal/models"
+	"github.com/empiricaly/tajriba/internal/server/metadata"
 	"github.com/empiricaly/tajriba/internal/store"
 	"github.com/empiricaly/tajriba/internal/utils/ids"
 	"github.com/pkg/errors"
@@ -40,6 +42,8 @@ func (r *Runtime) prepAttributes(
 ) ([]*models.Attribute, error) {
 	actr := actor.ForContext(ctx)
 	if actr == nil {
+		md := metadata.RequestForContext(ctx)
+		spew.Dump(md)
 		return nil, ErrNotAuthorized
 	}
 

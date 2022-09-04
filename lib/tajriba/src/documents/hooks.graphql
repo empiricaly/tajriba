@@ -1,6 +1,7 @@
 fragment onEventFields on OnEventPayload {
   eventID
   eventType
+  done
   node {
     __typename
     id

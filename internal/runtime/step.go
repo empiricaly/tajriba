@@ -174,7 +174,7 @@ func (r *Runtime) Transition(ctx context.Context, stepID string, from, to models
 		return nil, ErrServerError
 	}
 
-	r.propagateHook(ctx, mgen.EventTypeTransitionAdd, t.ID, t)
+	r.propagateHook(ctx, mgen.EventTypeTransitionAdd, step.ID, t)
 
 	if err := r.pushStep(ctx, step); err != nil {
 		log.Error().Err(err).Msg("runtime: failed to push step transition to participants")

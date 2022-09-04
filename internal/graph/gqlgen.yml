@@ -42,19 +42,3 @@ models:
   DateTime:
     model:
       - github.com/99designs/gqlgen/graphql.Time
-  # Step:
-  #   fields:
-  #     participants:
-  #       resolver: true
-  #     substeps:
-  #       resolver: true
-  #     data:
-  #       resolver: true
-  #     runs:
-  #       resolver: true
-  # Participant:
-  #   fields:
-  #     steps:
-  #       resolver: true
-  #     data:
-  #       resolver: true

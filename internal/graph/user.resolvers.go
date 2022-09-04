@@ -11,6 +11,7 @@ import (
 	errs "github.com/pkg/errors"
 )
 
+// Login is the resolver for the login field.
 func (r *mutationResolver) Login(ctx context.Context, input mgen.LoginInput) (*mgen.LoginPayload, error) {
 	rt := runtime.ForContext(ctx)
 
