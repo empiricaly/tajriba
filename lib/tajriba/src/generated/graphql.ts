@@ -447,7 +447,7 @@ export type OnEventPayload = {
   /** eventType is the type of the current event. */
   eventType: EventType;
   /** node is the node that triggered the event */
-  node: Node;
+  node?: Maybe<Node>;
 };
 
 export enum OrderDirection {
@@ -1189,7 +1189,7 @@ export type OnEventSubscription = {
     eventID: string;
     eventType: EventType;
     done: boolean;
-    node:
+    node?:
       | {
           __typename: "Attribute";
           createdAt: any;
@@ -1527,7 +1527,8 @@ export type OnEventSubscription = {
             | { __typename: "Transition" }
             | { __typename: "User" };
         }
-      | { __typename: "User"; id: string };
+      | { __typename: "User"; id: string }
+      | null;
   } | null;
 };
 
@@ -1542,7 +1543,7 @@ export type OnAnyEventSubscription = {
     eventID: string;
     eventType: EventType;
     done: boolean;
-    node:
+    node?:
       | {
           __typename: "Attribute";
           createdAt: any;
@@ -1880,7 +1881,8 @@ export type OnAnyEventSubscription = {
             | { __typename: "Transition" }
             | { __typename: "User" };
         }
-      | { __typename: "User"; id: string };
+      | { __typename: "User"; id: string }
+      | null;
   } | null;
 };
 
