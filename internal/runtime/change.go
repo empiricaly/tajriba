@@ -185,9 +185,9 @@ func (r *Runtime) pushLinks(ctx context.Context, links []*models.Link) error {
 			active := activeNodeLinks(v.Links)
 
 			for _, link := range active {
-				if link.ParticipantID == pID {
-					continue
-				}
+				// if link.ParticipantID == pID {
+				// 	continue
+				// }
 
 				changes[pID] = append(changes[pID], &models.ChangePayload{
 					Removed: removed,

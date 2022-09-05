@@ -395,6 +395,10 @@ export class Tajriba extends (EventEmitter as new () => TypedEmitter<TajribaEven
   ): Promise<U> {
     const res = await this.client.query(query, variables).toPromise();
 
+    if (res.error) {
+      throw res.error;
+    }
+
     if (res.data) {
       const d = data(res.data);
       if (d) {
@@ -412,6 +416,10 @@ export class Tajriba extends (EventEmitter as new () => TypedEmitter<TajribaEven
   ) {
     const res = await this.client.mutation(mutation, variables).toPromise();
 
+    if (res.error) {
+      throw res.error;
+    }
+
     let r: U | undefined;
 
     if (res.data) {
@@ -419,6 +427,7 @@ export class Tajriba extends (EventEmitter as new () => TypedEmitter<TajribaEven
     }
 
     if (!r) {
+      console.log("NOT FOUND", JSON.stringify(res, null, "  "));
       throw new Error("not found");
     }
 

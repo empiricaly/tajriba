@@ -87,9 +87,13 @@ func graphqlHandler(
 	gqlsrv.AroundOperations(func(ctx context.Context, next graphql.OperationHandler) graphql.ResponseHandler {
 		oc := graphql.GetOperationContext(ctx)
 
-		rt := runtime.ForContext(ctx)
-		rt.Lock()
-		defer rt.Unlock()
+		skipLock := oc.Operation == nil || oc.Operation.Operation == ast.Subscription
+
+		if !skipLock {
+			rt := runtime.ForContext(ctx)
+			rt.Lock()
+			defer rt.Unlock()
+		}
 
 		// Add .Str("query", oc.RawQuery) to get query
 		log.Trace().

@@ -324,7 +324,9 @@ func (r *Runtime) pushAttributesForScopedAttributes(ctx context.Context, attrs [
 		for _, sub := range subs {
 			for sID, as := range attrsPerScope {
 				if _, ok := sub.scopes[sID]; ok {
-					sasubs[sub] = append(sasubs[sub], as...)
+					for _, attr := range as {
+						sasubs[sub] = append(sasubs[sub], attr.DeepCopy())
+					}
 				}
 			}
 		}
@@ -346,17 +348,19 @@ func (r *Runtime) pushAttributesForScopedAttributes(ctx context.Context, attrs [
 		}
 	}
 
-	for sub, attrs := range sasubs {
-		l := len(attrs)
+	go func() {
+		for sub, attrs := range sasubs {
+			l := len(attrs)
 
-		for i, attr := range attrs {
-			sub.c <- &mgen.SubAttributesPayload{
-				Attribute: attr.DeepCopy(),
-				IsNew:     attr.Version == 1,
-				Done:      l == i+1,
+			for i, attr := range attrs {
+				sub.c <- &mgen.SubAttributesPayload{
+					Attribute: attr,
+					IsNew:     attr.Version == 1,
+					Done:      l == i+1,
+				}
 			}
 		}
-	}
+	}()
 
 	return nil
 }
