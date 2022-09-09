@@ -287,6 +287,9 @@ func (c *changesSub) publish(ctx context.Context, changes []*models.ChangePayloa
 }
 
 func (r *Runtime) SubChanges(ctx context.Context) (<-chan *models.ChangePayload, error) {
+	r.Lock()
+	defer r.Unlock()
+
 	actr := actor.ForContext(ctx)
 	if actr == nil {
 		return nil, ErrNotAuthorized

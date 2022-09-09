@@ -38,8 +38,6 @@ type Attribute struct {
 	Versions []*Attribute `json:"-"`
 	// version is the version number of this Attribute, starting at 1.
 	Version int `json:"-"`
-	// current is true if the Attribute is the current version of the value for key.
-	Current bool `json:"-"`
 	// private indicates whether the Attribute shouldn't be visible to Participants
 	// in the scope.
 	// private must be set on the Attribute at creation.

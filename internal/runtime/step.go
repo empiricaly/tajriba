@@ -15,6 +15,9 @@ import (
 )
 
 func (r *Runtime) AddStep(ctx context.Context, duration int) (*models.Step, error) {
+	r.Lock()
+	defer r.Unlock()
+
 	actr := actor.ForContext(ctx)
 	if actr == nil {
 		return nil, ErrNotAuthorized
@@ -48,6 +51,9 @@ func (r *Runtime) AddStep(ctx context.Context, duration int) (*models.Step, erro
 }
 
 func (r *Runtime) Transition(ctx context.Context, stepID string, from, to models.State, cause *string) (*models.Transition, error) {
+	r.Lock()
+	defer r.Unlock()
+
 	actr := actor.ForContext(ctx)
 	if actr == nil {
 		return nil, ErrNotAuthorized
@@ -274,6 +280,9 @@ func (r *Runtime) Steps(
 	hasPrev bool,
 	err error,
 ) {
+	r.RLock()
+	defer r.RUnlock()
+
 	items := make([]models.Cursorer, len(r.steps))
 	for i := range r.steps {
 		items[i] = r.steps[i]
@@ -303,6 +312,9 @@ func (r *Runtime) StepLinks(
 	hasPrev bool,
 	err error,
 ) {
+	r.RLock()
+	defer r.RUnlock()
+
 	items := make([]models.Cursorer, len(step.Links))
 	for i := range step.Links {
 		items[i] = step.Links[i]
@@ -332,6 +344,9 @@ func (r *Runtime) StepTransitions(
 	hasPrev bool,
 	err error,
 ) {
+	r.RLock()
+	defer r.RUnlock()
+
 	items := make([]models.Cursorer, len(step.Transitions))
 	for i := range step.Transitions {
 		items[i] = step.Transitions[i]

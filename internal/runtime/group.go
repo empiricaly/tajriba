@@ -14,6 +14,9 @@ import (
 )
 
 func (r *Runtime) AddGroup(ctx context.Context, participantIDs []string) (*models.Group, error) {
+	r.Lock()
+	defer r.Unlock()
+
 	actr := actor.ForContext(ctx)
 	if actr == nil {
 		return nil, ErrNotAuthorized
@@ -104,6 +107,9 @@ func (r *Runtime) Groups(
 	hasPrev bool,
 	err error,
 ) {
+	r.RLock()
+	defer r.RUnlock()
+
 	items := make([]models.Cursorer, len(r.groups))
 	for i := range r.groups {
 		items[i] = r.groups[i]
@@ -133,6 +139,9 @@ func (r *Runtime) GroupLinks(
 	hasPrev bool,
 	err error,
 ) {
+	r.RLock()
+	defer r.RUnlock()
+
 	group, ok := r.groupsMap[groupID]
 	if !ok {
 		return nil, 0, false, false, ErrNotFound
