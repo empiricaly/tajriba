@@ -346,6 +346,7 @@ type ComplexityRoot struct {
 
 type AttributeResolver interface {
 	Versions(ctx context.Context, obj *models.Attribute, after *string, first *int, before *string, last *int) (*mgen.AttributeConnection, error)
+	Current(ctx context.Context, obj *models.Attribute) (bool, error)
 }
 type GroupResolver interface {
 	Links(ctx context.Context, obj *models.Group, after *string, first *int, before *string, last *int) (*mgen.LinkConnection, error)
@@ -3407,7 +3408,7 @@ func (ec *executionContext) _Attribute_current(ctx context.Context, field graphq
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Current, nil
+		return ec.resolvers.Attribute().Current(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -3428,8 +3429,8 @@ func (ec *executionContext) fieldContext_Attribute_current(ctx context.Context, 
 	fc = &graphql.FieldContext{
 		Object:     "Attribute",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Boolean does not have child fields")
 		},
@@ -13562,12 +13563,25 @@ func (ec *executionContext) _Attribute(ctx context.Context, sel ast.SelectionSet
 
 			})
 		case "current":
+			field := field
 
-			out.Values[i] = ec._Attribute_current(ctx, field, obj)
-
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Attribute_current(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
 			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return innerFunc(ctx)
+
+			})
 		case "node":
 
 			out.Values[i] = ec._Attribute_node(ctx, field, obj)

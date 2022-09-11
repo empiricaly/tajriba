@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"time"
 
@@ -11,7 +12,6 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler/extension"
 	"github.com/gorilla/websocket"
 	"github.com/sasha-s/go-deadlock"
-	"github.com/vektah/gqlparser/v2/ast"
 
 	"github.com/99designs/gqlgen/graphql/handler/transport"
 	"github.com/empiricaly/tajriba/internal/auth"
@@ -27,6 +27,17 @@ const pingInterval = 10 * time.Second
 
 func init() {
 	deadlock.Opts.DeadlockTimeout = 3 * time.Second
+}
+
+type lockedMarshaller struct {
+	rt *runtime.Runtime
+	m  graphql.Marshaler
+}
+
+func (m *lockedMarshaller) MarshalGQL(w io.Writer) {
+	m.rt.RLock()
+	m.m.MarshalGQL(w)
+	m.rt.RUnlock()
 }
 
 // Defining the Graphql handler.
@@ -87,14 +98,6 @@ func graphqlHandler(
 	gqlsrv.AroundOperations(func(ctx context.Context, next graphql.OperationHandler) graphql.ResponseHandler {
 		oc := graphql.GetOperationContext(ctx)
 
-		skipLock := oc.Operation == nil || oc.Operation.Operation == ast.Subscription
-
-		if !skipLock {
-			rt := runtime.ForContext(ctx)
-			rt.Lock()
-			defer rt.Unlock()
-		}
-
 		// Add .Str("query", oc.RawQuery) to get query
 		log.Trace().
 			Str("name", oc.OperationName).
@@ -109,35 +112,31 @@ func graphqlHandler(
 		return next(ctx)
 	})
 
+	// gqlsrv.AroundRootFields(func(ctx context.Context, next graphql.RootResolver) graphql.Marshaler {
+	// 	return &lockedMarshaller{m: next(ctx), rt: runtime.ForContext(ctx)}
+	// })
+
 	gqlsrv.AroundResponses(func(ctx context.Context, next graphql.ResponseHandler) *graphql.Response {
 		oc := graphql.GetOperationContext(ctx)
 		if oc.OperationName == "IntrospectionQuery" {
 			return next(ctx)
 		}
 
-		skipLock := oc.Operation == nil || oc.Operation.Operation == ast.Subscription
+		// skipLock := oc.Operation == nil || oc.Operation.Operation == ast.Subscription
 
-		var rt *runtime.Runtime
-		if !skipLock {
-			rt = runtime.ForContext(ctx)
-			if oc.Operation.Operation == ast.Mutation {
-				rt.Lock()
-			} else {
-				rt.RLock()
-			}
-		}
+		// var rt *runtime.Runtime
+		// if !skipLock {
+		// 	rt = runtime.ForContext(ctx)
+		// 	rt.RLock()
+		// }
 
 		t := time.Now()
 		resp := next(ctx)
 		d := time.Since(t).String()
 
-		if !skipLock {
-			if oc.Operation.Operation == ast.Mutation {
-				rt.Unlock()
-			} else {
-				rt.RUnlock()
-			}
-		}
+		// if !skipLock {
+		// 	rt.RUnlock()
+		// }
 
 		if resp != nil {
 			var op string

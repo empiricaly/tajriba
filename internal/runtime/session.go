@@ -19,6 +19,9 @@ import (
 const sessionTokenByteLength = 64
 
 func (r *Runtime) FindSession(ctx context.Context, token string) (*models.Session, error) {
+	r.RLock()
+	defer r.RUnlock()
+
 	s, ok := r.sessionsMap[token]
 	if !ok {
 		return nil, ErrNotFound

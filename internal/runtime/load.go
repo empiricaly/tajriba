@@ -205,12 +205,12 @@ func (o *objectMap) associateAttribute(a *models.Attribute) (err error) {
 	key := a.NodeID + a.Key
 	if prev, ok := o.attrLastVersion[key]; ok {
 		o.attrVersions[key] = append(o.attrVersions[key], prev)
-		prev.Current = false
+		// prev.Current = false
 	}
 
 	o.attrLastVersion[key] = a
 	a.Versions = o.attrVersions[key]
-	a.Current = true
+	// a.Current = true
 
 	return nil
 }
@@ -464,12 +464,12 @@ func (o *objectMap) findTransitions(id string) []*models.Transition {
 func (o *objectMap) findAttributes(id string) (attributes []*models.Attribute, amap map[string]*models.Attribute) {
 	amap = make(map[string]*models.Attribute)
 
-	for _, a := range o.attributes {
-		if a.Current && a.NodeID == id {
-			attributes = append(attributes, a)
-			amap[a.Key] = a
-		}
-	}
+	// for _, a := range o.attributes {
+	// 	if a.Current && a.NodeID == id {
+	// 		attributes = append(attributes, a)
+	// 		amap[a.Key] = a
+	// 	}
+	// }
 
 	return attributes, amap
 }

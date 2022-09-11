@@ -23,6 +23,9 @@ func (r *Runtime) SetAttributes(
 		return nil, ErrEmptyInput
 	}
 
+	r.Lock()
+	defer r.Unlock()
+
 	attrs, err = r.prepAttributes(ctx, inputs)
 	if err != nil {
 		return nil, errors.Wrap(err, "check attributes")
@@ -95,11 +98,11 @@ func (r *Runtime) prepAttributes(
 			Vector:      vector,
 			NodeID:      scope.ID,
 			Node:        scope,
-			Current:     true,
-			Version:     1,
-			Private:     private,
-			Protected:   protected,
-			Immutable:   immutable,
+			// Current:     true,
+			Version:   1,
+			Private:   private,
+			Protected: protected,
+			Immutable: immutable,
 		}
 
 		last := scope.AttributesMap[input.Key]
@@ -180,7 +183,7 @@ func (r *Runtime) setAttributes(
 			scope.Attributes[len(scope.Attributes)-1] = attr
 
 			// Remove current from previous version
-			attr.Versions[len(attr.Versions)-1].Current = false
+			// attr.Versions[len(attr.Versions)-1].Current = false
 		} else {
 			// Append new attribute to end of list
 			scope.Attributes = append(scope.Attributes, attr)
@@ -217,6 +220,9 @@ func (r *Runtime) AttributeVersions(
 	hasPrev bool,
 	err error,
 ) {
+	r.RLock()
+	defer r.RUnlock()
+
 	attr, ok := r.attributesMap[attrID]
 	if !ok {
 		return nil, 0, false, false, ErrNotFound
@@ -235,6 +241,29 @@ func (r *Runtime) AttributeVersions(
 	}
 
 	return versions, total, hasNext, hasPrev, err
+}
+
+func (r *Runtime) IsCurrent(
+	ctx context.Context,
+	attr *models.Attribute,
+) (
+	isCurrent bool,
+	err error,
+) {
+	r.RLock()
+	defer r.RUnlock()
+
+	scope, ok := r.scopesMap[attr.NodeID]
+	if !ok {
+		return false, ErrNotFound
+	}
+
+	last, ok := scope.AttributesMap[attr.Key]
+	if !ok {
+		return false, ErrNotFound
+	}
+
+	return last.ID == attr.ID, nil
 }
 
 func (r *Runtime) pushAttributes(ctx context.Context, attrs []*models.Attribute) error {

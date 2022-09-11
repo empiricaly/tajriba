@@ -10,9 +10,13 @@ import (
 	"github.com/empiricaly/tajriba/internal/store"
 	"github.com/empiricaly/tajriba/internal/utils/ids"
 	"github.com/pkg/errors"
+	"github.com/sasha-s/go-deadlock"
 )
 
 func (r *Runtime) AddScope(ctx context.Context, name *string, kind *string, attributes []*mgen.SetAttributeInput) (*models.Scope, error) {
+	r.Lock()
+	defer r.Unlock()
+
 	actr := actor.ForContext(ctx)
 	if actr == nil {
 		return nil, ErrNotAuthorized
@@ -91,6 +95,9 @@ func (r *Runtime) Scopes(
 	hasPrev bool,
 	err error,
 ) {
+	r.RLock()
+	defer r.RUnlock()
+
 	if err := filter.Validate(true); err != nil {
 		return nil, 0, false, false, errors.Wrap(err, "validate filter")
 	}
@@ -146,6 +153,9 @@ func (r *Runtime) ScopeAttributes(
 	hasPrev bool,
 	err error,
 ) {
+	r.RLock()
+	defer r.RUnlock()
+
 	scope, ok := r.scopesMap[scopeID]
 	if !ok {
 		return nil, 0, false, false, ErrNotFound
@@ -180,6 +190,9 @@ func (r *Runtime) ScopeLinks(
 	hasPrev bool,
 	err error,
 ) {
+	r.RLock()
+	defer r.RUnlock()
+
 	scope, ok := r.scopesMap[scopeID]
 	if !ok {
 		return nil, 0, false, false, ErrNotFound
@@ -205,6 +218,8 @@ type scopedAttributesSub struct {
 	scopes map[string]*models.Scope
 
 	c chan *mgen.SubAttributesPayload
+
+	deadlock.Mutex
 }
 
 func (r *Runtime) SubScopedAttributes(
@@ -222,6 +237,9 @@ func (r *Runtime) SubScopedAttributes(
 	if inputs.IsEmpty() {
 		return nil, errors.New("ScopedAttributesInputs cannot be null")
 	}
+
+	r.Lock()
+	defer r.Unlock()
 
 	var actorID string
 	if global {
@@ -268,6 +286,7 @@ func (r *Runtime) SubScopedAttributes(
 		l := len(attrs)
 		r.Unlock()
 
+		c.Lock()
 		for i, attr := range attrs {
 			c.c <- &mgen.SubAttributesPayload{
 				Attribute: attr,
@@ -280,12 +299,15 @@ func (r *Runtime) SubScopedAttributes(
 				Done: true,
 			}
 		}
+		c.Unlock()
 
 		<-ctx.Done()
 		r.Lock()
 		defer r.Unlock()
 
+		c.Lock()
 		close(c.c)
+		c.Unlock()
 
 		n := 0
 
@@ -352,6 +374,7 @@ func (r *Runtime) pushAttributesForScopedAttributes(ctx context.Context, attrs [
 		for sub, attrs := range sasubs {
 			l := len(attrs)
 
+			sub.Lock()
 			for i, attr := range attrs {
 				sub.c <- &mgen.SubAttributesPayload{
 					Attribute: attr,
@@ -359,6 +382,7 @@ func (r *Runtime) pushAttributesForScopedAttributes(ctx context.Context, attrs [
 					Done:      l == i+1,
 				}
 			}
+			sub.Unlock()
 		}
 	}()
 

@@ -14,6 +14,9 @@ import (
 )
 
 func (r *Runtime) Link(ctx context.Context, input mgen.LinkInput) (*mgen.LinkPayload, error) {
+	r.Lock()
+	defer r.Unlock()
+
 	if !input.Link {
 		log.Debug().Msg("runtime: unlinking is untested")
 	}

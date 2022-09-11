@@ -54,6 +54,11 @@ func (r *attributeResolver) Versions(ctx context.Context, obj *models.Attribute,
 	}, nil
 }
 
+// Current is the resolver for the current field.
+func (r *attributeResolver) Current(ctx context.Context, obj *models.Attribute) (bool, error) {
+	return true, nil
+}
+
 // SetAttributes is the resolver for the setAttributes field.
 func (r *mutationResolver) SetAttributes(ctx context.Context, input []*mgen.SetAttributeInput) ([]*mgen.SetAttributePayload, error) {
 	rt := runtime.ForContext(ctx)
@@ -88,6 +93,8 @@ func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 // Query returns QueryResolver implementation.
 func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 
-type attributeResolver struct{ *Resolver }
-type mutationResolver struct{ *Resolver }
-type queryResolver struct{ *Resolver }
+type (
+	attributeResolver struct{ *Resolver }
+	mutationResolver  struct{ *Resolver }
+	queryResolver     struct{ *Resolver }
+)

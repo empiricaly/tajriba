@@ -64,6 +64,9 @@ func (r *Runtime) SubOnEvent(
 	ctx context.Context,
 	input *mgen.OnEventInput,
 ) (<-chan *mgen.OnEventPayload, error) {
+	r.Lock()
+	defer r.Unlock()
+
 	actr := actor.ForContext(ctx)
 	if actr == nil {
 		return nil, ErrNotAuthorized

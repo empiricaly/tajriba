@@ -61,9 +61,6 @@ func GetAuthentication(ctx context.Context, token string, production bool) (acto
 
 	rt := runtime.ForContext(ctx)
 
-	rt.Lock()
-	defer rt.Unlock()
-
 	s, err := rt.FindSession(ctx, token)
 	if err != nil {
 		return nil, errors.Wrap(err, "find session")
