@@ -22,6 +22,7 @@ type Conn struct {
 	buf      *bufio.Writer
 	dirty    bool
 	f        *os.File
+	s        *bufio.Scanner
 	opaqueMD []byte
 
 	deadlock.Mutex
@@ -74,6 +75,8 @@ func (c *Conn) openFile() error {
 			return errors.Wrap(err, "open file")
 		}
 	}
+
+	c.s = bufio.NewScanner(c.f)
 
 	if created {
 		if err := c.writeFileMetadata(); err != nil {
@@ -140,25 +143,26 @@ func (c *Conn) writeFileMetadata() error {
 }
 
 func (c *Conn) readFileMetadata() error {
-	s := bufio.NewScanner(c.f)
-
 	// First line, opaque metadata
-	s.Scan()
-
-	c.opaqueMD = s.Bytes()
-	if len(c.opaqueMD) == 0 {
-		return errors.New("opaque metadata missing")
+	c.s.Scan()
+	if err := c.s.Err(); err != nil {
+		return errors.Wrap(err, "read opaque metadata")
 	}
 
+	c.opaqueMD = c.s.Bytes()
+
 	// Second line, tajriba metadata
-	s.Scan()
+	c.s.Scan()
+	if err := c.s.Err(); err != nil {
+		return errors.Wrap(err, "read tajriba metadata")
+	}
 
 	fmd := &FileMetadata{}
-	if err := json.Unmarshal(s.Bytes(), &fmd); err != nil {
+	if err := json.Unmarshal(c.s.Bytes(), &fmd); err != nil {
 		return errors.Wrap(err, "deserialize tajriba metadata")
 	}
 
-	if err := s.Err(); err != nil {
+	if err := c.s.Err(); err != nil {
 		return errors.Wrap(err, "read metadata")
 	}
 
@@ -284,9 +288,9 @@ func (c *Conn) Load(f func(interface{}) error) error {
 
 	obj := &objektdev{}
 
-	s := bufio.NewScanner(c.f)
-	for s.Scan() {
-		bline := s.Bytes()
+	for c.s.Scan() {
+		bline := c.s.Bytes()
+
 		bline = bytes.TrimSpace(bline)
 		if len(bline) == 0 {
 			continue
@@ -311,7 +315,7 @@ func (c *Conn) Load(f func(interface{}) error) error {
 		}
 	}
 
-	if err := s.Err(); err != nil {
+	if err := c.s.Err(); err != nil {
 		return errors.Wrap(err, "read line")
 	}
 
