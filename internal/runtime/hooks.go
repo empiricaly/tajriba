@@ -10,6 +10,7 @@ import (
 	"github.com/empiricaly/tajriba/internal/server/metadata"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
+	"github.com/sasha-s/go-deadlock"
 )
 
 const eventIDLen = 16
@@ -28,20 +29,17 @@ func (r *Runtime) propagateHook(ctx context.Context, eventType mgen.EventType, n
 
 	for _, subs := range r.onEventSubs {
 		for _, sub := range subs {
-			// if md != nil && md.Request == sub.req {
-			// 	continue
-			// }
+			if !sub.et[eventType] || (sub.nodeID != nil && *sub.nodeID != nodeID) {
+				continue
+			}
 
-			if sub.et[eventType] {
-				if sub.nodeID != nil && *sub.nodeID != nodeID {
-					continue
-				}
+			dc, ok := node.(models.DeepCopier)
+			if ok {
+				node = dc.DeepCopy()
+			}
 
-				dc, ok := node.(models.DeepCopier)
-				if ok {
-					node = dc.DeepCopy()
-				}
-
+			sub.Lock()
+			if !sub.closed {
 				sub.c <- &mgen.OnEventPayload{
 					EventID:   eventID,
 					EventType: eventType,
@@ -49,15 +47,20 @@ func (r *Runtime) propagateHook(ctx context.Context, eventType mgen.EventType, n
 					Done:      true,
 				}
 			}
+			sub.Unlock()
 		}
 	}
 }
 
 type onEventSub struct {
 	nodeID *string
-	c      chan *mgen.OnEventPayload
 	et     map[mgen.EventType]bool
 	req    *http.Request
+
+	c      chan *mgen.OnEventPayload
+	closed bool
+
+	deadlock.Mutex
 }
 
 func (r *Runtime) SubOnEvent(
@@ -128,12 +131,16 @@ func (r *Runtime) SubOnEvent(
 
 				part := subs[0].p.DeepCopy()
 				r.Unlock()
-				c.c <- &mgen.OnEventPayload{
-					EventID:   eventID,
-					EventType: mgen.EventTypeParticipantConnected,
-					Node:      part,
-					Done:      count == last,
+				c.Lock()
+				if !c.closed {
+					c.c <- &mgen.OnEventPayload{
+						EventID:   eventID,
+						EventType: mgen.EventTypeParticipantConnected,
+						Node:      part,
+						Done:      count == last,
+					}
 				}
+				c.Unlock()
 				r.Lock()
 			}
 
@@ -143,11 +150,15 @@ func (r *Runtime) SubOnEvent(
 					log.Error().Err(err).Msg("runtime: failed to generate eventID")
 				} else {
 					r.Unlock()
-					c.c <- &mgen.OnEventPayload{
-						EventID:   eventID,
-						EventType: mgen.EventTypeParticipantConnected,
-						Done:      true,
+					c.Lock()
+					if !c.closed {
+						c.c <- &mgen.OnEventPayload{
+							EventID:   eventID,
+							EventType: mgen.EventTypeParticipantConnected,
+							Done:      true,
+						}
 					}
+					c.Unlock()
 					r.Lock()
 				}
 
@@ -161,7 +172,10 @@ func (r *Runtime) SubOnEvent(
 		r.Lock()
 		defer r.Unlock()
 
+		c.Lock()
+		c.closed = true
 		close(c.c)
+		c.Unlock()
 
 		n := 0
 
