@@ -3,13 +3,15 @@
   "version": "1.0.0-rc.6",
   "description": "Tajriba client",
   "source": "src/index.ts",
-  "module": "dist/module.mjs",
-  "types": "dist/types.d.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/module.mjs"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     }
   },
+  "type": "module",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/empiricaly/tajriba.git"
@@ -38,23 +40,21 @@
     "access": "public"
   },
   "volta": {
-    "node": "16.15.0",
-    "npm": "8.10.0"
+    "node": "16.17.0",
+    "npm": "8.15.0"
   },
   "engines": {
-    "node": ">= 16.15.0"
+    "node": ">= 16.17.0"
   },
   "scripts": {
-    "pkg": "parcel build",
-    "prebuild": "npm run generate",
-    "check": "tsc --noEmit",
-    "build": "npm run pkg",
     "generate": "graphql-codegen",
-    "generate:watch": "graphql-codegen -w",
+    "prebuild": "npm run generate",
+    "build": "tsup --entry.index src/index.ts --dts --format esm,cjs --clean --sourcemap true --treeshake",
+    "check": "tsc --noEmit",
+    "test": "ava",
     "prerelease": "npm run build",
     "release:next": "np --tag next",
-    "release": "np --tag latest",
-    "test": "ava"
+    "release": "np --tag latest"
   },
   "devDependencies": {
     "@graphql-codegen/cli": "2.12.0",
@@ -64,14 +64,12 @@
     "@graphql-codegen/typescript-operations": "2.4.2",
     "@graphql-codegen/typescript-urql": "3.5.12",
     "@graphql-typed-document-node/core": "3.1.1",
-    "@parcel/packager-ts": "2.7.0",
-    "@parcel/transformer-typescript-types": "2.7.0",
     "ava": "4.3.0",
     "graphql-codegen-typescript-validation-schema": "0.5.0",
     "np": "7.6.2",
-    "parcel": "2.7.0",
     "pika-plugin-package.json": "1.0.2",
     "prettier": "2.7.1",
+    "tsup": "6.2.3",
     "typescript": "4.7.4"
   },
   "dependencies": {
