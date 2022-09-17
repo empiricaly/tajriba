@@ -14,11 +14,13 @@ import (
 
 type changesSub struct {
 	p *models.Participant
-	c chan *models.ChangePayload
 
 	// Map of co-participantIDs to which groupIDs they were added from.
 	// When stepIDs is empty map, participant removed change sent.
 	participants map[string]map[string]struct{}
+
+	c      chan *models.ChangePayload
+	closed bool
 
 	deadlock.Mutex
 }
@@ -57,10 +59,21 @@ func (r *Runtime) pushStep(ctx context.Context, step *models.Step) error {
 		Done:   true,
 	}
 
+	uniquePart := make(map[string]struct{})
 	active := activeNodeLinks(step.Links)
 	for _, link := range active {
+		if _, ok := uniquePart[link.ParticipantID]; ok {
+			continue
+		}
+
+		uniquePart[link.ParticipantID] = struct{}{}
+
 		for _, sub := range r.changesSubs[link.ParticipantID] {
-			sub.c <- chg
+			sub.Lock()
+			if !sub.closed {
+				sub.c <- chg
+			}
+			sub.Unlock()
 		}
 	}
 
@@ -221,6 +234,13 @@ func (r *Runtime) pushLinks(ctx context.Context, links []*models.Link) error {
 }
 
 func (c *changesSub) publish(ctx context.Context, changes []*models.ChangePayload) error {
+	c.Lock()
+	defer c.Unlock()
+
+	if c.closed {
+		return nil
+	}
+
 	n := 0
 
 	// Tracking participant changes
@@ -332,7 +352,10 @@ func (r *Runtime) SubChanges(ctx context.Context) (<-chan *models.ChangePayload,
 			defer r.Unlock()
 		}
 
+		c.Lock()
+		c.closed = true
 		close(c.c)
+		c.Unlock()
 
 		n := 0
 

@@ -217,7 +217,8 @@ type scopedAttributesSub struct {
 	inputs models.ScopedAttributesInputs
 	scopes map[string]*models.Scope
 
-	c chan *mgen.SubAttributesPayload
+	c      chan *mgen.SubAttributesPayload
+	closed bool
 
 	deadlock.Mutex
 }
@@ -287,16 +288,18 @@ func (r *Runtime) SubScopedAttributes(
 		r.Unlock()
 
 		c.Lock()
-		for i, attr := range attrs {
-			c.c <- &mgen.SubAttributesPayload{
-				Attribute: attr,
-				Done:      l == i+1,
+		if !c.closed {
+			for i, attr := range attrs {
+				c.c <- &mgen.SubAttributesPayload{
+					Attribute: attr,
+					Done:      l == i+1,
+				}
 			}
-		}
 
-		if len(attrs) == 0 {
-			c.c <- &mgen.SubAttributesPayload{
-				Done: true,
+			if len(attrs) == 0 {
+				c.c <- &mgen.SubAttributesPayload{
+					Done: true,
+				}
 			}
 		}
 		c.Unlock()
@@ -306,6 +309,7 @@ func (r *Runtime) SubScopedAttributes(
 		defer r.Unlock()
 
 		c.Lock()
+		c.closed = true
 		close(c.c)
 		c.Unlock()
 
@@ -375,11 +379,13 @@ func (r *Runtime) pushAttributesForScopedAttributes(ctx context.Context, attrs [
 			l := len(attrs)
 
 			sub.Lock()
-			for i, attr := range attrs {
-				sub.c <- &mgen.SubAttributesPayload{
-					Attribute: attr,
-					IsNew:     attr.Version == 1,
-					Done:      l == i+1,
+			if !sub.closed {
+				for i, attr := range attrs {
+					sub.c <- &mgen.SubAttributesPayload{
+						Attribute: attr,
+						IsNew:     attr.Version == 1,
+						Done:      l == i+1,
+					}
 				}
 			}
 			sub.Unlock()
