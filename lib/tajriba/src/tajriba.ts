@@ -1,6 +1,6 @@
 import { TypedDocumentNode } from "@graphql-typed-document-node/core";
 import { Client, createClient, subscriptionExchange } from "@urql/core";
-import { EventEmitter } from "events";
+import EventEmitter from "./events";
 import { Client as WSClient, createClient as createWSClient } from "graphql-ws";
 import WebSocket from "isomorphic-ws";
 import { Observable } from "rxjs";
