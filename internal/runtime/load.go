@@ -464,12 +464,21 @@ func (o *objectMap) findTransitions(id string) []*models.Transition {
 func (o *objectMap) findAttributes(id string) (attributes []*models.Attribute, amap map[string]*models.Attribute) {
 	amap = make(map[string]*models.Attribute)
 
-	// for _, a := range o.attributes {
-	// 	if a.Current && a.NodeID == id {
-	// 		attributes = append(attributes, a)
-	// 		amap[a.Key] = a
-	// 	}
-	// }
+	for _, a := range o.attributes {
+		if a.NodeID == id {
+			if existing, ok := amap[a.Key]; ok {
+				if existing.Version < a.Version {
+					amap[a.Key] = a
+				}
+			} else {
+				amap[a.Key] = a
+			}
+		}
+	}
+
+	for _, a := range amap {
+		attributes = append(attributes, a)
+	}
 
 	return attributes, amap
 }
