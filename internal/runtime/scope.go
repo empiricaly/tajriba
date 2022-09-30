@@ -217,10 +217,62 @@ type scopedAttributesSub struct {
 	inputs models.ScopedAttributesInputs
 	scopes map[string]*models.Scope
 
-	c      chan *mgen.SubAttributesPayload
-	closed bool
+	c       chan *mgen.SubAttributesPayload
+	in      chan []*mgen.SubAttributesPayload
+	closing chan bool
+	closed  bool
 
 	deadlock.Mutex
+}
+
+func newScopedAttributesSub(inputs models.ScopedAttributesInputs) *scopedAttributesSub {
+	s := &scopedAttributesSub{
+		inputs:  inputs,
+		scopes:  make(map[string]*models.Scope),
+		c:       make(chan *mgen.SubAttributesPayload),
+		in:      make(chan []*mgen.SubAttributesPayload, 1000),
+		closing: make(chan bool),
+	}
+
+	go s.run()
+
+	return s
+}
+
+func (s *scopedAttributesSub) Close() {
+	s.Lock()
+	defer s.Unlock()
+
+	if s.closed {
+		return
+	}
+
+	s.closing <- true
+	<-s.closing
+	close(s.closing)
+
+	s.closed = true
+	close(s.c)
+}
+
+func (s *scopedAttributesSub) run() {
+	for {
+		select {
+		case <-s.closing:
+			s.closing <- true
+			close(s.in)
+
+			return
+		case payloads, ok := <-s.in:
+			if !ok {
+				return
+			}
+
+			for _, payload := range payloads {
+				s.c <- payload
+			}
+		}
+	}
 }
 
 func (r *Runtime) SubScopedAttributes(
@@ -266,6 +318,7 @@ func (r *Runtime) SubScopedAttributes(
 			inputs: inputs,
 			scopes: make(map[string]*models.Scope),
 			c:      pchan,
+			in:     make(chan []*mgen.SubAttributesPayload),
 		}
 
 		r.sattrSubs[actorID] = append(r.sattrSubs[actorID], c)
@@ -287,31 +340,27 @@ func (r *Runtime) SubScopedAttributes(
 		l := len(attrs)
 		r.Unlock()
 
-		c.Lock()
-		if !c.closed {
-			for i, attr := range attrs {
-				c.c <- &mgen.SubAttributesPayload{
-					Attribute: attr,
-					Done:      l == i+1,
-				}
-			}
-
-			if len(attrs) == 0 {
-				c.c <- &mgen.SubAttributesPayload{
-					Done: true,
-				}
-			}
+		var pls []*mgen.SubAttributesPayload
+		for i, attr := range attrs {
+			pls = append(pls, &mgen.SubAttributesPayload{
+				Attribute: attr,
+				Done:      l == i+1,
+			})
 		}
-		c.Unlock()
+
+		if len(attrs) == 0 {
+			pls = append(pls, &mgen.SubAttributesPayload{
+				Done: true,
+			})
+		}
+
+		c.in <- pls
 
 		<-ctx.Done()
 		r.Lock()
 		defer r.Unlock()
 
-		c.Lock()
-		c.closed = true
-		close(c.c)
-		c.Unlock()
+		c.Close()
 
 		n := 0
 
@@ -378,17 +427,15 @@ func (r *Runtime) pushAttributesForScopedAttributes(ctx context.Context, attrs [
 		for sub, attrs := range sasubs {
 			l := len(attrs)
 
-			sub.Lock()
-			if !sub.closed {
-				for i, attr := range attrs {
-					sub.c <- &mgen.SubAttributesPayload{
-						Attribute: attr,
-						IsNew:     attr.Version == 1,
-						Done:      l == i+1,
-					}
+			var pls []*mgen.SubAttributesPayload
+			for i, attr := range attrs {
+				sub.c <- &mgen.SubAttributesPayload{
+					Attribute: attr,
+					IsNew:     attr.Version == 1,
+					Done:      l == i+1,
 				}
 			}
-			sub.Unlock()
+			sub.in <- pls
 		}
 	}()
 

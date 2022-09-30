@@ -19,7 +19,6 @@ import (
 	"github.com/empiricaly/tajriba/internal/runtime"
 	"github.com/julienschmidt/httprouter"
 	"github.com/rs/zerolog/log"
-	// vtransport "github.com/empiricaly/tajriba/internal/vendored/transport"
 )
 
 // pingInterval is the interval at which a ping is sent to client.
