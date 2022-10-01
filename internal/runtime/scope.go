@@ -225,11 +225,11 @@ type scopedAttributesSub struct {
 	deadlock.Mutex
 }
 
-func newScopedAttributesSub(inputs models.ScopedAttributesInputs) *scopedAttributesSub {
+func newScopedAttributesSub(inputs models.ScopedAttributesInputs, c chan *mgen.SubAttributesPayload) *scopedAttributesSub {
 	s := &scopedAttributesSub{
 		inputs:  inputs,
 		scopes:  make(map[string]*models.Scope),
-		c:       make(chan *mgen.SubAttributesPayload),
+		c:       c,
 		in:      make(chan []*mgen.SubAttributesPayload, 1000),
 		closing: make(chan bool),
 	}
@@ -249,7 +249,7 @@ func (s *scopedAttributesSub) Close() {
 
 	s.closing <- true
 	<-s.closing
-	close(s.closing)
+	close(s.in)
 
 	s.closed = true
 	close(s.c)
@@ -258,11 +258,10 @@ func (s *scopedAttributesSub) Close() {
 func (s *scopedAttributesSub) run() {
 	for {
 		select {
-		case <-s.closing:
-			s.closing <- true
-			close(s.in)
-
-			return
+		case _, ok := <-s.closing:
+			if ok {
+				close(s.closing)
+			}
 		case payloads, ok := <-s.in:
 			if !ok {
 				return
@@ -314,12 +313,7 @@ func (r *Runtime) SubScopedAttributes(
 	go func() {
 		r.Lock()
 
-		c := &scopedAttributesSub{
-			inputs: inputs,
-			scopes: make(map[string]*models.Scope),
-			c:      pchan,
-			in:     make(chan []*mgen.SubAttributesPayload),
-		}
+		c := newScopedAttributesSub(inputs, pchan)
 
 		r.sattrSubs[actorID] = append(r.sattrSubs[actorID], c)
 
