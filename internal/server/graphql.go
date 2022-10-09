@@ -11,7 +11,6 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler/apollotracing"
 	"github.com/99designs/gqlgen/graphql/handler/extension"
 	"github.com/gorilla/websocket"
-	"github.com/sasha-s/go-deadlock"
 
 	"github.com/99designs/gqlgen/graphql/handler/transport"
 	"github.com/empiricaly/tajriba/internal/auth"
@@ -24,9 +23,9 @@ import (
 // pingInterval is the interval at which a ping is sent to client.
 const pingInterval = 10 * time.Second
 
-func init() {
-	deadlock.Opts.DeadlockTimeout = 3 * time.Second
-}
+// func init() {
+// 	deadlock.Opts.DeadlockTimeout = 3 * time.Second
+// }
 
 type lockedMarshaller struct {
 	rt *runtime.Runtime

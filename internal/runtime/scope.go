@@ -290,9 +290,6 @@ func (r *Runtime) SubScopedAttributes(
 		return nil, errors.New("ScopedAttributesInputs cannot be null")
 	}
 
-	r.Lock()
-	defer r.Unlock()
-
 	var actorID string
 	if global {
 		if len(inputs) != 1 || len(inputs[0].Names) != 1 || inputs[0].Names[0] != "global" {
@@ -351,6 +348,7 @@ func (r *Runtime) SubScopedAttributes(
 		c.in <- pls
 
 		<-ctx.Done()
+
 		r.Lock()
 		defer r.Unlock()
 
