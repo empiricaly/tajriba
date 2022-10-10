@@ -247,28 +247,23 @@ func (s *scopedAttributesSub) Close() {
 		return
 	}
 
-	s.closing <- true
-	<-s.closing
-	close(s.in)
-
-	s.closed = true
 	close(s.c)
+	close(s.in)
+	s.closed = true
 }
 
 func (s *scopedAttributesSub) run() {
 	for {
-		select {
-		case _, ok := <-s.closing:
-			if ok {
-				close(s.closing)
-			}
-		case payloads, ok := <-s.in:
-			if !ok {
-				return
-			}
+		payloads, ok := <-s.in
+		if !ok {
+			return
+		}
 
-			for _, payload := range payloads {
-				s.c <- payload
+		for _, payload := range payloads {
+			select {
+			case s.c <- payload:
+			default:
+				return
 			}
 		}
 	}
