@@ -239,6 +239,17 @@ func newScopedAttributesSub(inputs models.ScopedAttributesInputs, c chan *mgen.S
 	return s
 }
 
+func (s *scopedAttributesSub) Send(p []*mgen.SubAttributesPayload) {
+	s.Lock()
+	defer s.Unlock()
+
+	if s.closed {
+		return
+	}
+
+	s.in <- p
+}
+
 func (s *scopedAttributesSub) Close() {
 	s.Lock()
 	defer s.Unlock()
@@ -340,7 +351,7 @@ func (r *Runtime) SubScopedAttributes(
 			})
 		}
 
-		c.in <- pls
+		c.Send(pls)
 
 		<-ctx.Done()
 
@@ -422,7 +433,7 @@ func (r *Runtime) pushAttributesForScopedAttributes(ctx context.Context, attrs [
 					Done:      l == i+1,
 				}
 			}
-			sub.in <- pls
+			sub.Send(pls)
 		}
 	}()
 
