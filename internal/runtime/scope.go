@@ -425,12 +425,13 @@ func (r *Runtime) pushAttributesForScopedAttributes(ctx context.Context, attrs [
 
 			var pls []*mgen.SubAttributesPayload
 			for i, attr := range attrs {
-				sub.c <- &mgen.SubAttributesPayload{
+				pls = append(pls, &mgen.SubAttributesPayload{
 					Attribute: attr,
 					IsNew:     attr.Version == 1,
 					Done:      l == i+1,
-				}
+				})
 			}
+
 			sub.Send(pls)
 		}
 	}()
