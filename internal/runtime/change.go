@@ -19,10 +19,65 @@ type changesSub struct {
 	// When stepIDs is empty map, participant removed change sent.
 	participants map[string]map[string]struct{}
 
-	c      chan *models.ChangePayload
-	closed bool
+	ch      chan *models.ChangePayload
+	in      chan []*models.ChangePayload
+	closing chan bool
+	closed  bool
 
 	deadlock.Mutex
+}
+
+func newChangesSub(p *models.Participant, c chan *models.ChangePayload) *changesSub {
+	s := &changesSub{
+		p:            p,
+		ch:           c,
+		participants: make(map[string]map[string]struct{}),
+		in:           make(chan []*models.ChangePayload, 1000),
+		closing:      make(chan bool),
+	}
+
+	go s.run()
+
+	return s
+}
+
+func (s *changesSub) run() {
+	defer close(s.ch)
+
+	for {
+		payloads, ok := <-s.in
+		if !ok {
+			return
+		}
+
+		for _, payload := range payloads {
+			s.ch <- payload
+		}
+	}
+}
+
+func (s *changesSub) Send(p []*models.ChangePayload) {
+	s.Lock()
+	defer s.Unlock()
+
+	if s.closed {
+		return
+	}
+
+	s.in <- p
+}
+
+func (s *changesSub) Close() {
+	s.Lock()
+	defer s.Unlock()
+
+	if s.closed {
+		return
+	}
+
+	close(s.in)
+
+	s.closed = true
 }
 
 func (r *Runtime) pushStep(ctx context.Context, step *models.Step) error {
@@ -69,11 +124,7 @@ func (r *Runtime) pushStep(ctx context.Context, step *models.Step) error {
 		uniquePart[link.ParticipantID] = struct{}{}
 
 		for _, sub := range r.changesSubs[link.ParticipantID] {
-			sub.Lock()
-			if !sub.closed {
-				sub.c <- chg
-			}
-			sub.Unlock()
+			sub.Send([]*models.ChangePayload{chg})
 		}
 	}
 
@@ -297,11 +348,13 @@ func (c *changesSub) publish(ctx context.Context, changes []*models.ChangePayloa
 
 	l := len(changes)
 
+	chgs := make([]*models.ChangePayload, 0, len(changes))
 	for i, change := range changes {
 		change = change.DeepCopy()
 		change.Done = i+1 == l
-		c.c <- change
+		chgs = append(chgs, change)
 	}
+	c.Send(chgs)
 
 	return nil
 }
@@ -325,11 +378,7 @@ func (r *Runtime) SubChanges(ctx context.Context) (<-chan *models.ChangePayload,
 	go func() {
 		r.Lock()
 
-		c := &changesSub{
-			p:            p,
-			c:            pchan,
-			participants: make(map[string]map[string]struct{}),
-		}
+		c := newChangesSub(p, pchan)
 
 		r.changesSubs[p.ID] = append(r.changesSubs[p.ID], c)
 
@@ -352,10 +401,7 @@ func (r *Runtime) SubChanges(ctx context.Context) (<-chan *models.ChangePayload,
 			defer r.Unlock()
 		}
 
-		c.Lock()
-		c.closed = true
-		close(c.c)
-		c.Unlock()
+		c.Close()
 
 		n := 0
 
