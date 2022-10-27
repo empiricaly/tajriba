@@ -285,13 +285,6 @@ func (r *Runtime) pushLinks(ctx context.Context, links []*models.Link) error {
 }
 
 func (c *changesSub) publish(ctx context.Context, changes []*models.ChangePayload) error {
-	c.Lock()
-	defer c.Unlock()
-
-	if c.closed {
-		return nil
-	}
-
 	n := 0
 
 	// Tracking participant changes
