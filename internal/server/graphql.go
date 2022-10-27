@@ -54,6 +54,7 @@ func graphqlHandler(
 			log.Trace().Err(err).Msg("graphql: websocket error")
 		},
 		KeepAlivePingInterval: pingInterval,
+		PingPongInterval:      pingInterval,
 		Upgrader: websocket.Upgrader{
 			// Force new proto
 			// Subprotocols: []string{"graphql-transport-ws"},
