@@ -56,8 +56,8 @@ type StepChange struct {
 	// remaining is the duration left in seconds of the Step should last before
 	// ending, from `since`.
 	Remaining *int `json:"remaining"`
-	// ellapsed indicates the time in seconds ellapsed since the start of the Step.
-	Ellapsed *int `json:"ellapsed"`
+	// elapsed indicates the time in seconds elapsed since the start of the Step.
+	Elapsed *int `json:"elapsed"`
 	// running indicates whether the Step is running.
 	Running bool `json:"running"`
 }

@@ -279,7 +279,7 @@ type ComplexityRoot struct {
 	}
 
 	StepChange struct {
-		Ellapsed  func(childComplexity int) int
+		Elapsed   func(childComplexity int) int
 		ID        func(childComplexity int) int
 		Remaining func(childComplexity int) int
 		Running   func(childComplexity int) int
@@ -1369,12 +1369,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Step.Transitions(childComplexity, args["after"].(*string), args["first"].(*int), args["before"].(*string), args["last"].(*int)), true
 
-	case "StepChange.ellapsed":
-		if e.complexity.StepChange.Ellapsed == nil {
+	case "StepChange.elapsed":
+		if e.complexity.StepChange.Elapsed == nil {
 			break
 		}
 
-		return e.complexity.StepChange.Ellapsed(childComplexity), true
+		return e.complexity.StepChange.Elapsed(childComplexity), true
 
 	case "StepChange.id":
 		if e.complexity.StepChange.ID == nil {
@@ -9104,8 +9104,8 @@ func (ec *executionContext) fieldContext_StepChange_remaining(ctx context.Contex
 	return fc, nil
 }
 
-func (ec *executionContext) _StepChange_ellapsed(ctx context.Context, field graphql.CollectedField, obj *models.StepChange) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_StepChange_ellapsed(ctx, field)
+func (ec *executionContext) _StepChange_elapsed(ctx context.Context, field graphql.CollectedField, obj *models.StepChange) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_StepChange_elapsed(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -9118,7 +9118,7 @@ func (ec *executionContext) _StepChange_ellapsed(ctx context.Context, field grap
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Ellapsed, nil
+		return obj.Elapsed, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -9132,7 +9132,7 @@ func (ec *executionContext) _StepChange_ellapsed(ctx context.Context, field grap
 	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_StepChange_ellapsed(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_StepChange_elapsed(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "StepChange",
 		Field:      field,
@@ -15090,9 +15090,9 @@ func (ec *executionContext) _StepChange(ctx context.Context, sel ast.SelectionSe
 
 			out.Values[i] = ec._StepChange_remaining(ctx, field, obj)
 
-		case "ellapsed":
+		case "elapsed":
 
-			out.Values[i] = ec._StepChange_ellapsed(ctx, field, obj)
+			out.Values[i] = ec._StepChange_elapsed(ctx, field, obj)
 
 		case "running":
 

@@ -790,8 +790,8 @@ export type StepTransitionsArgs = {
 
 export type StepChange = {
   __typename: "StepChange";
-  /** ellapsed indicates the time in seconds ellapsed since the start of the Step. */
-  ellapsed?: Maybe<Scalars["Int"]>;
+  /** elapsed indicates the time in seconds elapsed since the start of the Step. */
+  elapsed?: Maybe<Scalars["Int"]>;
   /** id is the identifier for the Step. */
   id: Scalars["ID"];
   /**
@@ -1115,7 +1115,7 @@ export type ChangesSubscription = {
           state: State;
           since?: any | null;
           remaining?: number | null;
-          ellapsed?: number | null;
+          elapsed?: number | null;
           running: boolean;
         };
   };
@@ -3223,7 +3223,7 @@ export const ChangesDocument = {
                             },
                             {
                               kind: "Field",
-                              name: { kind: "Name", value: "ellapsed" },
+                              name: { kind: "Name", value: "elapsed" },
                             },
                             {
                               kind: "Field",

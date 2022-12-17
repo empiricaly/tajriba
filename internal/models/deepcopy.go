@@ -127,9 +127,9 @@ func (o *StepChange) DeepCopy() *StepChange {
 		cp.Remaining = new(int)
 		*cp.Remaining = *o.Remaining
 	}
-	if o.Ellapsed != nil {
-		cp.Ellapsed = new(int)
-		*cp.Ellapsed = *o.Ellapsed
+	if o.Elapsed != nil {
+		cp.Elapsed = new(int)
+		*cp.Elapsed = *o.Elapsed
 	}
 	return &cp
 }

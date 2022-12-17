@@ -28,7 +28,7 @@ type Transition struct {
 	Node Node `json:"-"`
 
 	Remaining time.Duration `json:"-"`
-	Ellapsed  time.Duration `json:"-"`
+	Elapsed   time.Duration `json:"-"`
 }
 
 func (Transition) IsNode() {}

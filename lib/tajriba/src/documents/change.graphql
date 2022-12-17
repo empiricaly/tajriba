@@ -14,7 +14,7 @@ subscription Changes {
         state
         since
         remaining
-        ellapsed
+        elapsed
         running
       }
       ... on AttributeChange {

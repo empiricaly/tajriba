@@ -200,7 +200,7 @@ func (r *Runtime) startStep(ctx context.Context, s *models.Step) error {
 	}
 
 	var (
-		ellapsed    time.Duration
+		elapsed     time.Duration
 		lastStarted *time.Time
 	)
 
@@ -218,7 +218,7 @@ func (r *Runtime) startStep(ctx context.Context, s *models.Step) error {
 				return errors.New("runtime: invalid transitions: pause before running")
 			}
 
-			ellapsed += e
+			elapsed += e
 			lastStarted = nil
 		case models.StateCreated:
 			return errors.New("runtime: invalid start state: bot started yet")
@@ -229,7 +229,7 @@ func (r *Runtime) startStep(ctx context.Context, s *models.Step) error {
 		}
 	}
 
-	remaining := time.Second*time.Duration(s.Duration) - ellapsed
+	remaining := time.Second*time.Duration(s.Duration) - elapsed
 	if remaining <= 0 {
 		return errors.New("runtime: invalid start state: duration exhausted")
 	}
@@ -241,7 +241,7 @@ func (r *Runtime) startStep(ctx context.Context, s *models.Step) error {
 	}
 
 	last.Remaining = remaining
-	last.Ellapsed = ellapsed
+	last.Elapsed = elapsed
 
 	ctxStop := metadata.SetRequestForContext(ctx, nil)
 	r.stepTimers[s.ID] = time.AfterFunc(remaining, func() {

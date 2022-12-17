@@ -41,9 +41,9 @@ type StepChange {
   remaining: Int
 
   """
-  ellapsed indicates the time in seconds ellapsed since the start of the Step.
+  elapsed indicates the time in seconds elapsed since the start of the Step.
   """
-  ellapsed: Int
+  elapsed: Int
 
   "running indicates whether the Step is running."
   running: Boolean!
