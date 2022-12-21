@@ -91,14 +91,14 @@ func (r *Runtime) pushStep(ctx context.Context, step *models.Step) error {
 		last := step.Transitions[len(step.Transitions)-1]
 
 		r := int(last.Remaining / time.Second)
-		e := int(last.Ellapsed / time.Second)
+		e := int(last.Elapsed / time.Second)
 
 		c = &models.StepChange{
 			ID:        step.ID,
 			Since:     &last.CreatedAt,
 			State:     step.State,
 			Remaining: &r,
-			Ellapsed:  &e,
+			Elapsed:   &e,
 			Running:   true,
 		}
 	} else {
@@ -220,9 +220,9 @@ func (r *Runtime) pushLinks(ctx context.Context, links []*models.Link) error {
 			}
 
 			last := v.Transitions[len(v.Transitions)-1]
-			ellapsedSinceLastStart := time.Since(last.CreatedAt)
-			ellapsed := int((ellapsedSinceLastStart + last.Ellapsed) / time.Second)
-			remaining := v.Duration - ellapsed
+			elapsedSinceLastStart := time.Since(last.CreatedAt)
+			elapsed := int((elapsedSinceLastStart + last.Elapsed) / time.Second)
+			remaining := v.Duration - elapsed
 
 			if remaining < 0 {
 				remaining = 0
@@ -240,7 +240,7 @@ func (r *Runtime) pushLinks(ctx context.Context, links []*models.Link) error {
 					State:     v.State,
 					Since:     &last.CreatedAt,
 					Remaining: &remaining,
-					Ellapsed:  &ellapsed,
+					Elapsed:   &elapsed,
 					Running:   running, // see above, only sent when running
 				},
 			})

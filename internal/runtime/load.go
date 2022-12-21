@@ -336,7 +336,7 @@ func (o *objectMap) associateStep(s *models.Step) (err error) {
 	s.Transitions = o.findTransitions(s.ID)
 
 	var (
-		ellapsed    time.Duration
+		elapsed     time.Duration
 		lastStarted *time.Time
 	)
 
@@ -354,12 +354,12 @@ func (o *objectMap) associateStep(s *models.Step) (err error) {
 				return errors.New("runtime: invalid transitions: pause before running")
 			}
 
-			ellapsed += e
+			elapsed += e
 			lastStarted = nil
 		}
 
-		t.Ellapsed = ellapsed
-		t.Remaining = time.Second*time.Duration(s.Duration) - ellapsed
+		t.Elapsed = elapsed
+		t.Remaining = time.Second*time.Duration(s.Duration) - elapsed
 	}
 
 	if len(s.Transitions) == 0 {
