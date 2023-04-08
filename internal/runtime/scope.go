@@ -218,8 +218,7 @@ type scopedAttributesSub struct {
 	inputs models.ScopedAttributesInputs
 	scopes map[string]*models.Scope
 
-	c       chan *mgen.SubAttributesPayload
-	in      chan []*mgen.SubAttributesPayload
+	ch      chan *mgen.SubAttributesPayload
 	closing chan bool
 	closed  bool
 
@@ -231,38 +230,72 @@ func newScopedAttributesSub(ctx context.Context, inputs models.ScopedAttributesI
 		ctx:     ctx,
 		inputs:  inputs,
 		scopes:  make(map[string]*models.Scope),
-		c:       c,
-		in:      make(chan []*mgen.SubAttributesPayload, 1000),
+		ch:      c,
 		closing: make(chan bool),
 	}
 
-	go s.run()
+	go s.wait()
 
 	return s
 }
+
+// NOTE ABOUT CLOSING GQLGEN SUBSCRIPTION CHANNELS
+//
+// There's a concurrency issue with how gqlgen handles subscriptions. In theory,
+// when the context is Done, the channel will not longer accept new messages.
+// However, there is a window during which the context is not yet Done, but the
+// channel not longer receives messages. This is because the channel will no
+// longer received before the context is Done. This means we never know if the
+// next send will be successful or not. To work around this, we have a retry
+// loop that will try to send the message for a second before giving up and
+// checking the context. If the context is Done, we will give up. If the
+// context is not Done, we will try again.
+// To try and mitigate this without hitting the timeout, we add a buffer on the
+// channel. This means that the channel will not block up until the buffer size.
+// This is fine as long as the number of messages sent is less than the buffer
+// size. If the number of messages sent is greater than the buffer size, then
+// the channel will block and the retry loop will kick in.
+
+// gqlgenSubChannelBuffer is the size of the gqlgen outbound channel buffer.
+// This is an arbitrary number. 🤷‍♂️
+const gqlgenSubChannelBuffer = 10
+
+// gqlgenSubChannelTimeout is the amount of time to wait for a send on the
+// gqlgen outbound channel before giving up and checking the context.
+const gqlgenSubChannelTimeout = time.Second
+
+// gqlgenSubChannelWait is the amount of time to wait before closing the gqlgen
+// outbound channel. It's the time we wait to make sure Send has noticed the
+// context is Done.
+const gqlgenSubChannelWait = 5*time.Second
 
 func (s *scopedAttributesSub) Send(p []*mgen.SubAttributesPayload) {
 	if s.ctx.Err() != nil {
 		return
 	}
 
-	s.in <- p
-}
-
-func (s *scopedAttributesSub) run() {
-	defer close(s.in)
-	defer close(s.c)
-
-	for {
-		select {
-		case <-s.ctx.Done():
-			return
-		case payloads := <-s.in:
-			for _, payload := range payloads {
-				s.c <- payload
+	for _, payload := range p {
+	LOOP:
+		for {
+			select {
+			case <-time.After(gqlgenSubChannelTimeout):
+				if s.ctx.Err() != nil {
+					return
+				}
+			case s.ch <- payload:
+				break LOOP
 			}
 		}
 	}
+}
+
+func (s *scopedAttributesSub) wait() {
+	<-s.ctx.Done()
+
+	// Wait a bit to make sure the Done is noticed by Send.
+	time.Sleep(gqlgenSubChannelWait)
+
+	close(s.ch)
 }
 
 func (r *Runtime) SubScopedAttributes(
@@ -296,7 +329,7 @@ func (r *Runtime) SubScopedAttributes(
 		actorID = actr.GetID()
 	}
 
-	pchan := make(chan *mgen.SubAttributesPayload)
+	pchan := make(chan *mgen.SubAttributesPayload, gqlgenSubChannelBuffer)
 
 	go func() {
 		r.Lock()
