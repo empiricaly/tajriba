@@ -1,6 +1,6 @@
 module github.com/empiricaly/tajriba
 
-go 1.17
+go 1.18
 
 require (
 	github.com/99designs/gqlgen v0.17.16
@@ -16,6 +16,7 @@ require (
 	github.com/rs/cors v1.7.0
 	github.com/rs/zerolog v1.22.0
 	github.com/sasha-s/go-deadlock v0.2.0
+	github.com/sourcegraph/conc v0.3.0
 	github.com/spf13/cobra v1.1.3
 	github.com/spf13/viper v1.7.1
 	github.com/vektah/gqlparser/v2 v2.5.0
@@ -32,7 +33,7 @@ require (
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
-	github.com/kr/pretty v0.2.1 // indirect
+	github.com/kr/text v0.2.0 // indirect
 	github.com/magiconair/properties v1.8.1 // indirect
 	github.com/mitchellh/mapstructure v1.4.1 // indirect
 	github.com/pelletier/go-toml v1.2.0 // indirect
@@ -46,6 +47,8 @@ require (
 	github.com/subosito/gotenv v1.2.0 // indirect
 	github.com/urfave/cli/v2 v2.11.2 // indirect
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
+	go.uber.org/atomic v1.7.0 // indirect
+	go.uber.org/multierr v1.9.0 // indirect
 	golang.org/x/mod v0.9.0 // indirect
 	golang.org/x/net v0.8.0 // indirect
 	golang.org/x/sys v0.6.0 // indirect
