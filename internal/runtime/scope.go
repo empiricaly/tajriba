@@ -214,6 +214,7 @@ func (r *Runtime) ScopeLinks(
 }
 
 type scopedAttributesSub struct {
+	ctx    context.Context
 	inputs models.ScopedAttributesInputs
 	scopes map[string]*models.Scope
 
@@ -225,8 +226,9 @@ type scopedAttributesSub struct {
 	deadlock.Mutex
 }
 
-func newScopedAttributesSub(inputs models.ScopedAttributesInputs, c chan *mgen.SubAttributesPayload) *scopedAttributesSub {
+func newScopedAttributesSub(ctx context.Context, inputs models.ScopedAttributesInputs, c chan *mgen.SubAttributesPayload) *scopedAttributesSub {
 	s := &scopedAttributesSub{
+		ctx:     ctx,
 		inputs:  inputs,
 		scopes:  make(map[string]*models.Scope),
 		c:       c,
@@ -240,40 +242,25 @@ func newScopedAttributesSub(inputs models.ScopedAttributesInputs, c chan *mgen.S
 }
 
 func (s *scopedAttributesSub) Send(p []*mgen.SubAttributesPayload) {
-	s.Lock()
-	defer s.Unlock()
-
-	if s.closed {
+	if s.ctx.Err() != nil {
 		return
 	}
 
 	s.in <- p
 }
 
-func (s *scopedAttributesSub) Close() {
-	s.Lock()
-	defer s.Unlock()
-
-	if s.closed {
-		return
-	}
-
-	close(s.in)
-
-	s.closed = true
-}
-
 func (s *scopedAttributesSub) run() {
+	defer close(s.in)
 	defer close(s.c)
 
 	for {
-		payloads, ok := <-s.in
-		if !ok {
+		select {
+		case <-s.ctx.Done():
 			return
-		}
-
-		for _, payload := range payloads {
-			s.c <- payload
+		case payloads := <-s.in:
+			for _, payload := range payloads {
+				s.c <- payload
+			}
 		}
 	}
 }
@@ -314,7 +301,7 @@ func (r *Runtime) SubScopedAttributes(
 	go func() {
 		r.Lock()
 
-		c := newScopedAttributesSub(inputs, pchan)
+		c := newScopedAttributesSub(ctx, inputs, pchan)
 
 		r.sattrSubs[actorID] = append(r.sattrSubs[actorID], c)
 
@@ -355,8 +342,6 @@ func (r *Runtime) SubScopedAttributes(
 
 		r.Lock()
 		defer r.Unlock()
-
-		c.Close()
 
 		n := 0
 
