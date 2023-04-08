@@ -13,71 +13,64 @@ import (
 )
 
 type changesSub struct {
-	p *models.Participant
+	ctx context.Context
+	p   *models.Participant
 
 	// Map of co-participantIDs to which groupIDs they were added from.
 	// When stepIDs is empty map, participant removed change sent.
 	participants map[string]map[string]struct{}
 
 	ch      chan *models.ChangePayload
-	in      chan []*models.ChangePayload
 	closing chan bool
 	closed  bool
 
 	deadlock.Mutex
 }
 
-func newChangesSub(p *models.Participant, c chan *models.ChangePayload) *changesSub {
+func newChangesSub(ctx context.Context, p *models.Participant, ch chan *models.ChangePayload) *changesSub {
 	s := &changesSub{
+		ctx:          ctx,
 		p:            p,
-		ch:           c,
+		ch:           ch,
 		participants: make(map[string]map[string]struct{}),
-		in:           make(chan []*models.ChangePayload, 1000),
 		closing:      make(chan bool),
 	}
 
-	go s.run()
+	go s.wait()
 
 	return s
 }
 
-func (s *changesSub) run() {
-	defer close(s.ch)
-
-	for {
-		payloads, ok := <-s.in
-		if !ok {
-			return
-		}
-
-		for _, payload := range payloads {
-			s.ch <- payload
-		}
-	}
-}
+// If you're wondering what on earth is going here, see "NOTE ABOUT CLOSING
+// GQLGEN SUBSCRIPTION CHANNELS" in scope.go.
 
 func (s *changesSub) Send(p []*models.ChangePayload) {
-	s.Lock()
-	defer s.Unlock()
-
-	if s.closed {
+	if s.ctx.Err() != nil {
 		return
 	}
 
-	s.in <- p
+	for _, payload := range p {
+	LOOP:
+		for {
+			select {
+			case <-time.After(gqlgenSubChannelTimeout):
+				if s.ctx.Err() != nil {
+					return
+				}
+			case s.ch <- payload:
+				break LOOP
+			}
+		}
+	}
 }
 
-func (s *changesSub) Close() {
-	s.Lock()
-	defer s.Unlock()
+func (s *changesSub) wait() {
+	<-s.ctx.Done()
 
-	if s.closed {
-		return
-	}
+	// Wait a bit to make sure the Done is noticed by Send.
+	time.Sleep(gqlgenSubChannelWait)
 
-	close(s.in)
-
-	s.closed = true
+	close(s.ch)
 }
 
 func (r *Runtime) pushStep(ctx context.Context, step *models.Step) error {
@@ -366,12 +359,12 @@ func (r *Runtime) SubChanges(ctx context.Context) (<-chan *models.ChangePayload,
 		return nil, errors.New("changes only for participants")
 	}
 
-	pchan := make(chan *models.ChangePayload)
+	pchan := make(chan *models.ChangePayload, gqlgenSubChannelBuffer)
 
 	go func() {
 		r.Lock()
 
-		c := newChangesSub(p, pchan)
+		c := newChangesSub(ctx, p, pchan)
 
 		r.changesSubs[p.ID] = append(r.changesSubs[p.ID], c)
 
@@ -393,8 +386,6 @@ func (r *Runtime) SubChanges(ctx context.Context) (<-chan *models.ChangePayload,
 			r.Lock()
 			defer r.Unlock()
 		}
-
-		c.Close()
 
 		n := 0
 

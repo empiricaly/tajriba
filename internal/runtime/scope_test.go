@@ -133,7 +133,7 @@ var _ = Describe("Scope", func() {
 			deadlock.Opts.OnPotentialDeadlock = optsOnDeadlock
 		}()
 
-		deadlock.Opts.DeadlockTimeout = 2 * time.Second
+		deadlock.Opts.DeadlockTimeout = 1 * time.Second
 		deadlock.Opts.OnPotentialDeadlock = func() {
 			Fail("potential deadlock")
 		}
@@ -207,7 +207,7 @@ var _ = Describe("Scope", func() {
 			}()
 		}
 
-		time.Sleep(3 * time.Second)
+		time.Sleep(1500 * time.Millisecond)
 
 		cancel()
 	})

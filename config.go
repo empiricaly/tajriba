@@ -16,10 +16,15 @@ type Config struct {
 	Store  *store.Config  `mapstructure:"store"`
 	Auth   *auth.Config   `mapstructure:"auth"`
 	Log    *logger.Config `mapstructure:"log"`
+
+	Production bool `mapstructure:"production"`
 }
 
 // Validate configuration is ok.
 func (c *Config) Validate() error {
+	c.Server.Production = c.Production
+	c.Auth.Production = c.Production
+
 	err := c.Server.Validate()
 	if err != nil {
 		return errors.Wrap(err, "validate server configuration")
@@ -74,6 +79,11 @@ func ConfigFlags(cmd *cobra.Command, prefix, defaultDBFile string) error {
 	if err != nil {
 		return errors.Wrap(err, "set logger configuration flags")
 	}
+
+	flag := prefix + ".production"
+	bval := true
+	cmd.Flags().Bool(flag, bval, "Run in production mode (e.g. enforce admin authenticate)")
+	viper.SetDefault(flag, bval)
 
 	return nil
 }
