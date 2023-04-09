@@ -222,12 +222,13 @@ type SetAttributeInput struct {
 	// val is the value of the Attribute. It can be any JSON encodable value. If
 	// value is not defined, value is assumed to be `null`.
 	Val *string `json:"val"`
-	// index of value if Attribute is a vector. An Attribute cannot mutate between
-	// vector and non-vector formats.
+	// index of value if Attribute is a vector. Setting the index will make this
+	// Attribute a vector if it does not yet exist. An Attribute cannot mutate
+	// between vector and non-vector formats.
 	Index *int `json:"index"`
-	// vector indicates the Attribute is a vector.
-	Vector *bool `json:"vector"`
-	// append allows appending to a vector without specifying the index.
+	// append allows appending to a vector without specifying the index. Setting the
+	// index will make this Attribute a vector if it does not yet exist. An Attribute
+	// cannot mutate between vector and non-vector formats.
 	Append *bool `json:"append"`
 	// private indicates whether the Attribute shouldn't be visible to Participants
 	// in the scope.

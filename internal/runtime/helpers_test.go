@@ -24,6 +24,10 @@ func boolp(b bool) *bool {
 	return &b
 }
 
+func intp(i int) *int {
+	return &i
+}
+
 func isPTrue(b *bool) bool {
 	if b == nil {
 		return false
@@ -63,7 +67,6 @@ type attribInput struct {
 	Key       string
 	Value     string
 	Index     *int
-	Vector    *bool
 	Append    *bool
 	Private   *bool
 	Immutable *bool
@@ -78,7 +81,6 @@ func setAttributes(ctx context.Context, rt *runtime.Runtime, scopeID string, inp
 			Key:       attr.Key,
 			Val:       strp(attr.Value),
 			Index:     attr.Index,
-			Vector:    attr.Vector,
 			Append:    attr.Append,
 			Private:   attr.Private,
 			Immutable: attr.Immutable,
@@ -97,12 +99,12 @@ type delayedInput struct {
 	scopeID string
 }
 
-func runPlayer(ctx context.Context, rt *runtime.Runtime, id string, scopeIDs []string, input []*delayedInput) (res kvs) {
+func runPlayer(ctx context.Context, rt *runtime.Runtime, name string, scopeIDs []string, input []*delayedInput) (res kvs) {
 	ctx, cancel := context.WithCancel(ctx)
 
-	res = newKvs()
+	res = newKvs(name)
 
-	part, _, err := rt.AddParticipant(ctx, id)
+	part, _, err := rt.AddParticipant(ctx, name)
 	Expect(err).To(BeNil())
 
 	ctx = actor.SetContext(ctx, part)
@@ -122,6 +124,8 @@ func runPlayer(ctx context.Context, rt *runtime.Runtime, id string, scopeIDs []s
 		for {
 			s, ok := <-c
 			if !ok {
+				GinkgoWriter.Print(name, " done ", time.Now().Format(time.RFC3339Nano), "\n")
+
 				return
 			}
 
@@ -130,26 +134,32 @@ func runPlayer(ctx context.Context, rt *runtime.Runtime, id string, scopeIDs []s
 				continue
 			}
 
-			res.addAttr(&models.Attribute{
+			a := &models.Attribute{
 				ID:     attrChg.ID,
 				Key:    attrChg.Key,
 				Val:    attrChg.Val,
 				Index:  attrChg.Index,
 				Vector: attrChg.Vector,
-			})
+			}
+
+			GinkgoWriter.Print(name, " newattr ", a.LookupKey(), " ", time.Now().Format(time.RFC3339Nano), "\n")
+
+			res.addAttr(a)
 		}
 	}()
 
+	GinkgoWriter.Print(name, " runattr ", time.Now().Format(time.RFC3339Nano), "\n")
 	runAttributes(ctx, rt, input)
+	GinkgoWriter.Print(name, " cancel ", time.Now().Format(time.RFC3339Nano), "\n")
 	cancel()
 
 	return res
 }
 
-func runAdmin(ctx context.Context, rt *runtime.Runtime, input []*delayedInput) (res kvs) {
+func runAdmin(ctx context.Context, rt *runtime.Runtime, name string, input []*delayedInput) (res kvs) {
 	ctx, cancel := context.WithCancel(ctx)
 
-	res = newKvs()
+	res = newKvs(name)
 
 	c, err := rt.SubScopedAttributes(ctx, models.ScopedAttributesInputs{
 		{Names: []string{"myscope"}},
@@ -196,12 +206,15 @@ func runAttributes(ctx context.Context, rt *runtime.Runtime, input []*delayedInp
 }
 
 type kvs struct {
+	tag     string
+	last    time.Time
 	vals    map[string]*val
 	history []map[string]*val
 }
 
-func newKvs() kvs {
+func newKvs(tag string) kvs {
 	return kvs{
+		tag:  tag,
 		vals: make(map[string]*val),
 	}
 }
@@ -217,8 +230,17 @@ func sortedKeys(m map[string]*val) []string {
 	return keys
 }
 
+func (k *kvs) Comparable() *kvs {
+	return &kvs{
+		vals:    k.vals,
+		history: k.history,
+	}
+}
+
 func (k *kvs) String() string {
 	var b strings.Builder
+
+	b.WriteString(fmt.Sprintf("%s - %s\n", k.tag, k.last.Format(time.RFC3339Nano)))
 
 	res := make([]string, 0, len(k.vals))
 	for _, key := range sortedKeys(k.vals) {
@@ -244,9 +266,9 @@ func (k *kvs) String() string {
 
 		if len(h) == 0 {
 			if first {
-				res = append(res, fmt.Sprintf("    %02d - EMPTY", index))
+				res = append(res, fmt.Sprintf("    %02d - ∅", index))
 			} else {
-				res = append(res, "EMPTY")
+				res = append(res, "∅")
 			}
 		}
 
@@ -268,6 +290,7 @@ func (k *kvs) copyVals() map[string]*val {
 
 func (k *kvs) addAttr(attr *models.Attribute) {
 	k.history = append(k.history, k.copyVals())
+	k.last = time.Now()
 
 	if attr.Vector {
 		if attr.Index == nil {
@@ -303,7 +326,17 @@ func (v *val) String() string {
 	}
 
 	if v.vector != nil {
-		return fmt.Sprintf("%v", v.vector)
+		vals := make([]string, 0, len(v.vector))
+
+		for _, v := range v.vector {
+			if v == "" {
+				vals = append(vals, "∅")
+			} else {
+				vals = append(vals, v)
+			}
+		}
+
+		return fmt.Sprintf("[%s]", strings.Join(vals, " "))
 	}
 
 	return v.scalar

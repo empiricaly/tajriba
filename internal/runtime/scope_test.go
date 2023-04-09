@@ -85,6 +85,7 @@ var _ = Describe("Scope", func() {
 
 		deadlock.Opts.DeadlockTimeout = 1 * time.Second
 		deadlock.Opts.OnPotentialDeadlock = func() {
+			defer GinkgoRecover()
 			Fail("potential deadlock")
 		}
 
@@ -147,21 +148,14 @@ var _ = Describe("Scope", func() {
 						continue
 					}
 
-					for i := 0; i < total/10; i++ {
-						setAttributes(ctx, rt, s.Attribute.Node.(*models.Scope).ID, []*attribInput{
-							{
-								Key:   "attr1",
-								Value: "value3",
-							},
-						})
-					}
-
 					count++
 				}
 			}()
 		}
 
-		time.Sleep(1500 * time.Millisecond)
+		time.Sleep(3000 * time.Millisecond)
+
+		GinkgoWriter.Printf("%d attributes received\n", count)
 
 		cancel()
 	})

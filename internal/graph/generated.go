@@ -13019,7 +13019,7 @@ func (ec *executionContext) unmarshalInputSetAttributeInput(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"key", "val", "index", "vector", "append", "private", "protected", "immutable", "nodeID"}
+	fieldsInOrder := [...]string{"key", "val", "index", "append", "private", "protected", "immutable", "nodeID"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -13047,14 +13047,6 @@ func (ec *executionContext) unmarshalInputSetAttributeInput(ctx context.Context,
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("index"))
 			it.Index, err = ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-		case "vector":
-			var err error
-
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("vector"))
-			it.Vector, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
 			if err != nil {
 				return it, err
 			}

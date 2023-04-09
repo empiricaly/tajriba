@@ -20,9 +20,9 @@ type Scope struct {
 	CreatedByID string `json:"createdByID"`
 	// createdBy is the Actor that created the record.
 	CreatedBy actor.Actor `json:"-"`
-	// attributes returns all custom data that has been set on the Scope.
+	// Attributes are all the Attributes on the Scope.
 	Attributes []*Attribute `json:"-"`
-	// attributes returns all custom data that has been set on the Scope.
+	// AttributesMap is a key->Attribute map for all Attributes on the Scope.
 	AttributesMap map[string]*Attribute `json:"-"`
 	// assignationChanges returns Participant assignments and unassignments to this
 	// Step. A single Particpant might be assigned and unassigned multiple times, and

@@ -267,7 +267,7 @@ const gqlgenSubChannelTimeout = time.Second
 // gqlgenSubChannelWait is the amount of time to wait before closing the gqlgen
 // outbound channel. It's the time we wait to make sure Send has noticed the
 // context is Done.
-const gqlgenSubChannelWait = 5*time.Second
+const gqlgenSubChannelWait = 5 * time.Second
 
 func (s *scopedAttributesSub) Send(p []*mgen.SubAttributesPayload) {
 	if s.ctx.Err() != nil {
@@ -437,22 +437,20 @@ func (r *Runtime) pushAttributesForScopedAttributes(ctx context.Context, attrs [
 		}
 	}
 
-	go func() {
-		for sub, attrs := range sasubs {
-			l := len(attrs)
+	for sub, attrs := range sasubs {
+		l := len(attrs)
 
-			var pls []*mgen.SubAttributesPayload
-			for i, attr := range attrs {
-				pls = append(pls, &mgen.SubAttributesPayload{
-					Attribute: attr,
-					IsNew:     attr.Version == 1,
-					Done:      l == i+1,
-				})
-			}
-
-			sub.Send(pls)
+		var pls []*mgen.SubAttributesPayload
+		for i, attr := range attrs {
+			pls = append(pls, &mgen.SubAttributesPayload{
+				Attribute: attr,
+				IsNew:     attr.Version == 1,
+				Done:      l == i+1,
+			})
 		}
-	}()
+
+		sub.Send(pls)
+	}
 
 	return nil
 }
