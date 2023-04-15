@@ -204,11 +204,11 @@ export type Change =
 export type ChangePayload = {
   __typename: "ChangePayload";
   /** change is the Change. */
-  change: Change;
+  change?: Maybe<Change>;
   /** done indicates that the state has finished synchorizing. */
   done: Scalars["Boolean"];
   /** removed indicates whether the record was removed. */
-  removed: Scalars["Boolean"];
+  removed?: Maybe<Scalars["Boolean"]>;
 };
 
 /** EventType holds types of event that can trigger hooks. */
@@ -679,7 +679,11 @@ export type Service = {
 
 /** SetAttributeInput sets an Attribute on a Node. */
 export type SetAttributeInput = {
-  /** append allows appending to a vector without specifying the index. */
+  /**
+   * append allows appending to a vector without specifying the index. Setting the
+   * index will make this Attribute a vector if it does not yet exist. An Attribute
+   * cannot mutate between vector and non-vector formats.
+   */
   append?: InputMaybe<Scalars["Boolean"]>;
   /**
    * immutable indicates the Attribute can never be changed by any Actor.
@@ -688,8 +692,9 @@ export type SetAttributeInput = {
    */
   immutable?: InputMaybe<Scalars["Boolean"]>;
   /**
-   * index of value if Attribute is a vector. An Attribute cannot mutate between
-   * vector and non-vector formats.
+   * index of value if Attribute is a vector. Setting the index will make this
+   * Attribute a vector if it does not yet exist. An Attribute cannot mutate
+   * between vector and non-vector formats.
    */
   index?: InputMaybe<Scalars["Int"]>;
   /** key identifies the unique key of the Attribute. */
@@ -719,8 +724,6 @@ export type SetAttributeInput = {
    * value is not defined, value is assumed to be `null`.
    */
   val?: InputMaybe<Scalars["String"]>;
-  /** vector indicates the Attribute is a vector. */
-  vector?: InputMaybe<Scalars["Boolean"]>;
 };
 
 /** SetAttributePayload is the return payload for the setAttribute mutation. */
@@ -1088,8 +1091,8 @@ export type ChangesSubscription = {
   changes: {
     __typename: "ChangePayload";
     done: boolean;
-    removed: boolean;
-    change:
+    removed?: boolean | null;
+    change?:
       | {
           __typename: "AttributeChange";
           id: string;
@@ -1117,7 +1120,8 @@ export type ChangesSubscription = {
           remaining?: number | null;
           elapsed?: number | null;
           running: boolean;
-        };
+        }
+      | null;
   };
 };
 
@@ -10354,7 +10358,6 @@ export function SetAttributeInputSchema(): z.ZodObject<
     private: z.boolean().nullish(),
     protected: z.boolean().nullish(),
     val: z.string().nullish(),
-    vector: z.boolean().nullish(),
   });
 }
 

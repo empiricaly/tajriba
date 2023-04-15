@@ -9,10 +9,10 @@ extend type Subscription {
 
 type ChangePayload {
   "change is the Change."
-  change: Change!
+  change: Change
 
   "removed indicates whether the record was removed."
-  removed: Boolean!
+  removed: Boolean
 
   """
   done indicates that the state has finished synchorizing.

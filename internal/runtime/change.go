@@ -165,7 +165,7 @@ func (r *Runtime) pushAttributesForChanges(ctx context.Context, attrs []*models.
 	return nil
 }
 
-func (r *Runtime) pushLinks(ctx context.Context, links []*models.Link) error {
+func (r *Runtime) pushLinks(ctx context.Context, links []*models.Link, initParticipantSub *changesSub) error {
 	changes := make(map[string][]*models.ChangePayload)
 
 	for _, link := range links {
@@ -263,6 +263,18 @@ func (r *Runtime) pushLinks(ctx context.Context, links []*models.Link) error {
 				})
 			}
 		}
+	}
+
+	if len(changes) == 0 {
+		if initParticipantSub != nil {
+			initParticipantSub.Send([]*models.ChangePayload{
+				{
+					Done: true,
+				},
+			})
+		}
+
+		return nil
 	}
 
 	for pID, pchanges := range changes {
@@ -373,7 +385,7 @@ func (r *Runtime) SubChanges(ctx context.Context) (<-chan *models.ChangePayload,
 			r.propagateHook(ctx, mgen.EventTypeParticipantConnected, p.ID, p)
 		}
 
-		err := r.pushLinks(ctx, activeParticipantLinks(p.Links))
+		err := r.pushLinks(ctx, activeParticipantLinks(p.Links), c)
 
 		r.Unlock()
 

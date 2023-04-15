@@ -4161,14 +4161,11 @@ func (ec *executionContext) _ChangePayload_change(ctx context.Context, field gra
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(models.Change)
 	fc.Result = res
-	return ec.marshalNChange2githubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋmodelsᚐChange(ctx, field.Selections, res)
+	return ec.marshalOChange2githubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋmodelsᚐChange(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_ChangePayload_change(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -4205,14 +4202,11 @@ func (ec *executionContext) _ChangePayload_removed(ctx context.Context, field gr
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_ChangePayload_removed(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -13761,16 +13755,10 @@ func (ec *executionContext) _ChangePayload(ctx context.Context, sel ast.Selectio
 
 			out.Values[i] = ec._ChangePayload_change(ctx, field, obj)
 
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
 		case "removed":
 
 			out.Values[i] = ec._ChangePayload_removed(ctx, field, obj)
 
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
 		case "done":
 
 			out.Values[i] = ec._ChangePayload_done(ctx, field, obj)
@@ -16133,16 +16121,6 @@ func (ec *executionContext) marshalNBoolean2bool(ctx context.Context, sel ast.Se
 	return res
 }
 
-func (ec *executionContext) marshalNChange2githubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋmodelsᚐChange(ctx context.Context, sel ast.SelectionSet, v models.Change) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._Change(ctx, sel, v)
-}
-
 func (ec *executionContext) marshalNChangePayload2githubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋmodelsᚐChangePayload(ctx context.Context, sel ast.SelectionSet, v models.ChangePayload) graphql.Marshaler {
 	return ec._ChangePayload(ctx, sel, &v)
 }
@@ -17389,6 +17367,13 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 	}
 	res := graphql.MarshalBoolean(*v)
 	return res
+}
+
+func (ec *executionContext) marshalOChange2githubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋmodelsᚐChange(ctx context.Context, sel ast.SelectionSet, v models.Change) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._Change(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOCursor2ᚖstring(ctx context.Context, v interface{}) (*string, error) {
