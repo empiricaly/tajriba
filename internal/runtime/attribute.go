@@ -70,8 +70,37 @@ func (r *Runtime) prepAttributes(
 			}
 		}
 
+		index := input.Index
 		var vector, private, protected, immutable bool
-		if input.Vector != nil && *input.Vector {
+		if input.Append != nil && *input.Append {
+			vector = true
+
+			var maxIndex int
+			var found bool
+			for _, attr := range scope.Attributes {
+				if attr.Key == input.Key {
+					if !attr.Vector {
+						return nil, errors.Errorf("attribute for '%s' is not a vector", input.Key)
+					}
+
+					if attr.Index == nil {
+						return nil, errors.Errorf("attribute for '%s' has no index", input.Key)
+					}
+
+					found = true
+					if *attr.Index > maxIndex {
+						maxIndex = *attr.Index
+					}
+				}
+			}
+
+			if !found {
+				index = &maxIndex
+			} else {
+				maxIndex++
+				index = &maxIndex
+			}
+		} else if input.Index != nil {
 			vector = true
 		}
 
@@ -94,18 +123,17 @@ func (r *Runtime) prepAttributes(
 			CreatedByID: actorID,
 			Key:         input.Key,
 			Val:         input.Val,
-			Index:       input.Index,
+			Index:       index,
 			Vector:      vector,
 			NodeID:      scope.ID,
 			Node:        scope,
-			// Current:     true,
-			Version:   1,
-			Private:   private,
-			Protected: protected,
-			Immutable: immutable,
+			Version:     1,
+			Private:     private,
+			Protected:   protected,
+			Immutable:   immutable,
 		}
 
-		last := scope.AttributesMap[input.Key]
+		last := scope.AttributesMap[a.LookupKey()]
 
 		if last != nil {
 			if last.Immutable {
@@ -163,33 +191,31 @@ func (r *Runtime) setAttributes(
 			var n, check int
 
 			for _, a := range scope.Attributes {
-				if a.Key != attr.Key {
+				if a.LookupKey() != attr.LookupKey() {
 					scope.Attributes[n] = a
-
 					n++
-				} else {
-					check++
 
-					if check > 1 {
-						log.Warn().
-							Interface("attr1", a).
-							Interface("attr2", attr).
-							Msg("double attribute!")
-					}
+					continue
+				}
+
+				check++
+
+				if check > 1 {
+					log.Warn().
+						Interface("attr1", a).
+						Interface("attr2", attr).
+						Msg("double attribute!")
 				}
 			}
 
 			// Add new version to end of list
 			scope.Attributes[len(scope.Attributes)-1] = attr
-
-			// Remove current from previous version
-			// attr.Versions[len(attr.Versions)-1].Current = false
 		} else {
 			// Append new attribute to end of list
 			scope.Attributes = append(scope.Attributes, attr)
 		}
 
-		scope.AttributesMap[attr.Key] = attr
+		scope.AttributesMap[attr.LookupKey()] = attr
 
 		// Add attribute to global vars
 		r.attributes = append(r.attributes, attr)
@@ -258,7 +284,7 @@ func (r *Runtime) IsCurrent(
 		return false, ErrNotFound
 	}
 
-	last, ok := scope.AttributesMap[attr.Key]
+	last, ok := scope.AttributesMap[attr.LookupKey()]
 	if !ok {
 		return false, ErrNotFound
 	}

@@ -86,18 +86,16 @@ input SetAttributeInput {
   val: String
 
   """
-  index of value if Attribute is a vector. An Attribute cannot mutate between
-  vector and non-vector formats.
+  index of value if Attribute is a vector. Setting the index will make this
+  Attribute a vector if it does not yet exist. An Attribute cannot mutate
+  between vector and non-vector formats.
   """
   index: Int
 
   """
-  vector indicates the Attribute is a vector.
-  """
-  vector: Boolean
-
-  """
-  append allows appending to a vector without specifying the index.
+  append allows appending to a vector without specifying the index. Setting the
+  index will make this Attribute a vector if it does not yet exist. An Attribute
+  cannot mutate between vector and non-vector formats.
   """
   append: Boolean
 

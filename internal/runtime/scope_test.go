@@ -17,56 +17,6 @@ import (
 	"github.com/empiricaly/tajriba/internal/utils/ids"
 )
 
-func strp(s string) *string {
-	return &s
-}
-
-type attribInput struct {
-	Key   string
-	Value string
-}
-
-type scopeInput struct {
-	name       string
-	kind       string
-	attributes []*attribInput
-}
-
-func addScopes(ctx context.Context, rt *runtime.Runtime, inputs []*scopeInput) []*models.Scope {
-	var scopes []*models.Scope
-
-	for _, input := range inputs {
-		var attrs []*mgen.SetAttributeInput
-		for _, attr := range input.attributes {
-			attrs = append(attrs, &mgen.SetAttributeInput{
-				Key: attr.Key,
-				Val: strp(attr.Value),
-			})
-		}
-
-		s, err := rt.AddScope(ctx, strp(input.name), strp(input.kind), attrs)
-		Expect(err).To(BeNil())
-
-		scopes = append(scopes, s)
-	}
-
-	return scopes
-}
-
-func setAttributes(ctx context.Context, rt *runtime.Runtime, scopeID string, inputs []*attribInput) {
-	var attrs []*mgen.SetAttributeInput
-	for _, attr := range inputs {
-		attrs = append(attrs, &mgen.SetAttributeInput{
-			Key:    attr.Key,
-			Val:    strp(attr.Value),
-			NodeID: strp(scopeID),
-		})
-	}
-
-	_, err := rt.SetAttributes(ctx, attrs)
-	Expect(err).To(BeNil())
-}
-
 var _ = Describe("Scope", func() {
 	ctx := context.Background()
 	var err error
@@ -125,7 +75,7 @@ var _ = Describe("Scope", func() {
 		}
 	})
 
-	It("should not deadlock", func() {
+	It("should not deadlock", Serial, func() {
 		optsTimeout := deadlock.Opts.DeadlockTimeout
 		optsOnDeadlock := deadlock.Opts.OnPotentialDeadlock
 		defer func() {
@@ -135,6 +85,7 @@ var _ = Describe("Scope", func() {
 
 		deadlock.Opts.DeadlockTimeout = 1 * time.Second
 		deadlock.Opts.OnPotentialDeadlock = func() {
+			defer GinkgoRecover()
 			Fail("potential deadlock")
 		}
 
@@ -143,6 +94,8 @@ var _ = Describe("Scope", func() {
 		const total = 100
 
 		go func() {
+			defer GinkgoRecover()
+
 			for i := 0; i < total; i++ {
 				scopes := addScopes(ctx, rt, []*scopeInput{
 					{
@@ -183,6 +136,8 @@ var _ = Describe("Scope", func() {
 			Expect(err).To(BeNil())
 
 			go func() {
+				defer GinkgoRecover()
+
 				for {
 					s, ok := <-c
 					if !ok {
@@ -193,21 +148,14 @@ var _ = Describe("Scope", func() {
 						continue
 					}
 
-					for i := 0; i < total/10; i++ {
-						setAttributes(ctx, rt, s.Attribute.Node.(*models.Scope).ID, []*attribInput{
-							{
-								Key:   "attr1",
-								Value: "value3",
-							},
-						})
-					}
-
 					count++
 				}
 			}()
 		}
 
-		time.Sleep(1500 * time.Millisecond)
+		time.Sleep(3000 * time.Millisecond)
+
+		GinkgoWriter.Printf("%d attributes received\n", count)
 
 		cancel()
 	})

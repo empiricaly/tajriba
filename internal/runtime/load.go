@@ -202,7 +202,7 @@ func (o *objectMap) associateAttribute(a *models.Attribute) (err error) {
 	}
 
 	// Versions
-	key := a.NodeID + a.Key
+	key := a.NodeID + a.LookupKey()
 	if prev, ok := o.attrLastVersion[key]; ok {
 		o.attrVersions[key] = append(o.attrVersions[key], prev)
 		// prev.Current = false
@@ -466,12 +466,12 @@ func (o *objectMap) findAttributes(id string) (attributes []*models.Attribute, a
 
 	for _, a := range o.attributes {
 		if a.NodeID == id {
-			if existing, ok := amap[a.Key]; ok {
+			if existing, ok := amap[a.LookupKey()]; ok {
 				if existing.Version < a.Version {
-					amap[a.Key] = a
+					amap[a.LookupKey()] = a
 				}
 			} else {
-				amap[a.Key] = a
+				amap[a.LookupKey()] = a
 			}
 		}
 	}

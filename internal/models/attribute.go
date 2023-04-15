@@ -1,9 +1,11 @@
 package models
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/empiricaly/tajriba/internal/auth/actor"
+	"github.com/rs/zerolog/log"
 )
 
 // Attribute is a single piece of custom data set on a Node. Attributes
@@ -55,4 +57,25 @@ type Attribute struct {
 func (Attribute) IsNode() {}
 func (a *Attribute) Cursor() string {
 	return a.ID
+}
+
+func (a *Attribute) LookupKey() string {
+	return AttributeLookupKey(a.Key, a.Vector, a.Index, a.ID, a.NodeID)
+}
+
+func AttributeLookupKey(key string, vector bool, index *int, id, nodeID string) string {
+	if vector {
+		if index == nil {
+			log.Warn().
+				Str("attribute", id).
+				Str("node", nodeID).
+				Msg("vector attribute has no index")
+
+			return key
+		}
+
+		return key + "." + strconv.Itoa(*index)
+	}
+
+	return key
 }

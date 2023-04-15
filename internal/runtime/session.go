@@ -49,7 +49,13 @@ func (r *Runtime) createSession(ctx context.Context, actr actor.Actor) (*models.
 		return nil, ErrInvalidNode
 	}
 
+	var userAgent string
 	md := metadata.RequestForContext(ctx)
+	if md != nil {
+		userAgent = http.Header(md.Headers).Get("User-Agent")
+	} else {
+		userAgent = "unknown"
+	}
 
 	token, err := generateRandomKey(sessionTokenByteLength)
 	if err != nil {
@@ -59,7 +65,7 @@ func (r *Runtime) createSession(ctx context.Context, actr actor.Actor) (*models.
 	s := &models.Session{
 		ID:        ids.ID(ctx),
 		Token:     token,
-		UserAgent: http.Header(md.Headers).Get("User-Agent"),
+		UserAgent: userAgent,
 		ActorID:   id,
 		Actor:     actr,
 	}

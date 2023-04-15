@@ -128,7 +128,7 @@ func (r *Runtime) Link(ctx context.Context, input mgen.LinkInput) (*mgen.LinkPay
 		}
 	}
 
-	if err := r.pushLinks(ctx, links); err != nil {
+	if err := r.pushLinks(ctx, links, nil); err != nil {
 		log.Error().Err(err).Msg("runtime: failed to push new links to participant")
 	}
 
