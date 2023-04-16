@@ -205,12 +205,13 @@ func (o *objectMap) associateAttribute(a *models.Attribute) (err error) {
 	key := a.NodeID + a.LookupKey()
 	if prev, ok := o.attrLastVersion[key]; ok {
 		o.attrVersions[key] = append(o.attrVersions[key], prev)
-		// prev.Current = false
+		a.Version = prev.Version + 1
+	} else {
+		a.Version = 1
 	}
 
 	o.attrLastVersion[key] = a
 	a.Versions = o.attrVersions[key]
-	// a.Current = true
 
 	return nil
 }
