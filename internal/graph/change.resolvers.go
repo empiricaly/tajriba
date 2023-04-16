@@ -5,11 +5,17 @@ package graph
 
 import (
 	"context"
+	"time"
 
 	"github.com/empiricaly/tajriba/internal/models"
 	"github.com/empiricaly/tajriba/internal/runtime"
 	errs "github.com/pkg/errors"
 )
+
+// CreatedAt is the resolver for the createdAt field.
+func (r *attributeChangeResolver) CreatedAt(ctx context.Context, obj *models.AttributeChange) (*time.Time, error) {
+	return obj.CreatedAt, nil
+}
 
 // Changes is the resolver for the changes field.
 func (r *subscriptionResolver) Changes(ctx context.Context) (<-chan *models.ChangePayload, error) {
@@ -23,7 +29,13 @@ func (r *subscriptionResolver) Changes(ctx context.Context) (<-chan *models.Chan
 	return c, nil
 }
 
+// AttributeChange returns AttributeChangeResolver implementation.
+func (r *Resolver) AttributeChange() AttributeChangeResolver { return &attributeChangeResolver{r} }
+
 // Subscription returns SubscriptionResolver implementation.
 func (r *Resolver) Subscription() SubscriptionResolver { return &subscriptionResolver{r} }
 
-type subscriptionResolver struct{ *Resolver }
+type (
+	attributeChangeResolver struct{ *Resolver }
+	subscriptionResolver    struct{ *Resolver }
+)

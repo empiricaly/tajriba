@@ -42,6 +42,7 @@ type Config struct {
 
 type ResolverRoot interface {
 	Attribute() AttributeResolver
+	AttributeChange() AttributeChangeResolver
 	Group() GroupResolver
 	Mutation() MutationResolver
 	Participant() ParticipantResolver
@@ -92,15 +93,16 @@ type ComplexityRoot struct {
 	}
 
 	AttributeChange struct {
-		Deleted func(childComplexity int) int
-		ID      func(childComplexity int) int
-		Index   func(childComplexity int) int
-		IsNew   func(childComplexity int) int
-		Key     func(childComplexity int) int
-		NodeID  func(childComplexity int) int
-		Val     func(childComplexity int) int
-		Vector  func(childComplexity int) int
-		Version func(childComplexity int) int
+		CreatedAt func(childComplexity int) int
+		Deleted   func(childComplexity int) int
+		ID        func(childComplexity int) int
+		Index     func(childComplexity int) int
+		IsNew     func(childComplexity int) int
+		Key       func(childComplexity int) int
+		NodeID    func(childComplexity int) int
+		Val       func(childComplexity int) int
+		Vector    func(childComplexity int) int
+		Version   func(childComplexity int) int
 	}
 
 	AttributeConnection struct {
@@ -348,6 +350,9 @@ type AttributeResolver interface {
 	Versions(ctx context.Context, obj *models.Attribute, after *string, first *int, before *string, last *int) (*mgen.AttributeConnection, error)
 	Current(ctx context.Context, obj *models.Attribute) (bool, error)
 }
+type AttributeChangeResolver interface {
+	CreatedAt(ctx context.Context, obj *models.AttributeChange) (*time.Time, error)
+}
 type GroupResolver interface {
 	Links(ctx context.Context, obj *models.Group, after *string, first *int, before *string, last *int) (*mgen.LinkConnection, error)
 }
@@ -547,6 +552,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Attribute.Versions(childComplexity, args["after"].(*string), args["first"].(*int), args["before"].(*string), args["last"].(*int)), true
+
+	case "AttributeChange.createdAt":
+		if e.complexity.AttributeChange.CreatedAt == nil {
+			break
+		}
+
+		return e.complexity.AttributeChange.CreatedAt(childComplexity), true
 
 	case "AttributeChange.deleted":
 		if e.complexity.AttributeChange.Deleted == nil {
@@ -3609,6 +3621,50 @@ func (ec *executionContext) fieldContext_AttributeChange_deleted(ctx context.Con
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AttributeChange_createdAt(ctx context.Context, field graphql.CollectedField, obj *models.AttributeChange) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AttributeChange_createdAt(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.AttributeChange().CreatedAt(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*time.Time)
+	fc.Result = res
+	return ec.marshalNDateTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AttributeChange_createdAt(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AttributeChange",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type DateTime does not have child fields")
 		},
 	}
 	return fc, nil
@@ -13601,28 +13657,48 @@ func (ec *executionContext) _AttributeChange(ctx context.Context, sel ast.Select
 			out.Values[i] = ec._AttributeChange_id(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "nodeID":
 
 			out.Values[i] = ec._AttributeChange_nodeID(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "deleted":
 
 			out.Values[i] = ec._AttributeChange_deleted(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
+		case "createdAt":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._AttributeChange_createdAt(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return innerFunc(ctx)
+
+			})
 		case "isNew":
 
 			out.Values[i] = ec._AttributeChange_isNew(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "index":
 
@@ -13633,21 +13709,21 @@ func (ec *executionContext) _AttributeChange(ctx context.Context, sel ast.Select
 			out.Values[i] = ec._AttributeChange_vector(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "version":
 
 			out.Values[i] = ec._AttributeChange_version(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "key":
 
 			out.Values[i] = ec._AttributeChange_key(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "val":
 
@@ -16157,6 +16233,27 @@ func (ec *executionContext) unmarshalNDateTime2timeᚐTime(ctx context.Context, 
 
 func (ec *executionContext) marshalNDateTime2timeᚐTime(ctx context.Context, sel ast.SelectionSet, v time.Time) graphql.Marshaler {
 	res := graphql.MarshalTime(v)
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
+}
+
+func (ec *executionContext) unmarshalNDateTime2ᚖtimeᚐTime(ctx context.Context, v interface{}) (*time.Time, error) {
+	res, err := graphql.UnmarshalTime(v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNDateTime2ᚖtimeᚐTime(ctx context.Context, sel ast.SelectionSet, v *time.Time) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	res := graphql.MarshalTime(*v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")

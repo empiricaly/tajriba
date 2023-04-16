@@ -70,6 +70,9 @@ type AttributeChange {
   "deleted is true with the attribute was deleted."
   deleted: Boolean!
 
+  "createdAt is the time the Attribute was created."
+  createdAt: DateTime!
+
   "isNew is true if the Attribute was just created."
   isNew: Boolean!
 

@@ -135,15 +135,16 @@ func (r *Runtime) pushAttributesForChanges(ctx context.Context, attrs []*models.
 
 		ac := &models.ChangePayload{
 			Change: &models.AttributeChange{
-				ID:      attr.ID,
-				NodeID:  scope.ID,
-				Key:     attr.Key,
-				Val:     attr.Val,
-				Index:   attr.Index,
-				Version: attr.Version,
-				Deleted: attr.DeletedAt != nil,
-				IsNew:   attr.Version == 1,
-				Vector:  attr.Vector,
+				ID:        attr.ID,
+				NodeID:    scope.ID,
+				Key:       attr.Key,
+				Val:       attr.Val,
+				Index:     attr.Index,
+				Version:   attr.Version,
+				Deleted:   attr.DeletedAt != nil,
+				CreatedAt: &attr.CreatedAt,
+				IsNew:     attr.Version == 1,
+				Vector:    attr.Vector,
 			},
 		}
 
@@ -190,14 +191,15 @@ func (r *Runtime) pushLinks(ctx context.Context, links []*models.Link, initParti
 				ac := &models.ChangePayload{
 					Removed: !link.Link,
 					Change: &models.AttributeChange{
-						ID:      attr.ID,
-						NodeID:  v.ID,
-						Key:     attr.Key,
-						Val:     attr.Val,
-						Version: attr.Version,
-						Index:   attr.Index,
-						Deleted: attr.DeletedAt != nil,
-						Vector:  attr.Vector,
+						ID:        attr.ID,
+						NodeID:    v.ID,
+						Key:       attr.Key,
+						Val:       attr.Val,
+						Version:   attr.Version,
+						Index:     attr.Index,
+						Deleted:   attr.DeletedAt != nil,
+						CreatedAt: &attr.CreatedAt,
+						Vector:    attr.Vector,
 					},
 				}
 

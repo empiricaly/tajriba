@@ -162,6 +162,8 @@ export type AttributeVersionsArgs = {
 
 export type AttributeChange = {
   __typename: "AttributeChange";
+  /** createdAt is the time the Attribute was created. */
+  createdAt: Scalars["DateTime"];
   /** deleted is true with the attribute was deleted. */
   deleted: Scalars["Boolean"];
   /** id is the identifier for the Attribute. */
@@ -1098,6 +1100,7 @@ export type ChangesSubscription = {
           id: string;
           nodeID: string;
           deleted: boolean;
+          createdAt: any;
           isNew: boolean;
           index?: number | null;
           vector: boolean;
@@ -3256,6 +3259,10 @@ export const ChangesDocument = {
                             {
                               kind: "Field",
                               name: { kind: "Name", value: "deleted" },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "createdAt" },
                             },
                             {
                               kind: "Field",
