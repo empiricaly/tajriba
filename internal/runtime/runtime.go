@@ -12,6 +12,7 @@ import (
 )
 
 type Runtime struct {
+	ctx context.Context
 	*objectMap
 	stepTimers  map[string]*time.Timer
 	changesSubs map[string][]*changesSub
@@ -24,9 +25,10 @@ type Runtime struct {
 }
 
 func Start(ctx context.Context) (*Runtime, error) {
-	log.Debug().Msg("runtime: started")
+	log.Ctx(ctx).Debug().Msg("runtime: started")
 
 	r := &Runtime{
+		ctx:         ctx,
 		objectMap:   newObjectMap(),
 		stepTimers:  make(map[string]*time.Timer),
 		changesSubs: make(map[string][]*changesSub),
@@ -51,7 +53,7 @@ func Start(ctx context.Context) (*Runtime, error) {
 	if glbl, err := r.AddScope(rCtx, &name, &name, nil); err != nil {
 		return nil, errors.Wrap(err, "create global context")
 	} else {
-		log.Trace().Interface("glbl", glbl).Msg("runtime: global created")
+		log.Ctx(r.ctx).Trace().Interface("glbl", glbl).Msg("runtime: global created")
 	}
 
 	return r, nil

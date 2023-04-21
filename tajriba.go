@@ -21,16 +21,18 @@ import (
 
 // Runner manages Tajriba's running state.
 type Runner struct {
+	ctx     context.Context
 	conn    *store.Conn
+	config  *Config
 	server  *server.Server
 	runtime *runtime.Runtime
 }
 
 // Close waits for Tajriba to be done.
-func (r *Runner) Close(ctx context.Context) {
+func (r *Runner) Close() {
 	err := r.conn.Close()
 	if err != nil {
-		log.Error().Err(err).Msg("Closing store error")
+		log.Ctx(r.ctx).Error().Err(err).Msg("Closing store error")
 	}
 
 	r.runtime.Stop()
@@ -56,8 +58,8 @@ func Start(ctx context.Context, config *Config, usingConfigFile bool) (*Runner, 
 }
 
 // Init sets up the Tajriba environment for an existing HTTP server.
-func Init(ctx context.Context, config *Config, schema graphql.ExecutableSchema, router *httprouter.Router) error {
-	err := server.Enable(ctx, config.Server, router, schema)
+func (r *Runner) Init(schema graphql.ExecutableSchema, router *httprouter.Router) error {
+	err := server.Enable(r.ctx, r.config.Server, router, schema)
 	if err != nil {
 		return errors.Wrap(err, "init server")
 	}
@@ -67,16 +69,16 @@ func Init(ctx context.Context, config *Config, schema graphql.ExecutableSchema, 
 
 // Setup sets up the Tajriba environment.
 func Setup(ctx context.Context, config *Config, usingConfigFile bool) (context.Context, *Runner, graphql.ExecutableSchema, error) {
-	err := logger.Init(config.Log)
+	ctx, err := logger.Init(ctx, config.Log)
 	if err != nil {
 		return ctx, nil, nil, errors.Wrap(err, "init logs")
 	}
 
 	if usingConfigFile {
-		log.Trace().Str("file", viper.ConfigFileUsed()).Msg("Using config file")
+		log.Ctx(ctx).Trace().Str("file", viper.ConfigFileUsed()).Msg("Using config file")
 	}
 
-	log.Trace().Interface("config", config).Msg("Configuration")
+	log.Ctx(ctx).Trace().Interface("config", config).Msg("Configuration")
 
 	ctx, err = ids.Init(ctx)
 	if err != nil {
@@ -101,7 +103,7 @@ func Setup(ctx context.Context, config *Config, usingConfigFile bool) (context.C
 		return ctx, nil, nil, errors.Wrap(err, "init auth")
 	}
 
-	r := &Runner{conn: conn, runtime: rt}
+	r := &Runner{ctx: ctx, conn: conn, config: config, runtime: rt}
 
 	schema := graph.NewSchema(ctx, config.Auth.ServiceRegistrationToken)
 

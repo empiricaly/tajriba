@@ -17,6 +17,7 @@ import (
 
 // Conn represents a datastore connection.
 type Conn struct {
+	ctx context.Context
 	config   *Config
 	done     chan bool
 	buf      *bufio.Writer
@@ -31,8 +32,9 @@ type Conn struct {
 const fbuffer = 100000
 
 // Connect creates a connection to a messaging service with the given config.
-func Connect(_ context.Context, config *Config) (*Conn, error) {
+func Connect(ctx context.Context, config *Config) (*Conn, error) {
 	c := &Conn{
+		ctx: ctx,
 		done:   make(chan bool),
 		config: config,
 	}
@@ -49,7 +51,7 @@ func Connect(_ context.Context, config *Config) (*Conn, error) {
 		}
 	}
 
-	log.Debug().Msg("store: started")
+	log.Ctx(ctx).Debug().Msg("store: started")
 
 	return c, nil
 }
@@ -210,21 +212,21 @@ func (c *Conn) flush() {
 
 	err := c.buf.Flush()
 	if err != nil {
-		log.Fatal().Err(err).Msg("store: failed to flush db")
+		log.Ctx(c.ctx).Fatal().Err(err).Msg("store: failed to flush db")
 
 		return
 	}
 
 	err = c.f.Sync()
 	if err != nil {
-		log.Fatal().Err(err).Msg("store: failed to sync db file")
+		log.Ctx(c.ctx).Fatal().Err(err).Msg("store: failed to sync db file")
 
 		return
 	}
 
 	c.dirty = false
 
-	log.Trace().Msg("store: flushed")
+	log.Ctx(c.ctx).Trace().Msg("store: flushed")
 }
 
 type objekt struct {
@@ -246,8 +248,8 @@ func (c *Conn) Save(objs ...interface{}) error {
 	c.Lock()
 	defer c.Unlock()
 
-	log.Trace().Msg("store: saving")
-	defer log.Trace().Msg("store: saved")
+	log.Ctx(c.ctx).Trace().Msg("store: saving")
+	defer log.Ctx(c.ctx).Trace().Msg("store: saved")
 
 	enc := json.NewEncoder(c.buf)
 

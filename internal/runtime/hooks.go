@@ -18,12 +18,12 @@ const eventIDLen = 16
 func (r *Runtime) propagateHook(ctx context.Context, eventType mgen.EventType, nodeID string, node models.Node) {
 	eventID, err := generateRandomKey(eventIDLen)
 	if err != nil {
-		log.Error().Err(err).Msg("runtime: failed to generate eventID")
+		log.Ctx(r.ctx).Error().Err(err).Msg("runtime: failed to generate eventID")
 
 		return
 	}
 
-	// log.Info().Interface("subs", r.onEventSubs).Interface("eventType", eventType).Msg("PROPAGATUON")
+	// log.Ctx(r.ctx).Info().Interface("subs", r.onEventSubs).Interface("eventType", eventType).Msg("PROPAGATUON")
 
 	// md := metadata.RequestForContext(ctx)
 
@@ -115,7 +115,7 @@ func (r *Runtime) SubOnEvent(
 				count++
 
 				if len(subs) == 0 {
-					log.Warn().
+					log.Ctx(r.ctx).Warn().
 						Str("participantID", pID).
 						Msg("hooks: found change sub participant group without subs")
 
@@ -124,7 +124,7 @@ func (r *Runtime) SubOnEvent(
 
 				eventID, err := generateRandomKey(eventIDLen)
 				if err != nil {
-					log.Error().Err(err).Msg("runtime: failed to generate eventID")
+					log.Ctx(r.ctx).Error().Err(err).Msg("runtime: failed to generate eventID")
 
 					continue
 				}
@@ -147,7 +147,7 @@ func (r *Runtime) SubOnEvent(
 			if last == 0 {
 				eventID, err := generateRandomKey(eventIDLen)
 				if err != nil {
-					log.Error().Err(err).Msg("runtime: failed to generate eventID")
+					log.Ctx(r.ctx).Error().Err(err).Msg("runtime: failed to generate eventID")
 				} else {
 					r.Unlock()
 					c.Lock()

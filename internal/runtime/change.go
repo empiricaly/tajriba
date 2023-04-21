@@ -392,7 +392,7 @@ func (r *Runtime) SubChanges(ctx context.Context) (<-chan *models.ChangePayload,
 		r.Unlock()
 
 		if err != nil {
-			log.Error().Err(err).Str("participantId", p.ID).Msg("runtime: failed initial push")
+			log.Ctx(r.ctx).Error().Err(err).Str("participantId", p.ID).Msg("runtime: failed initial push")
 		} else {
 			// Wait for end of connection
 			<-ctx.Done()

@@ -75,7 +75,7 @@ func (r *Runtime) AddGroup(ctx context.Context, participantIDs []string) (*model
 	for _, link := range links {
 		err := conn.Save(link)
 		if err != nil {
-			log.Error().Err(err).Msg("runtime: failed to save link")
+			log.Ctx(r.ctx).Error().Err(err).Msg("runtime: failed to save link")
 
 			continue
 		}
@@ -86,7 +86,7 @@ func (r *Runtime) AddGroup(ctx context.Context, participantIDs []string) (*model
 	// for _, pID := range participantIDs {
 	// 	for _, c := range r.changesSubs[pID] {
 	// 		if err := c.push(ctx, links, false); err != nil {
-	// 			log.Error().Err(err).Str("participantID", pID).Msg("runtime: failed to push nodes to participant")
+	// 			log.Ctx(r.ctx).Error().Err(err).Str("participantID", pID).Msg("runtime: failed to push nodes to participant")
 	// 		}
 	// 	}
 	// }

@@ -118,7 +118,7 @@ func (r *Runtime) Transition(ctx context.Context, stepID string, from, to models
 
 		switch t.From {
 		case models.StateCreated:
-			log.Error().
+			log.Ctx(r.ctx).Error().
 				Str("stepID", step.ID).
 				Str("transitionID", last.To.String()).
 				Msg("runtime: impossible from created transition")
@@ -133,7 +133,7 @@ func (r *Runtime) Transition(ctx context.Context, stepID string, from, to models
 		case models.StateEnded, models.StateTerminated, models.StateFailed:
 			return nil, ErrInvalidState
 		default:
-			log.Error().
+			log.Ctx(r.ctx).Error().
 				Str("stepID", step.ID).
 				Str("transitionID", last.To.String()).
 				Str("from", t.From.String()).
@@ -166,11 +166,11 @@ func (r *Runtime) Transition(ctx context.Context, stepID string, from, to models
 			return nil, errors.Wrap(err, "stop step")
 		}
 	case models.StateCreated:
-		log.Error().
+		log.Ctx(r.ctx).Error().
 			Msg("runtime: create transition ErrInvalidState")
 		return nil, ErrInvalidState
 	default:
-		log.Error().
+		log.Ctx(r.ctx).Error().
 			Str("stepID", step.ID).
 			Str("transitionID", t.ID).
 			Str("from", t.From.String()).
@@ -183,7 +183,7 @@ func (r *Runtime) Transition(ctx context.Context, stepID string, from, to models
 	r.propagateHook(ctx, mgen.EventTypeTransitionAdd, step.ID, t)
 
 	if err := r.pushStep(ctx, step); err != nil {
-		log.Error().Err(err).Msg("runtime: failed to push step transition to participants")
+		log.Ctx(r.ctx).Error().Err(err).Msg("runtime: failed to push step transition to participants")
 	}
 
 	return t, nil
@@ -234,7 +234,7 @@ func (r *Runtime) startStep(ctx context.Context, s *models.Step) error {
 		return errors.New("runtime: invalid start state: duration exhausted")
 	}
 
-	// log.Info().Str("id", s.ID).Msg("STARTING STEP")
+	// log.Ctx(r.ctx).Info().Str("id", s.ID).Msg("STARTING STEP")
 
 	if _, ok := r.stepTimers[s.ID]; ok {
 		return errors.New("runtime: step already started")
@@ -248,7 +248,7 @@ func (r *Runtime) startStep(ctx context.Context, s *models.Step) error {
 		delete(r.stepTimers, s.ID)
 		_, err := r.Transition(ctxStop, s.ID, models.StateRunning, models.StateEnded, nil)
 		if err != nil {
-			log.Error().Err(err).Str("stepID", s.ID).Msg("runtime: failed scheduled step stop")
+			log.Ctx(r.ctx).Error().Err(err).Str("stepID", s.ID).Msg("runtime: failed scheduled step stop")
 		}
 	})
 
@@ -256,12 +256,12 @@ func (r *Runtime) startStep(ctx context.Context, s *models.Step) error {
 }
 
 func (r *Runtime) stopStep(ctx context.Context, stepID string) error {
-	// log.Info().Str("id", stepID).Msg("step: stopping")
+	// log.Ctx(r.ctx).Info().Str("id", stepID).Msg("step: stopping")
 	if t, ok := r.stepTimers[stepID]; ok {
 		if !t.Stop() {
 			<-t.C
 		}
-		// log.Info().Str("id", stepID).Msg("step: stopped")
+		// log.Ctx(r.ctx).Info().Str("id", stepID).Msg("step: stopped")
 	}
 
 	return nil
