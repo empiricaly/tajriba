@@ -179,7 +179,7 @@ func (r *Runtime) setAttributes(
 	for _, attr := range attrs {
 		err = conn.Save(attr)
 		if err != nil {
-			log.Error().Err(err).Msg("runtime: failed to save attribute")
+			log.Ctx(r.ctx).Error().Err(err).Msg("runtime: failed to save attribute")
 
 			continue
 		}
@@ -201,7 +201,7 @@ func (r *Runtime) setAttributes(
 				check++
 
 				if check > 1 {
-					log.Warn().
+					log.Ctx(r.ctx).Warn().
 						Interface("attr1", a).
 						Interface("attr2", attr).
 						Msg("double attribute!")
@@ -226,7 +226,7 @@ func (r *Runtime) setAttributes(
 	}
 
 	if err := r.pushAttributes(ctx, attrs); err != nil {
-		log.Error().Err(err).Msg("runtime: failed to push new attributes to participants")
+		log.Ctx(r.ctx).Error().Err(err).Msg("runtime: failed to push new attributes to participants")
 	}
 
 	return attrs, nil

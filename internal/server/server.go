@@ -65,14 +65,14 @@ func Start(
 	s.wg.Add(1)
 
 	go func() {
-		log.Debug().
+		log.Ctx(ctx).Debug().
 			Str("addr", config.Addr).
 			Int("port", l.Addr().(*net.TCPAddr).Port).
 			Msg("Started Tajriba server")
 
 		<-ctx.Done()
 
-		log.Debug().Msg("Stopping Tajriba server")
+		log.Ctx(ctx).Debug().Msg("Stopping Tajriba server")
 		s.wg.Add(1)
 
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownGracePeriod)
@@ -80,21 +80,21 @@ func Start(
 
 		err := srv.Shutdown(shutdownCtx)
 		if err != nil {
-			log.Error().Err(err).Msg("Tajriba server shutdown failed")
+			log.Ctx(ctx).Error().Err(err).Msg("Tajriba server shutdown failed")
 
 			os.Exit(1)
 
 			return
 		}
 
-		log.Debug().Msg("Tajriba server gracefully shutdown")
+		log.Ctx(ctx).Debug().Msg("Tajriba server gracefully shutdown")
 		s.wg.Done()
 	}()
 
 	go func() {
 		err := srv.Serve(l)
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Error().Err(err).Msg("Failed start Tajriba server")
+			log.Ctx(ctx).Error().Err(err).Msg("Failed start Tajriba server")
 		}
 
 		s.wg.Done()
@@ -125,10 +125,10 @@ func Enable(
 	return nil
 }
 
-func index(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
+func index(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	_, err := w.Write([]byte("Hello!"))
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to send response for index")
+		log.Ctx(r.Context()).Error().Err(err).Msg("Failed to send response for index")
 	}
 }
 

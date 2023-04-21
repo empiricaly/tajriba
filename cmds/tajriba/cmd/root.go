@@ -58,7 +58,7 @@ func root(_ *cobra.Command, _ []string, usingConfigFile bool) {
 	ctx, cancel = context.WithTimeout(context.Background(), closeMaxCuration)
 	defer cancel()
 
-	t.Close(ctx)
+	t.Close()
 }
 
 func defineRoot() (*cobra.Command, *bool, error) {

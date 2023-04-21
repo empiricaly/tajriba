@@ -21,6 +21,7 @@ subscription Changes {
         id
         nodeID
         deleted
+        createdAt
         isNew
         index
         vector

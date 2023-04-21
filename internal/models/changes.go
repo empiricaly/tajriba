@@ -71,6 +71,8 @@ type AttributeChange struct {
 	NodeID string `json:"nodeID"`
 	// deleted is true with the attribute was deleted.
 	Deleted bool `json:"deleted"`
+	// createdAt is the time the Attribute was created.
+	CreatedAt *time.Time `json:"createdAt"`
 	// isNew is true if the Attribute was just created.
 	IsNew bool `json:"isNew"`
 	// index is the index of the attribute if the value is a vector.

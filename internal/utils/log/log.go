@@ -2,6 +2,7 @@
 package log
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -16,34 +17,33 @@ import (
 const consoleTimeFormat = "15:04:05.000"
 
 // Init configures the global logger.
-func Init(config *Config) error {
+func Init(ctx context.Context, config *Config) (context.Context, error) {
 	level, err := zerolog.ParseLevel(config.Level)
 	if err != nil {
-		return errors.Wrap(err, "parse log level")
+		return context.TODO(), errors.Wrap(err, "parse log level")
 	}
 
-	zerolog.SetGlobalLevel(level)
+	var logger zerolog.Logger
+	logger = log.Level(level)
 
 	if !config.JSON && (config.ForceTTY || isatty.IsTerminal(os.Stderr.Fd())) {
-		log.Logger = log.Output(zerolog.ConsoleWriter{
+		logger = logger.Output(zerolog.ConsoleWriter{
 			Out:             os.Stderr,
 			TimeFormat:      consoleTimeFormat,
 			FormatTimestamp: consoleDefaultFormatTimestamp(consoleTimeFormat, false),
 		})
-		zerolog.TimeFieldFormat = zerolog.TimeFormatUnixMs
 	} else {
-		zerolog.TimestampFunc = func() time.Time {
-			return time.Now().UTC()
-		}
-
-		zerolog.TimeFieldFormat = "2006-01-02T15:04:05.999999999Z"
+		logger = logger.Output(zerolog.ConsoleWriter{
+			Out:        os.Stderr,
+			TimeFormat: "2006-01-02T15:04:05.999999999Z",
+		})
 	}
 
 	if config.ShowLine {
-		log.Logger = log.With().Caller().Logger()
+		logger = logger.With().Caller().Logger()
 	}
 
-	return nil
+	return logger.WithContext(ctx), nil
 }
 
 func consoleDefaultFormatTimestamp(timeFormat string, noColor bool) zerolog.Formatter {

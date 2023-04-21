@@ -18,7 +18,7 @@ func (r *Runtime) Link(ctx context.Context, input mgen.LinkInput) (*mgen.LinkPay
 	defer r.Unlock()
 
 	if !input.Link {
-		log.Debug().Msg("runtime: unlinking is untested")
+		log.Ctx(r.ctx).Debug().Msg("runtime: unlinking is untested")
 	}
 
 	actr := actor.ForContext(ctx)
@@ -57,7 +57,7 @@ func (r *Runtime) Link(ctx context.Context, input mgen.LinkInput) (*mgen.LinkPay
 	for i, participantID := range input.ParticipantIDs {
 		v, ok := r.participantsMap[participantID]
 		if !ok {
-			log.Info().Interface("participantsMap", r.participantsMap).Interface("input", input).Msg("-----------------------")
+			log.Ctx(r.ctx).Info().Interface("participantsMap", r.participantsMap).Interface("input", input).Msg("-----------------------")
 			return nil, ErrNotFound
 		}
 
@@ -108,7 +108,7 @@ func (r *Runtime) Link(ctx context.Context, input mgen.LinkInput) (*mgen.LinkPay
 	for _, link := range links {
 		err := conn.Save(link)
 		if err != nil {
-			log.Error().Err(err).Msg("runtime: failed to save link")
+			log.Ctx(r.ctx).Error().Err(err).Msg("runtime: failed to save link")
 
 			continue
 		}
@@ -129,7 +129,7 @@ func (r *Runtime) Link(ctx context.Context, input mgen.LinkInput) (*mgen.LinkPay
 	}
 
 	if err := r.pushLinks(ctx, links, nil); err != nil {
-		log.Error().Err(err).Msg("runtime: failed to push new links to participant")
+		log.Ctx(r.ctx).Error().Err(err).Msg("runtime: failed to push new links to participant")
 	}
 
 	return &mgen.LinkPayload{

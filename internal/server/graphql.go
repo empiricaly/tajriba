@@ -51,7 +51,7 @@ func graphqlHandler(
 	gqlsrv.AddTransport(transport.POST{})
 	gqlsrv.AddTransport(transport.Websocket{
 		ErrorFunc: func(ctx context.Context, err error) {
-			log.Trace().Err(err).Msg("graphql: websocket error")
+			log.Ctx(ctx).Trace().Err(err).Msg("graphql: websocket error")
 		},
 		KeepAlivePingInterval: pingInterval,
 		PingPongInterval:      pingInterval,
@@ -66,18 +66,18 @@ func graphqlHandler(
 		InitFunc: func(ctx context.Context, initPayload transport.InitPayload) (context.Context, error) {
 			token, ok := initPayload["authToken"].(string)
 
-			log.Trace().Msg("graphql: websocket started")
+			log.Ctx(ctx).Trace().Msg("graphql: websocket started")
 			ctx2, cancel := context.WithCancel(ctx)
 			go func() {
 				defer cancel()
 				<-ctx2.Done()
-				log.Trace().Msg("graphql: websocket ended")
+				log.Ctx(ctx).Trace().Msg("graphql: websocket ended")
 			}()
 
 			if ok {
 				user, err := auth.GetAuthentication(ctx, token, conf.Production)
 				if err != nil {
-					log.Trace().
+					log.Ctx(ctx).Trace().
 						Err(err).
 						Str("token", token).
 						Msg("graphql: websocket auth failed")
@@ -98,12 +98,12 @@ func graphqlHandler(
 		oc := graphql.GetOperationContext(ctx)
 
 		// Add .Str("query", oc.RawQuery) to get query
-		log.Trace().
+		log.Ctx(ctx).Trace().
 			Str("name", oc.OperationName).
 			Interface("vars", oc.Variables).
 			Msg("graphql: request")
 
-		defer log.Trace().
+		defer log.Ctx(ctx).Trace().
 			Str("name", oc.OperationName).
 			Interface("vars", oc.Variables).
 			Msg("graphql: request end")
@@ -143,7 +143,7 @@ func graphqlHandler(
 				op = string(oc.Operation.Operation)
 			}
 
-			l := log.Trace().
+			l := log.Ctx(ctx).Trace().
 				Str("op", op).
 				Str("took", d)
 
@@ -153,7 +153,7 @@ func graphqlHandler(
 
 			l.Msg("graphql: response")
 		} else {
-			log.Trace().
+			log.Ctx(ctx).Trace().
 				Str("op", string(oc.Operation.Operation)).
 				Str("took", d).
 				Msg("graphql: no response")
@@ -167,6 +167,6 @@ func graphqlHandler(
 
 		gqlsrv.ServeHTTP(w, r)
 
-		log.Trace().Str("lasted", time.Since(t).String()).Msg("graphql: connection ended")
+		log.Ctx(ctx).Trace().Str("lasted", time.Since(t).String()).Msg("graphql: connection ended")
 	}
 }
