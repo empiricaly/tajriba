@@ -33,10 +33,12 @@ func Init(ctx context.Context, config *Config) (context.Context, error) {
 			FormatTimestamp: consoleDefaultFormatTimestamp(consoleTimeFormat, false),
 		})
 	} else {
-		logger = logger.Output(zerolog.ConsoleWriter{
-			Out:        os.Stderr,
-			TimeFormat: "2006-01-02T15:04:05.999999999Z",
-		})
+		zerolog.TimestampFunc = func() time.Time {
+			return time.Now().UTC()
+
+		}
+
+		zerolog.TimeFieldFormat = "2006-01-02T15:04:05.999999999Z"
 	}
 
 	if config.ShowLine {

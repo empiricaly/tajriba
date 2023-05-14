@@ -42,7 +42,6 @@ type Config struct {
 
 type ResolverRoot interface {
 	Attribute() AttributeResolver
-	AttributeChange() AttributeChangeResolver
 	Group() GroupResolver
 	Mutation() MutationResolver
 	Participant() ParticipantResolver
@@ -349,9 +348,6 @@ type ComplexityRoot struct {
 type AttributeResolver interface {
 	Versions(ctx context.Context, obj *models.Attribute, after *string, first *int, before *string, last *int) (*mgen.AttributeConnection, error)
 	Current(ctx context.Context, obj *models.Attribute) (bool, error)
-}
-type AttributeChangeResolver interface {
-	CreatedAt(ctx context.Context, obj *models.AttributeChange) (*time.Time, error)
 }
 type GroupResolver interface {
 	Links(ctx context.Context, obj *models.Group, after *string, first *int, before *string, last *int) (*mgen.LinkConnection, error)
@@ -3640,7 +3636,7 @@ func (ec *executionContext) _AttributeChange_createdAt(ctx context.Context, fiel
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.AttributeChange().CreatedAt(rctx, obj)
+		return obj.CreatedAt, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -3661,8 +3657,8 @@ func (ec *executionContext) fieldContext_AttributeChange_createdAt(ctx context.C
 	fc = &graphql.FieldContext{
 		Object:     "AttributeChange",
 		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
+		IsMethod:   false,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type DateTime does not have child fields")
 		},
@@ -13657,48 +13653,35 @@ func (ec *executionContext) _AttributeChange(ctx context.Context, sel ast.Select
 			out.Values[i] = ec._AttributeChange_id(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
+				invalids++
 			}
 		case "nodeID":
 
 			out.Values[i] = ec._AttributeChange_nodeID(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
+				invalids++
 			}
 		case "deleted":
 
 			out.Values[i] = ec._AttributeChange_deleted(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
+				invalids++
 			}
 		case "createdAt":
-			field := field
 
-			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._AttributeChange_createdAt(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&invalids, 1)
-				}
-				return res
+			out.Values[i] = ec._AttributeChange_createdAt(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
 			}
-
-			out.Concurrently(i, func() graphql.Marshaler {
-				return innerFunc(ctx)
-
-			})
 		case "isNew":
 
 			out.Values[i] = ec._AttributeChange_isNew(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
+				invalids++
 			}
 		case "index":
 
@@ -13709,21 +13692,21 @@ func (ec *executionContext) _AttributeChange(ctx context.Context, sel ast.Select
 			out.Values[i] = ec._AttributeChange_vector(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
+				invalids++
 			}
 		case "version":
 
 			out.Values[i] = ec._AttributeChange_version(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
+				invalids++
 			}
 		case "key":
 
 			out.Values[i] = ec._AttributeChange_key(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
+				invalids++
 			}
 		case "val":
 
