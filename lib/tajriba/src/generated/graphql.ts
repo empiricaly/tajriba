@@ -848,6 +848,15 @@ export type SubAttributesPayload = {
   done: Scalars["Boolean"];
   /** isNew returns true if the Attribute for key and nodeID was just created. */
   isNew: Scalars["Boolean"];
+  /**
+   * scopesUpdated is the list of the scope IDs matching the subscription that have
+   * been sent and are done *synced). This can only sent along with done == true.
+   * If done == true and the list is empty, then no scopes matched the
+   * subscription. The list must be sent if done == true. Done can be true and
+   * scopesUpdated can contain IDs even if no attributes were sent. In this case,
+   * the scopes matched were empty.
+   */
+  scopesUpdated?: Maybe<Array<Scalars["String"]>>;
 };
 
 export type Subscription = {
@@ -2182,6 +2191,7 @@ export type ScopedAttributesSubscription = {
   scopedAttributes: {
     __typename: "SubAttributesPayload";
     isNew: boolean;
+    scopesUpdated?: Array<string> | null;
     done: boolean;
     attribute?: {
       __typename: "Attribute";
@@ -8633,6 +8643,10 @@ export const ScopedAttributesDocument = {
                   },
                 },
                 { kind: "Field", name: { kind: "Name", value: "isNew" } },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "scopesUpdated" },
+                },
                 { kind: "Field", name: { kind: "Name", value: "done" } },
               ],
             },

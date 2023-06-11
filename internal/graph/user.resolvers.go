@@ -17,7 +17,7 @@ func (r *mutationResolver) Login(ctx context.Context, input mgen.LoginInput) (*m
 
 	u, s, err := rt.Login(ctx, input.Username, input.Password)
 	if err != nil {
-		return nil, errs.Wrap(err, "transition step")
+		return nil, errs.Wrap(err, "log in user")
 	}
 
 	return &mgen.LoginPayload{User: u, SessionToken: s}, nil

@@ -356,16 +356,33 @@ func (r *Runtime) SubScopedAttributes(
 		r.Unlock()
 
 		var pls []*mgen.SubAttributesPayload
+
 		for i, attr := range attrs {
-			pls = append(pls, &mgen.SubAttributesPayload{
+			done := l == i+1
+			p := &mgen.SubAttributesPayload{
 				Attribute: attr,
-				Done:      l == i+1,
-			})
+				Done:      done,
+			}
+
+			if done {
+				p.ScopesUpdated = make([]string, 0, len(c.scopes))
+				for id := range c.scopes {
+					p.ScopesUpdated = append(p.ScopesUpdated, id)
+				}
+			}
+
+			pls = append(pls, p)
 		}
 
 		if len(attrs) == 0 {
+			scopesUpdated := make([]string, 0, len(c.scopes))
+			for id := range c.scopes {
+				scopesUpdated = append(scopesUpdated, id)
+			}
+
 			pls = append(pls, &mgen.SubAttributesPayload{
-				Done: true,
+				Done:          true,
+				ScopesUpdated: scopesUpdated,
 			})
 		}
 
@@ -441,12 +458,23 @@ func (r *Runtime) pushAttributesForScopedAttributes(ctx context.Context, attrs [
 		l := len(attrs)
 
 		var pls []*mgen.SubAttributesPayload
+
 		for i, attr := range attrs {
-			pls = append(pls, &mgen.SubAttributesPayload{
+			done := l == i+1
+			p := &mgen.SubAttributesPayload{
 				Attribute: attr,
 				IsNew:     attr.Version == 1,
-				Done:      l == i+1,
-			})
+				Done:      done,
+			}
+
+			if done {
+				p.ScopesUpdated = make([]string, 0, len(sub.scopes))
+				for id := range sub.scopes {
+					p.ScopesUpdated = append(p.ScopesUpdated, id)
+				}
+			}
+
+			pls = append(pls, p)
 		}
 
 		sub.Send(pls)

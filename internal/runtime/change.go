@@ -396,10 +396,8 @@ func (r *Runtime) SubChanges(ctx context.Context) (<-chan *models.ChangePayload,
 		} else {
 			// Wait for end of connection
 			<-ctx.Done()
-
-			r.Lock()
-			defer r.Unlock()
 		}
+		r.Lock()
 
 		n := 0
 
@@ -414,7 +412,10 @@ func (r *Runtime) SubChanges(ctx context.Context) (<-chan *models.ChangePayload,
 
 		if len(r.changesSubs[p.ID]) == 0 {
 			delete(r.changesSubs, p.ID)
+			r.Unlock()
 			r.propagateHook(ctx, mgen.EventTypeParticipantDisconnect, p.ID, p)
+		} else {
+			r.Unlock()
 		}
 	}()
 

@@ -42,7 +42,7 @@ func Start(ctx context.Context) (*Runtime, error) {
 
 	s, _, err := r.RegisterService(ctx, "system", false)
 	if err != nil {
-		return nil, errors.Wrap(err, "transition step")
+		return nil, errors.Wrap(err, "register service")
 	}
 
 	r.SystemService = s

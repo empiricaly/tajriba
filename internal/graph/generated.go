@@ -300,9 +300,10 @@ type ComplexityRoot struct {
 	}
 
 	SubAttributesPayload struct {
-		Attribute func(childComplexity int) int
-		Done      func(childComplexity int) int
-		IsNew     func(childComplexity int) int
+		Attribute     func(childComplexity int) int
+		Done          func(childComplexity int) int
+		IsNew         func(childComplexity int) int
+		ScopesUpdated func(childComplexity int) int
 	}
 
 	Subscription struct {
@@ -1474,6 +1475,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.SubAttributesPayload.IsNew(childComplexity), true
+
+	case "SubAttributesPayload.scopesUpdated":
+		if e.complexity.SubAttributesPayload.ScopesUpdated == nil {
+			break
+		}
+
+		return e.complexity.SubAttributesPayload.ScopesUpdated(childComplexity), true
 
 	case "Subscription.changes":
 		if e.complexity.Subscription.Changes == nil {
@@ -9608,6 +9616,47 @@ func (ec *executionContext) fieldContext_SubAttributesPayload_done(ctx context.C
 	return fc, nil
 }
 
+func (ec *executionContext) _SubAttributesPayload_scopesUpdated(ctx context.Context, field graphql.CollectedField, obj *mgen.SubAttributesPayload) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SubAttributesPayload_scopesUpdated(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ScopesUpdated, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalOString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SubAttributesPayload_scopesUpdated(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SubAttributesPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _SubAttributesPayload_isNew(ctx context.Context, field graphql.CollectedField, obj *mgen.SubAttributesPayload) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_SubAttributesPayload_isNew(ctx, field)
 	if err != nil {
@@ -10023,6 +10072,8 @@ func (ec *executionContext) fieldContext_Subscription_scopedAttributes(ctx conte
 				return ec.fieldContext_SubAttributesPayload_attribute(ctx, field)
 			case "done":
 				return ec.fieldContext_SubAttributesPayload_done(ctx, field)
+			case "scopesUpdated":
+				return ec.fieldContext_SubAttributesPayload_scopesUpdated(ctx, field)
 			case "isNew":
 				return ec.fieldContext_SubAttributesPayload_isNew(ctx, field)
 			}
@@ -10100,6 +10151,8 @@ func (ec *executionContext) fieldContext_Subscription_globalAttributes(ctx conte
 				return ec.fieldContext_SubAttributesPayload_attribute(ctx, field)
 			case "done":
 				return ec.fieldContext_SubAttributesPayload_done(ctx, field)
+			case "scopesUpdated":
+				return ec.fieldContext_SubAttributesPayload_scopesUpdated(ctx, field)
 			case "isNew":
 				return ec.fieldContext_SubAttributesPayload_isNew(ctx, field)
 			}
@@ -15249,6 +15302,10 @@ func (ec *executionContext) _SubAttributesPayload(ctx context.Context, sel ast.S
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "scopesUpdated":
+
+			out.Values[i] = ec._SubAttributesPayload_scopesUpdated(ctx, field, obj)
+
 		case "isNew":
 
 			out.Values[i] = ec._SubAttributesPayload_isNew(ctx, field, obj)
