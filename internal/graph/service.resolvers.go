@@ -21,7 +21,7 @@ func (r *mutationResolver) RegisterService(ctx context.Context, input mgen.Regis
 
 	s, t, err := rt.RegisterService(ctx, input.Name, true)
 	if err != nil {
-		return nil, errs.Wrap(err, "transition step")
+		return nil, errs.Wrap(err, "register service")
 	}
 
 	return &mgen.RegisterServicePayload{Service: s, SessionToken: t}, nil

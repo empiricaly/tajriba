@@ -279,6 +279,13 @@ type SubAttributesPayload struct {
 	Attribute *models.Attribute `json:"attribute"`
 	// done indicates that the state has finished synchorizing.
 	Done bool `json:"done"`
+	// scopesUpdated is the list of the scope IDs matching the subscription that have
+	// been sent and are done *synced). This can only sent along with done == true.
+	// If done == true and the list is empty, then no scopes matched the
+	// subscription. The list must be sent if done == true. Done can be true and
+	// scopesUpdated can contain IDs even if no attributes were sent. In this case,
+	// the scopes matched were empty.
+	ScopesUpdated []string `json:"scopesUpdated"`
 	// isNew returns true if the Attribute for key and nodeID was just created.
 	IsNew bool `json:"isNew"`
 }
