@@ -85,6 +85,11 @@ type AttributeChange struct {
 	Key string `json:"key"`
 	// value is the value of the updated attribute.
 	Val *string `json:"val"`
+
+	// onlyParticipantID is the participant ID of the participant that should
+	// receive this change. No other participant will receive it. This is only
+	// used internally.
+	OnlyParticipantID *string
 }
 
 func (AttributeChange) IsChange() {}
