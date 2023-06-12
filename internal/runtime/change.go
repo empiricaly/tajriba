@@ -133,18 +133,25 @@ func (r *Runtime) pushAttributesForChanges(ctx context.Context, attrs []*models.
 			return ErrInvalidNode
 		}
 
+		var onlyParticipantID *string
+		if attr.Private {
+			partID := attr.CreatedBy.GetID()
+			onlyParticipantID = &partID
+		}
+
 		ac := &models.ChangePayload{
 			Change: &models.AttributeChange{
-				ID:        attr.ID,
-				NodeID:    scope.ID,
-				Key:       attr.Key,
-				Val:       attr.Val,
-				Index:     attr.Index,
-				Version:   attr.Version,
-				Deleted:   attr.DeletedAt != nil,
-				CreatedAt: &attr.CreatedAt,
-				IsNew:     attr.Version == 1,
-				Vector:    attr.Vector,
+				ID:                attr.ID,
+				NodeID:            scope.ID,
+				Key:               attr.Key,
+				Val:               attr.Val,
+				Index:             attr.Index,
+				Version:           attr.Version,
+				Deleted:           attr.DeletedAt != nil,
+				CreatedAt:         &attr.CreatedAt,
+				IsNew:             attr.Version == 1,
+				Vector:            attr.Vector,
+				OnlyParticipantID: onlyParticipantID,
 			},
 		}
 
@@ -188,18 +195,25 @@ func (r *Runtime) pushLinks(ctx context.Context, links []*models.Link, initParti
 			changes[pID] = append(changes[pID], ac)
 
 			for _, attr := range v.Attributes {
+				var onlyParticipantID *string
+				if attr.Private {
+					partID := attr.CreatedBy.GetID()
+					onlyParticipantID = &partID
+				}
+
 				ac := &models.ChangePayload{
 					Removed: !link.Link,
 					Change: &models.AttributeChange{
-						ID:        attr.ID,
-						NodeID:    v.ID,
-						Key:       attr.Key,
-						Val:       attr.Val,
-						Version:   attr.Version,
-						Index:     attr.Index,
-						Deleted:   attr.DeletedAt != nil,
-						CreatedAt: &attr.CreatedAt,
-						Vector:    attr.Vector,
+						ID:                attr.ID,
+						NodeID:            v.ID,
+						Key:               attr.Key,
+						Val:               attr.Val,
+						Version:           attr.Version,
+						Index:             attr.Index,
+						Deleted:           attr.DeletedAt != nil,
+						CreatedAt:         &attr.CreatedAt,
+						Vector:            attr.Vector,
+						OnlyParticipantID: onlyParticipantID,
 					},
 				}
 
@@ -292,14 +306,25 @@ func (r *Runtime) pushLinks(ctx context.Context, links []*models.Link, initParti
 }
 
 func (c *changesSub) publish(ctx context.Context, changes []*models.ChangePayload) error {
-	n := 0
+	pubChanges := make([]*models.ChangePayload, 0, len(changes))
 
-	// Tracking participant changes
 	for _, change := range changes {
+		//
+		// Remove attributes that are private and not for this participant
+		//
+
+		attChange, ok := change.Change.(*models.AttributeChange)
+		if ok && attChange.OnlyParticipantID != nil && *attChange.OnlyParticipantID != c.p.ID {
+			continue
+		}
+
+		//
+		// Manage participant tracking
+		//
+
 		pc, ok := change.Change.(*models.ParticipantChange)
 		if !ok {
-			changes[n] = change
-			n++
+			pubChanges = append(pubChanges, change.DeepCopy())
 
 			continue
 		}
@@ -309,8 +334,7 @@ func (c *changesSub) publish(ctx context.Context, changes []*models.ChangePayloa
 			if change.Removed {
 				continue
 			} else {
-				changes[n] = change
-				n++
+				pubChanges = append(pubChanges, change.DeepCopy())
 
 				c.participants[pc.ID] = map[string]struct{}{pc.NodeID: {}}
 				continue
@@ -320,10 +344,10 @@ func (c *changesSub) publish(ctx context.Context, changes []*models.ChangePayloa
 		_, exist := gs[pc.NodeID]
 		if exist {
 			if change.Removed {
-				changes[n] = change
-				n++
+				pubChanges = append(pubChanges, change.DeepCopy())
 
 				delete(c.participants[pc.ID], pc.NodeID)
+
 				if len(c.participants[pc.ID]) == 0 {
 					delete(c.participants, pc.ID)
 				}
@@ -335,8 +359,7 @@ func (c *changesSub) publish(ctx context.Context, changes []*models.ChangePayloa
 		}
 
 		if !change.Removed {
-			changes[n] = change
-			n++
+			pubChanges = append(pubChanges, change.DeepCopy())
 
 			c.participants[pc.ID][pc.NodeID] = struct{}{}
 		} else {
@@ -344,17 +367,13 @@ func (c *changesSub) publish(ctx context.Context, changes []*models.ChangePayloa
 		}
 	}
 
-	changes = changes[:n]
-
-	l := len(changes)
-
-	chgs := make([]*models.ChangePayload, 0, len(changes))
-	for i, change := range changes {
-		change = change.DeepCopy()
-		change.Done = i+1 == l
-		chgs = append(chgs, change)
+	if len(pubChanges) == 0 {
+		return nil
 	}
-	c.Send(chgs)
+
+	pubChanges[len(pubChanges)-1].Done = true
+
+	c.Send(pubChanges)
 
 	return nil
 }
