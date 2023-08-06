@@ -45,11 +45,11 @@ type AddParticipantPayload struct {
 type AddScopeInput struct {
 	// name is the *unique* name of the Scope. If a scope with the same name already
 	// exists, it will return an "already exists" error.
-	Name *string `json:"name"`
+	Name *string `json:"name,omitempty"`
 	// kind is an optional type name.
-	Kind *string `json:"kind"`
+	Kind *string `json:"kind,omitempty"`
 	// attributes to be attached to the Scope at creation.
-	Attributes []*SetAttributeInput `json:"attributes"`
+	Attributes []*SetAttributeInput `json:"attributes,omitempty"`
 }
 
 // AddScopePayload is the return payload for the addScope mutation.
@@ -143,7 +143,7 @@ type LoginPayload struct {
 // OnAnyEventInput is the input for the onAnyEvent subscription.
 type OnAnyEventInput struct {
 	// nodeID is an optional node ID of the node to listen to.
-	NodeID *string `json:"nodeID"`
+	NodeID *string `json:"nodeID,omitempty"`
 }
 
 // OnEventInput is the input for the onEvent subscription.
@@ -151,7 +151,7 @@ type OnEventInput struct {
 	// eventsTypes speficies which events to listen to.
 	EventTypes []EventType `json:"eventTypes"`
 	// nodeID is an optional node ID of the node to listen to.
-	NodeID *string `json:"nodeID"`
+	NodeID *string `json:"nodeID,omitempty"`
 }
 
 // OnEventPayload is the payload for the on[Any]Event subscriptions.
@@ -163,7 +163,7 @@ type OnEventPayload struct {
 	// eventType is the type of the current event.
 	EventType EventType `json:"eventType"`
 	// node is the node that triggered the event
-	Node models.Node `json:"node"`
+	Node models.Node `json:"node,omitempty"`
 	// done indicates that the state has finished synchorizing. This is only valid
 	// for events that synchronize state on start of subscription (e.g.
 	// PARTICIPANT_CONNECTED).
@@ -173,8 +173,8 @@ type OnEventPayload struct {
 type PageInfo struct {
 	HasNextPage     bool    `json:"hasNextPage"`
 	HasPreviousPage bool    `json:"hasPreviousPage"`
-	StartCursor     *string `json:"startCursor"`
-	EndCursor       *string `json:"endCursor"`
+	StartCursor     *string `json:"startCursor,omitempty"`
+	EndCursor       *string `json:"endCursor,omitempty"`
 }
 
 type ParticipantConnection struct {
@@ -221,33 +221,33 @@ type SetAttributeInput struct {
 	Key string `json:"key"`
 	// val is the value of the Attribute. It can be any JSON encodable value. If
 	// value is not defined, value is assumed to be `null`.
-	Val *string `json:"val"`
+	Val *string `json:"val,omitempty"`
 	// index of value if Attribute is a vector. Setting the index will make this
 	// Attribute a vector if it does not yet exist. An Attribute cannot mutate
 	// between vector and non-vector formats.
-	Index *int `json:"index"`
+	Index *int `json:"index,omitempty"`
 	// append allows appending to a vector without specifying the index. Setting the
 	// index will make this Attribute a vector if it does not yet exist. An Attribute
 	// cannot mutate between vector and non-vector formats.
-	Append *bool `json:"append"`
+	Append *bool `json:"append,omitempty"`
 	// private indicates whether the Attribute shouldn't be visible to Participants
 	// in the scope.
 	// private must be set on the Attribute at creation.
 	// Defaults to false and does need to be sent on subsequent updates.
-	Private *bool `json:"private"`
+	Private *bool `json:"private,omitempty"`
 	// protected indicates the Attribute cannot be modified by other Participants. A
 	// Participant can only set protected Records on their Participant record.
 	// Users and Services can update protected Attributes.
 	// protected must be set on the Attribute at creation.
 	// Defaults to false and does need to be sent on subsequent updates.
-	Protected *bool `json:"protected"`
+	Protected *bool `json:"protected,omitempty"`
 	// immutable indicates the Attribute can never be changed by any Actor.
 	// immutable must be set on the Attribute at creation.
 	// Defaults to false and does need to be sent on subsequent updates.
-	Immutable *bool `json:"immutable"`
+	Immutable *bool `json:"immutable,omitempty"`
 	// ID of object on which to update the value. NodeID is required if attribute is
 	// not created with addScope().
-	NodeID *string `json:"nodeID"`
+	NodeID *string `json:"nodeID,omitempty"`
 }
 
 // SetAttributePayload is the return payload for the setAttribute mutation.
@@ -269,14 +269,14 @@ type StepEdge struct {
 
 type StepOrder struct {
 	Direction OrderDirection  `json:"direction"`
-	Field     *StepOrderField `json:"field"`
+	Field     *StepOrderField `json:"field,omitempty"`
 }
 
 // SubAttributesPayload is the return payload for the scope attributes subs.
 type SubAttributesPayload struct {
 	// scope that the participant is added to. Attribute may be null only if the
 	// subscription did not match any Scopes and done must be published.
-	Attribute *models.Attribute `json:"attribute"`
+	Attribute *models.Attribute `json:"attribute,omitempty"`
 	// done indicates that the state has finished synchorizing.
 	Done bool `json:"done"`
 	// scopesUpdated is the list of the scope IDs matching the subscription that have
@@ -285,7 +285,7 @@ type SubAttributesPayload struct {
 	// subscription. The list must be sent if done == true. Done can be true and
 	// scopesUpdated can contain IDs even if no attributes were sent. In this case,
 	// the scopes matched were empty.
-	ScopesUpdated []string `json:"scopesUpdated"`
+	ScopesUpdated []string `json:"scopesUpdated,omitempty"`
 	// isNew returns true if the Attribute for key and nodeID was just created.
 	IsNew bool `json:"isNew"`
 }
@@ -312,7 +312,7 @@ type TransitionInput struct {
 	// to is the desired State of the Step.
 	To models.State `json:"to"`
 	// cause is an optional open string explaining the reason for the transition.
-	Cause *string `json:"cause"`
+	Cause *string `json:"cause,omitempty"`
 }
 
 // TransitionPayload is the return payload for the transition() mutation.

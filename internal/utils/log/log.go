@@ -35,7 +35,6 @@ func Init(ctx context.Context, config *Config) (context.Context, error) {
 	} else {
 		zerolog.TimestampFunc = func() time.Time {
 			return time.Now().UTC()
-
 		}
 
 		zerolog.TimeFieldFormat = "2006-01-02T15:04:05.999999999Z"

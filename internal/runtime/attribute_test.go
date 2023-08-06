@@ -2,10 +2,14 @@ package runtime_test
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+	"github.com/sasha-s/go-deadlock"
 
 	"github.com/empiricaly/tajriba/internal/auth/actor"
 	"github.com/empiricaly/tajriba/internal/models"
@@ -21,6 +25,9 @@ var _ = Describe("Attribute", func() {
 	var rt *runtime.Runtime
 
 	BeforeEach(func() {
+		logger := log.Level(zerolog.TraceLevel).Output(GinkgoWriter)
+		ctx = logger.WithContext(ctx)
+
 		ctx, err = ids.Init(ctx)
 		Expect(err).To(BeNil())
 
@@ -605,5 +612,128 @@ var _ = Describe("Attribute", func() {
 		for _, b := range res[1:] {
 			Expect(b.vals).To(Equal(res[0].vals))
 		}
+	})
+
+	It("should handle handle dead connections", NodeTimeout(10*time.Second), func(sctx SpecContext) {
+		optsTimeout := deadlock.Opts.DeadlockTimeout
+		optsOnDeadlock := deadlock.Opts.OnPotentialDeadlock
+		defer func() {
+			deadlock.Opts.DeadlockTimeout = optsTimeout
+			deadlock.Opts.OnPotentialDeadlock = optsOnDeadlock
+		}()
+
+		deadlock.Opts.DeadlockTimeout = 3500 * time.Millisecond
+		deadlock.Opts.OnPotentialDeadlock = func() {
+			defer GinkgoRecover()
+			Fail("potential deadlock")
+		}
+
+		logger := log.Level(zerolog.TraceLevel).Output(GinkgoWriter)
+		ctx = logger.WithContext(sctx)
+
+		ctx, err = ids.Init(ctx)
+		Expect(err).To(BeNil())
+
+		conn, err := store.Connect(ctx, &store.Config{UseMemory: true})
+		Expect(err).To(BeNil())
+
+		ctx = store.SetContext(ctx, conn)
+
+		// SetContext sets the user on the context.
+		ctx = actor.SetContext(ctx, &models.User{ID: "user1"})
+
+		rt, err = runtime.Start(ctx)
+		Expect(err).To(BeNil())
+
+		scopes := addScopes(ctx, rt, []*scopeInput{
+			{
+				name: "myscope",
+				kind: "thing",
+				attributes: []*attribInput{
+					{
+						Key:   "a",
+						Value: "0",
+					},
+				},
+			},
+		})
+
+		p := pool.NewWithResults[kvs]().WithContext(ctx)
+
+		runtime.MaxChangesSubBuf = 10
+		runtime.SkipWebsocketError = true
+
+		p.Go(func(ctx context.Context) (kvs, error) {
+			defer GinkgoRecover()
+
+			defer fmt.Print("kvs done\n")
+
+			for i := 0; i < 110; i++ {
+				if ctx.Err() != nil {
+					defer fmt.Print("kvs cancelled\n")
+
+					return kvs{}, nil
+				}
+
+				setAttributes(ctx, rt, scopes[0].ID, []*attribInput{
+					{
+						Key:   fmt.Sprintf("value%d", i),
+						Value: fmt.Sprintf("value%d", i),
+					},
+				})
+			}
+
+			return kvs{}, nil
+		})
+
+		p.Go(func(ctx context.Context) (kvs, error) {
+			defer GinkgoRecover()
+			defer fmt.Print("player1 done\n")
+
+			return runPlayer(
+				ctx,
+				rt,
+				"player1",
+				[]string{scopes[0].ID},
+				[]*delayedInput{
+					{
+						delay: 2000,
+					},
+				},
+				1200*time.Millisecond,
+			), nil
+		})
+
+		p.Go(func(ctx context.Context) (kvs, error) {
+			defer GinkgoRecover()
+			defer fmt.Print("player2 done\n")
+
+			return runPlayer(
+				ctx,
+				rt,
+				"player2",
+				[]string{scopes[0].ID},
+				[]*delayedInput{
+					{
+						delay: 2000,
+					},
+				},
+			), nil
+		})
+
+		_, err = p.Wait()
+		Expect(err).To(BeNil())
+
+		// res, err := p.Wait()
+		// Expect(err).To(BeNil())
+
+		// GinkgoWriter.Print("\n\n")
+		// for _, r := range res {
+		// 	GinkgoWriter.Print(r.String())
+		// }
+
+		// for _, b := range res[1:] {
+		// 	Expect(b.vals).To(Equal(res[0].vals))
+		// }
 	})
 })

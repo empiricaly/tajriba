@@ -4,12 +4,14 @@ import (
 	"context"
 	"time"
 
+	"github.com/99designs/gqlgen/graphql/handler/transport"
 	"github.com/empiricaly/tajriba/internal/auth/actor"
 	"github.com/empiricaly/tajriba/internal/graph/mgen"
 	"github.com/empiricaly/tajriba/internal/models"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/sasha-s/go-deadlock"
+	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
 type changesSub struct {
@@ -22,15 +24,24 @@ type changesSub struct {
 
 	ch      chan *models.ChangePayload
 	closing chan bool
-	closed  bool
+
+	changeBuf []*models.ChangePayload
+	bufChan   chan *models.ChangePayload
+	timingOut bool
+
+	deadConn bool
 
 	deadlock.Mutex
 }
+
+var MaxChangesSubBuf = 500
 
 func newChangesSub(ctx context.Context, p *models.Participant, ch chan *models.ChangePayload) *changesSub {
 	s := &changesSub{
 		ctx:          ctx,
 		p:            p,
+		changeBuf:    make([]*models.ChangePayload, 0, MaxChangesSubBuf),
+		bufChan:      make(chan *models.ChangePayload),
 		ch:           ch,
 		participants: make(map[string]map[string]struct{}),
 		closing:      make(chan bool),
@@ -44,33 +55,200 @@ func newChangesSub(ctx context.Context, p *models.Participant, ch chan *models.C
 // If you're wondering what on earth is going here, see "NOTE ABOUT CLOSING
 // GQLGEN SUBSCRIPTION CHANNELS" in scope.go.
 
+var SkipWebsocketError = false
+
 func (s *changesSub) Send(p []*models.ChangePayload) {
 	if s.ctx.Err() != nil {
 		return
 	}
 
+	s.Lock()
+	defer s.Unlock()
+
+	if s.deadConn {
+		return
+	}
+
 	for _, payload := range p {
-	LOOP:
-		for {
-			select {
-			case <-time.After(gqlgenSubChannelTimeout):
-				if s.ctx.Err() != nil {
-					return
+		if s.timingOut {
+			s.changeBuf = append(s.changeBuf, payload)
+
+			if len(s.changeBuf) >= MaxChangesSubBuf {
+				log.Ctx(s.ctx).Warn().Msg("changes: write buffer full, abandoning connection")
+
+				s.deadConn = true
+				s.changeBuf = nil
+
+				if SkipWebsocketError {
+					log.Ctx(s.ctx).Trace().Msg("changes: (testing only) sub channel buffer full, return socket error")
+				} else {
+					transport.AddSubscriptionError(s.ctx, gqlerror.Errorf("changes sub write timeout"))
 				}
-			case s.ch <- payload:
-				break LOOP
+
+				return
 			}
+
+			continue
+		}
+
+		select {
+		case <-s.ctx.Done():
+			return
+		case <-time.After(gqlgenSubChannelTimeout):
+			if s.ctx.Err() != nil {
+				return
+			}
+
+			s.timingOut = true
+			s.changeBuf = append(s.changeBuf, payload)
+
+			log.Ctx(s.ctx).Warn().Msg("changes: conn write timeout")
+
+			go s.flusher()
+		case s.ch <- payload:
 		}
 	}
 }
 
 func (s *changesSub) wait() {
-	<-s.ctx.Done()
+	for {
+		s.Lock()
+		if s.deadConn {
+			s.Unlock()
+			<-s.ctx.Done()
 
+			s.close()
+
+			return
+		}
+		s.Unlock()
+
+		select {
+		case <-s.ctx.Done():
+			s.close()
+
+			return
+		case <-time.After(gqlgenSubChannelTimeout):
+		case s.ch <- <-s.bufChan:
+		}
+	}
+}
+
+func (s *changesSub) close() {
 	// Wait a bit to make sure the Done is noticed by Send.
 	time.Sleep(gqlgenSubChannelWait)
 
 	close(s.ch)
+	close(s.bufChan)
+}
+
+func (s *changesSub) flusher() {
+	for {
+		s.Lock()
+		if s.deadConn {
+			s.Unlock()
+
+			return
+		}
+
+		if len(s.changeBuf) == 0 {
+			s.timingOut = false
+			s.Unlock()
+
+			return
+		}
+
+		payload := s.changeBuf[0]
+		s.Unlock()
+
+		select {
+		case <-s.ctx.Done():
+			return
+		case <-time.After(gqlgenSubChannelTimeout):
+		case s.bufChan <- payload:
+			s.Lock()
+
+			s.changeBuf = s.changeBuf[1:]
+
+			if len(s.changeBuf) == 0 {
+				s.timingOut = false
+				s.changeBuf = s.changeBuf[:0]
+				s.Unlock()
+
+				return
+			}
+
+			s.Unlock()
+		}
+	}
+}
+
+func (c *changesSub) publish(ctx context.Context, changes []*models.ChangePayload) error {
+	n := 0
+
+	// Tracking participant changes
+	for _, change := range changes {
+		pc, ok := change.Change.(*models.ParticipantChange)
+		if !ok {
+			changes[n] = change
+			n++
+
+			continue
+		}
+
+		gs, ok := c.participants[pc.ID]
+		if !ok {
+			if change.Removed {
+				continue
+			} else {
+				changes[n] = change
+				n++
+
+				c.participants[pc.ID] = map[string]struct{}{pc.NodeID: {}}
+				continue
+			}
+		}
+
+		_, exist := gs[pc.NodeID]
+		if exist {
+			if change.Removed {
+				changes[n] = change
+				n++
+
+				delete(c.participants[pc.ID], pc.NodeID)
+				if len(c.participants[pc.ID]) == 0 {
+					delete(c.participants, pc.ID)
+				}
+			} else {
+				// Already added :shrug:
+			}
+
+			continue
+		}
+
+		if !change.Removed {
+			changes[n] = change
+			n++
+
+			c.participants[pc.ID][pc.NodeID] = struct{}{}
+		} else {
+			// Never sent :shrug:
+		}
+	}
+
+	changes = changes[:n]
+
+	l := len(changes)
+
+	chgs := make([]*models.ChangePayload, 0, len(changes))
+	for i, change := range changes {
+		change = change.DeepCopy()
+		change.Done = i+1 == l
+		chgs = append(chgs, change)
+	}
+	c.Send(chgs)
+
+	return nil
 }
 
 func (r *Runtime) pushStep(ctx context.Context, step *models.Step) error {
@@ -291,74 +469,6 @@ func (r *Runtime) pushLinks(ctx context.Context, links []*models.Link, initParti
 	return nil
 }
 
-func (c *changesSub) publish(ctx context.Context, changes []*models.ChangePayload) error {
-	n := 0
-
-	// Tracking participant changes
-	for _, change := range changes {
-		pc, ok := change.Change.(*models.ParticipantChange)
-		if !ok {
-			changes[n] = change
-			n++
-
-			continue
-		}
-
-		gs, ok := c.participants[pc.ID]
-		if !ok {
-			if change.Removed {
-				continue
-			} else {
-				changes[n] = change
-				n++
-
-				c.participants[pc.ID] = map[string]struct{}{pc.NodeID: {}}
-				continue
-			}
-		}
-
-		_, exist := gs[pc.NodeID]
-		if exist {
-			if change.Removed {
-				changes[n] = change
-				n++
-
-				delete(c.participants[pc.ID], pc.NodeID)
-				if len(c.participants[pc.ID]) == 0 {
-					delete(c.participants, pc.ID)
-				}
-			} else {
-				// Already added :shrug:
-			}
-
-			continue
-		}
-
-		if !change.Removed {
-			changes[n] = change
-			n++
-
-			c.participants[pc.ID][pc.NodeID] = struct{}{}
-		} else {
-			// Never sent :shrug:
-		}
-	}
-
-	changes = changes[:n]
-
-	l := len(changes)
-
-	chgs := make([]*models.ChangePayload, 0, len(changes))
-	for i, change := range changes {
-		change = change.DeepCopy()
-		change.Done = i+1 == l
-		chgs = append(chgs, change)
-	}
-	c.Send(chgs)
-
-	return nil
-}
-
 func (r *Runtime) SubChanges(ctx context.Context) (<-chan *models.ChangePayload, error) {
 	r.Lock()
 	defer r.Unlock()
@@ -378,6 +488,8 @@ func (r *Runtime) SubChanges(ctx context.Context) (<-chan *models.ChangePayload,
 	go func() {
 		r.Lock()
 
+		activeLinks := activeParticipantLinks(p.Links)
+
 		c := newChangesSub(ctx, p, pchan)
 
 		r.changesSubs[p.ID] = append(r.changesSubs[p.ID], c)
@@ -387,7 +499,7 @@ func (r *Runtime) SubChanges(ctx context.Context) (<-chan *models.ChangePayload,
 			r.propagateHook(ctx, mgen.EventTypeParticipantConnected, p.ID, p)
 		}
 
-		err := r.pushLinks(ctx, activeParticipantLinks(p.Links), c)
+		err := r.pushLinks(ctx, activeLinks, c)
 
 		r.Unlock()
 
@@ -397,6 +509,7 @@ func (r *Runtime) SubChanges(ctx context.Context) (<-chan *models.ChangePayload,
 			// Wait for end of connection
 			<-ctx.Done()
 		}
+
 		r.Lock()
 
 		n := 0

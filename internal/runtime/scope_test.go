@@ -83,7 +83,7 @@ var _ = Describe("Scope", func() {
 			deadlock.Opts.OnPotentialDeadlock = optsOnDeadlock
 		}()
 
-		deadlock.Opts.DeadlockTimeout = 1 * time.Second
+		deadlock.Opts.DeadlockTimeout = 100 * time.Millisecond
 		deadlock.Opts.OnPotentialDeadlock = func() {
 			defer GinkgoRecover()
 			Fail("potential deadlock")
