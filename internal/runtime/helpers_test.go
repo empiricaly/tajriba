@@ -99,7 +99,7 @@ type delayedInput struct {
 	scopeID string
 }
 
-func runPlayer(ctx context.Context, rt *runtime.Runtime, name string, scopeIDs []string, input []*delayedInput) (res kvs) {
+func runPlayer(ctx context.Context, rt *runtime.Runtime, name string, scopeIDs []string, input []*delayedInput, receiveDelays ...time.Duration) (res kvs) {
 	ctx, cancel := context.WithCancel(ctx)
 
 	res = newKvs(name)
@@ -118,33 +118,46 @@ func runPlayer(ctx context.Context, rt *runtime.Runtime, name string, scopeIDs [
 	})
 	Expect(err).To(BeNil())
 
+	var receiveDelay time.Duration
+	if receiveDelays != nil {
+		receiveDelay = receiveDelays[0]
+	}
+
 	go func() {
 		defer GinkgoRecover()
 
 		for {
-			s, ok := <-c
-			if !ok {
-				GinkgoWriter.Print(name, " done ", time.Now().Format(time.RFC3339Nano), "\n")
-
+			select {
+			case <-ctx.Done():
 				return
+			case s, ok := <-c:
+				if !ok {
+					GinkgoWriter.Print(name, " done ", time.Now().Format(time.RFC3339Nano), "\n")
+
+					return
+				}
+
+				attrChg, ok := s.Change.(*models.AttributeChange)
+				if !ok {
+					continue
+				}
+
+				a := &models.Attribute{
+					ID:     attrChg.ID,
+					Key:    attrChg.Key,
+					Val:    attrChg.Val,
+					Index:  attrChg.Index,
+					Vector: attrChg.Vector,
+				}
+
+				GinkgoWriter.Print(name, " newattr ", a.LookupKey(), " ", time.Now().Format(time.RFC3339Nano), "\n")
+
+				res.addAttr(a)
+
+				if receiveDelay > 0 {
+					time.Sleep(receiveDelay)
+				}
 			}
-
-			attrChg, ok := s.Change.(*models.AttributeChange)
-			if !ok {
-				continue
-			}
-
-			a := &models.Attribute{
-				ID:     attrChg.ID,
-				Key:    attrChg.Key,
-				Val:    attrChg.Val,
-				Index:  attrChg.Index,
-				Vector: attrChg.Vector,
-			}
-
-			GinkgoWriter.Print(name, " newattr ", a.LookupKey(), " ", time.Now().Format(time.RFC3339Nano), "\n")
-
-			res.addAttr(a)
 		}
 	}()
 

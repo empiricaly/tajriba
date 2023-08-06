@@ -21,7 +21,10 @@ import (
 )
 
 // pingInterval is the interval at which a ping is sent to client.
-const pingInterval = 10 * time.Second
+const (
+	pingInterval = 5 * time.Second
+	initTimeout  = 5 * time.Second
+)
 
 // func init() {
 // 	deadlock.Opts.DeadlockTimeout = 3 * time.Second
@@ -63,6 +66,7 @@ func graphqlHandler(
 			},
 			EnableCompression: true,
 		},
+		InitTimeout: initTimeout,
 		InitFunc: func(ctx context.Context, initPayload transport.InitPayload) (context.Context, error) {
 			token, ok := initPayload["authToken"].(string)
 
@@ -91,8 +95,11 @@ func graphqlHandler(
 			return ctx, nil
 		},
 	})
-	gqlsrv.Use(extension.Introspection{})
-	gqlsrv.Use(apollotracing.Tracer{})
+
+	if !conf.Production {
+		gqlsrv.Use(extension.Introspection{})
+		gqlsrv.Use(apollotracing.Tracer{})
+	}
 
 	gqlsrv.AroundOperations(func(ctx context.Context, next graphql.OperationHandler) graphql.ResponseHandler {
 		oc := graphql.GetOperationContext(ctx)

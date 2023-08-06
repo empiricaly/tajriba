@@ -257,12 +257,13 @@ func newScopedAttributesSub(ctx context.Context, inputs models.ScopedAttributesI
 // the channel will block and the retry loop will kick in.
 
 // gqlgenSubChannelBuffer is the size of the gqlgen outbound channel buffer.
-// This is an arbitrary number. 🤷‍♂️
-const gqlgenSubChannelBuffer = 10
+// This is an arbitrary number, though it's fair to expect the network to not
+// always be smooth and this can help smooth out the bumps.
+const gqlgenSubChannelBuffer = 100
 
 // gqlgenSubChannelTimeout is the amount of time to wait for a send on the
 // gqlgen outbound channel before giving up and checking the context.
-const gqlgenSubChannelTimeout = time.Second
+const gqlgenSubChannelTimeout = 100 * time.Millisecond
 
 // gqlgenSubChannelWait is the amount of time to wait before closing the gqlgen
 // outbound channel. It's the time we wait to make sure Send has noticed the
