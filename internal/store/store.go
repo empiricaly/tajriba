@@ -17,7 +17,7 @@ import (
 
 // Conn represents a datastore connection.
 type Conn struct {
-	ctx context.Context
+	ctx      context.Context
 	config   *Config
 	done     chan bool
 	buf      *bufio.Writer
@@ -34,7 +34,7 @@ const fbuffer = 100000
 // Connect creates a connection to a messaging service with the given config.
 func Connect(ctx context.Context, config *Config) (*Conn, error) {
 	c := &Conn{
-		ctx: ctx,
+		ctx:    ctx,
 		done:   make(chan bool),
 		config: config,
 	}
@@ -62,6 +62,11 @@ func (c *Conn) OpaqueMetadata() []byte {
 
 const defaultFilePerm = 0o666
 
+const (
+	defaultScannerBufSize = 64 * 1024
+	maxScannerBufSize     = 1024 * 1024
+)
+
 func (c *Conn) openFile() error {
 	var created bool
 
@@ -79,6 +84,8 @@ func (c *Conn) openFile() error {
 	}
 
 	c.s = bufio.NewScanner(c.f)
+	buf := make([]byte, 0, defaultScannerBufSize)
+	c.s.Buffer(buf, maxScannerBufSize)
 
 	if created {
 		if err := c.writeFileMetadata(); err != nil {
