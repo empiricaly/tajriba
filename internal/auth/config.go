@@ -11,8 +11,13 @@ import (
 
 // Config is server configuration.
 type Config struct {
-	Users                    []models.User `mapstructure:"users"`
-	ServiceRegistrationToken string        `mapstructure:"srtoken"`
+	Users []models.User `mapstructure:"users"`
+
+	Name     string `mapstructure:"name"`
+	Username string `mapstructure:"username"`
+	Password string `mapstructure:"password"`
+
+	ServiceRegistrationToken string `mapstructure:"srtoken"`
 
 	// The Production flag is used to enable production mode. It should be
 	// propagated by the parent Config before Validate is called.
@@ -27,6 +32,30 @@ const (
 
 // Validate configuration is ok.
 func (c *Config) Validate() error {
+	if c == nil {
+		return nil
+	}
+
+	if strings.TrimSpace(c.Username) != "" {
+		if strings.TrimSpace(c.Name) == "" {
+			return errors.New("name is required")
+		}
+
+		if strings.TrimSpace(c.Password) == "" {
+			return errors.New("password is required")
+		}
+
+		if len(strings.TrimSpace(c.Password)) < minPasswordSize {
+			return errors.Errorf("password is too small: %d chars min", minPasswordSize)
+		}
+
+		c.Users = append(c.Users, models.User{
+			Name:     strings.TrimSpace(c.Name),
+			Username: strings.TrimSpace(c.Username),
+			Password: strings.TrimSpace(c.Password),
+		})
+	}
+
 	for _, user := range c.Users {
 		if strings.TrimSpace(user.Name) == "" {
 			return errors.New("user name is required")
@@ -73,7 +102,22 @@ func ConfigFlags(cmd *cobra.Command, prefix string) error {
 	viper.SetDefault(prefix, &Config{})
 
 	flag := prefix + ".users"
-	sval := []*models.User{}
+	val := []*models.User{}
+	viper.SetDefault(flag, val)
+
+	flag = prefix + ".name"
+	sval := ""
+	cmd.PersistentFlags().String(flag, sval, "Name of the user to add")
+	viper.SetDefault(flag, sval)
+
+	flag = prefix + ".username"
+	sval = ""
+	cmd.PersistentFlags().String(flag, sval, "Username of the user to add")
+	viper.SetDefault(flag, sval)
+
+	flag = prefix + ".password"
+	sval = ""
+	cmd.PersistentFlags().String(flag, sval, "Password of the user to add")
 	viper.SetDefault(flag, sval)
 
 	return nil
