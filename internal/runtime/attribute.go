@@ -54,6 +54,7 @@ func (r *Runtime) prepAttributes(
 	actorID := actr.GetID()
 	attrs := make([]*models.Attribute, 0, len(inputs))
 
+	appendOffsets := make(map[string]int)
 	for _, input := range inputs {
 		if input.NodeID == nil {
 			return nil, errors.New("nodeID is required")
@@ -71,34 +72,46 @@ func (r *Runtime) prepAttributes(
 		}
 
 		index := input.Index
+
 		var vector, private, protected, immutable bool
+
 		if input.Append != nil && *input.Append {
 			vector = true
 
-			var maxIndex int
-			var found bool
-			for _, attr := range scope.Attributes {
-				if attr.Key == input.Key {
-					if !attr.Vector {
-						return nil, errors.Errorf("attribute for '%s' is not a vector", input.Key)
-					}
+			ckey := scope.ID + input.Key
 
-					if attr.Index == nil {
-						return nil, errors.Errorf("attribute for '%s' has no index", input.Key)
-					}
+			if offset, ok := appendOffsets[ckey]; ok {
+				index = &offset
+				appendOffsets[ckey] = offset + 1
+			} else {
+				var found bool
+				var maxIndex int
+				for _, attr := range scope.Attributes {
+					if attr.Key == input.Key {
+						if !attr.Vector {
+							return nil, errors.Errorf("attribute for '%s' is not a vector", input.Key)
+						}
 
-					found = true
-					if *attr.Index > maxIndex {
-						maxIndex = *attr.Index
+						if attr.Index == nil {
+							return nil, errors.Errorf("attribute for '%s' has no index", input.Key)
+						}
+
+						found = true
+						if *attr.Index > maxIndex {
+							maxIndex = *attr.Index
+						}
 					}
 				}
-			}
 
-			if !found {
-				index = &maxIndex
-			} else {
-				maxIndex++
-				index = &maxIndex
+				if !found {
+					// 0
+					index = &maxIndex
+				} else {
+					maxIndex++
+					index = &maxIndex
+				}
+
+				appendOffsets[ckey] = maxIndex + 1
 			}
 		} else if input.Index != nil {
 			vector = true
