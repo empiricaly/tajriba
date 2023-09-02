@@ -72,11 +72,11 @@ func graphqlHandler(
 
 			log.Ctx(ctx).Trace().Msg("graphql: websocket started")
 			ctx2, cancel := context.WithCancel(ctx)
-			go func() {
+			go func(ctx context.Context) {
 				defer cancel()
 				<-ctx2.Done()
 				log.Ctx(ctx).Trace().Msg("graphql: websocket ended")
-			}()
+			}(ctx)
 
 			if ok {
 				user, err := auth.GetAuthentication(ctx, token, conf.Production)
