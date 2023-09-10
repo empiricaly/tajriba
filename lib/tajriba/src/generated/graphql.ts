@@ -371,6 +371,11 @@ export type Mutation = {
   registerService: RegisterServicePayload;
   /** Create or update an Attribute on a Node. */
   setAttributes: Array<SetAttributePayload>;
+  /**
+   * login signs in a user with a PASETO Token. This can create a
+   * new user if the user ID does not exist.
+   */
+  tokenLogin: LoginPayload;
   /** transition transition a Node from a state to another state. */
   transition: TransitionPayload;
 };
@@ -405,6 +410,10 @@ export type MutationRegisterServiceArgs = {
 
 export type MutationSetAttributesArgs = {
   input: Array<SetAttributeInput>;
+};
+
+export type MutationTokenLoginArgs = {
+  input: TokenLoginInput;
 };
 
 export type MutationTransitionArgs = {
@@ -901,6 +910,12 @@ export type SubscriptionOnEventArgs = {
 
 export type SubscriptionScopedAttributesArgs = {
   input: Array<ScopedAttributesInput>;
+};
+
+/** TokenLoginInput is the input for tokenLogin() */
+export type TokenLoginInput = {
+  /** token is the PASETO token. */
+  token: Scalars["String"];
 };
 
 /** A Transition records a State change. */
@@ -2571,6 +2586,25 @@ export type LoginMutationVariables = Exact<{
 export type LoginMutation = {
   __typename: "Mutation";
   login: {
+    __typename: "LoginPayload";
+    sessionToken: string;
+    user: {
+      __typename: "User";
+      id: string;
+      createdAt: any;
+      username: string;
+      name: string;
+    };
+  };
+};
+
+export type TokenLoginMutationVariables = Exact<{
+  input: TokenLoginInput;
+}>;
+
+export type TokenLoginMutation = {
+  __typename: "Mutation";
+  tokenLogin: {
     __typename: "LoginPayload";
     sessionToken: string;
     user: {
@@ -10261,6 +10295,83 @@ export const LoginDocument = {
     },
   ],
 } as unknown as DocumentNode<LoginMutation, LoginMutationVariables>;
+export const TokenLoginDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "mutation",
+      name: { kind: "Name", value: "TokenLogin" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "input" },
+          },
+          type: {
+            kind: "NonNullType",
+            type: {
+              kind: "NamedType",
+              name: { kind: "Name", value: "TokenLoginInput" },
+            },
+          },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "tokenLogin" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "input" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "input" },
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "user" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "__typename" },
+                      },
+                      { kind: "Field", name: { kind: "Name", value: "id" } },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "createdAt" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "username" },
+                      },
+                      { kind: "Field", name: { kind: "Name", value: "name" } },
+                    ],
+                  },
+                },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "sessionToken" },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<TokenLoginMutation, TokenLoginMutationVariables>;
 
 type Properties<T> = Required<{
   [K in keyof T]: z.ZodType<T[K], any, T[K]>;
@@ -10392,6 +10503,14 @@ export function StepOrderSchema(): z.ZodObject<Properties<StepOrder>> {
 }
 
 export const StepOrderFieldSchema = z.nativeEnum(StepOrderField);
+
+export function TokenLoginInputSchema(): z.ZodObject<
+  Properties<TokenLoginInput>
+> {
+  return z.object({
+    token: z.string(),
+  });
+}
 
 export function TransitionInputSchema(): z.ZodObject<
   Properties<TransitionInput>

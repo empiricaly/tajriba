@@ -38,6 +38,7 @@ import {
   SetAttributesDocument,
   StepsDocument,
   StepsQueryVariables,
+  TokenLoginDocument,
   TransitionDocument,
   TransitionInput,
 } from "./generated/graphql";
@@ -179,6 +180,23 @@ export class Tajriba extends (EventEmitter as new () => TypedEmitter<TajribaEven
       .toPromise();
 
     const sessionToken = loginRes.data?.login.sessionToken;
+    if (!sessionToken) {
+      throw "Authentication failed";
+    }
+
+    return sessionToken;
+  }
+
+  async tokenLogin(token: string): Promise<string> {
+    const loginRes = await this.client
+      .mutation(TokenLoginDocument, {
+        input: {
+          token,
+        },
+      })
+      .toPromise();
+
+    const sessionToken = loginRes.data?.tokenLogin.sessionToken;
     if (!sessionToken) {
       throw "Authentication failed";
     }
