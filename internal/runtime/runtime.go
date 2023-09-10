@@ -24,7 +24,7 @@ type Runtime struct {
 	deadlock.RWMutex
 }
 
-func Start(ctx context.Context) (*Runtime, error) {
+func Start(ctx context.Context, initialUsers []models.User) (*Runtime, error) {
 	log.Ctx(ctx).Debug().Msg("runtime: started")
 
 	r := &Runtime{
@@ -56,29 +56,14 @@ func Start(ctx context.Context) (*Runtime, error) {
 		log.Ctx(r.ctx).Trace().Interface("glbl", glbl).Msg("runtime: global created")
 	}
 
+	for _, u := range initialUsers {
+		if _, err := r.AddUser(rCtx, u.Username, u.Name, u.Password); err != nil {
+			return nil, errors.Wrap(err, "create initial user")
+		}
+	}
+
 	return r, nil
 }
-
-// func (r *Runtime) Lock()    {}
-// func (r *Runtime) Unlock()  {}
-// func (r *Runtime) RLock()   {}
-// func (r *Runtime) RUnlock() {}
-
-// func (r *Runtime) RealLock() {
-// 	r.m.Lock()
-// }
-
-// func (r *Runtime) RealUnlock() {
-// 	r.m.Unlock()
-// }
-
-// func (r *Runtime) RealRLock() {
-// 	r.m.RLock()
-// }
-
-// func (r *Runtime) RealRUnlock() {
-// 	r.m.RUnlock()
-// }
 
 func (r *Runtime) Stop() {
 }

@@ -92,16 +92,14 @@ func Setup(ctx context.Context, config *Config, usingConfigFile bool) (context.C
 
 	ctx = store.SetContext(ctx, conn)
 
-	rt, err := runtime.Start(ctx)
+	ctx = auth.SetContext(ctx, auth.Init(ctx, config.Auth))
+
+	rt, err := runtime.Start(ctx, config.Auth.Users)
 	if err != nil {
 		return ctx, nil, nil, errors.Wrap(err, "init runtime")
 	}
 
 	ctx = runtime.SetContext(ctx, rt)
-
-	if err := auth.Init(ctx, config.Auth); err != nil {
-		return ctx, nil, nil, errors.Wrap(err, "init auth")
-	}
 
 	r := &Runner{ctx: ctx, conn: conn, config: config, runtime: rt}
 

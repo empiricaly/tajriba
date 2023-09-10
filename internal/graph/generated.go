@@ -178,6 +178,7 @@ type ComplexityRoot struct {
 		Login           func(childComplexity int, input mgen.LoginInput) int
 		RegisterService func(childComplexity int, input mgen.RegisterServiceInput) int
 		SetAttributes   func(childComplexity int, input []*mgen.SetAttributeInput) int
+		TokenLogin      func(childComplexity int, input mgen.TokenLoginInput) int
 		Transition      func(childComplexity int, input mgen.TransitionInput) int
 	}
 
@@ -363,6 +364,7 @@ type MutationResolver interface {
 	AddSteps(ctx context.Context, input []*mgen.AddStepInput) ([]*mgen.AddStepPayload, error)
 	Transition(ctx context.Context, input mgen.TransitionInput) (*mgen.TransitionPayload, error)
 	Login(ctx context.Context, input mgen.LoginInput) (*mgen.LoginPayload, error)
+	TokenLogin(ctx context.Context, input mgen.TokenLoginInput) (*mgen.LoginPayload, error)
 }
 type ParticipantResolver interface {
 	Links(ctx context.Context, obj *models.Participant, after *string, first *int, before *string, last *int) (*mgen.LinkConnection, error)
@@ -944,6 +946,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.SetAttributes(childComplexity, args["input"].([]*mgen.SetAttributeInput)), true
+
+	case "Mutation.tokenLogin":
+		if e.complexity.Mutation.TokenLogin == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_tokenLogin_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.TokenLogin(childComplexity, args["input"].(mgen.TokenLoginInput)), true
 
 	case "Mutation.transition":
 		if e.complexity.Mutation.Transition == nil {
@@ -1666,6 +1680,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputScopedAttributesInput,
 		ec.unmarshalInputSetAttributeInput,
 		ec.unmarshalInputStepOrder,
+		ec.unmarshalInputTokenLoginInput,
 		ec.unmarshalInputTransitionInput,
 	)
 	first := true
@@ -2024,6 +2039,21 @@ func (ec *executionContext) field_Mutation_setAttributes_args(ctx context.Contex
 	if tmp, ok := rawArgs["input"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
 		arg0, err = ec.unmarshalNSetAttributeInput2ᚕᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐSetAttributeInputᚄ(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_tokenLogin_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 mgen.TokenLoginInput
+	if tmp, ok := rawArgs["input"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+		arg0, err = ec.unmarshalNTokenLoginInput2githubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐTokenLoginInput(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -6174,6 +6204,67 @@ func (ec *executionContext) fieldContext_Mutation_login(ctx context.Context, fie
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_login_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_tokenLogin(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_tokenLogin(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().TokenLogin(rctx, fc.Args["input"].(mgen.TokenLoginInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*mgen.LoginPayload)
+	fc.Result = res
+	return ec.marshalNLoginPayload2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐLoginPayload(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_tokenLogin(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "user":
+				return ec.fieldContext_LoginPayload_user(ctx, field)
+			case "sessionToken":
+				return ec.fieldContext_LoginPayload_sessionToken(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type LoginPayload", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_tokenLogin_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -13301,6 +13392,35 @@ func (ec *executionContext) unmarshalInputStepOrder(ctx context.Context, obj int
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputTokenLoginInput(ctx context.Context, obj interface{}) (mgen.TokenLoginInput, error) {
+	var it mgen.TokenLoginInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"token"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "token":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("token"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Token = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputTransitionInput(ctx context.Context, obj interface{}) (mgen.TransitionInput, error) {
 	var it mgen.TransitionInput
 	asMap := map[string]interface{}{}
@@ -14538,6 +14658,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "login":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_login(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "tokenLogin":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_tokenLogin(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -17565,6 +17692,11 @@ func (ec *executionContext) marshalNSubAttributesPayload2ᚖgithubᚗcomᚋempir
 		return graphql.Null
 	}
 	return ec._SubAttributesPayload(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNTokenLoginInput2githubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋgraphᚋmgenᚐTokenLoginInput(ctx context.Context, v interface{}) (mgen.TokenLoginInput, error) {
+	res, err := ec.unmarshalInputTokenLoginInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalNTransition2ᚖgithubᚗcomᚋempiricalyᚋtajribaᚋinternalᚋmodelsᚐTransition(ctx context.Context, sel ast.SelectionSet, v *models.Transition) graphql.Marshaler {

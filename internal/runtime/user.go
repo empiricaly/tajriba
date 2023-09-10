@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/empiricaly/tajriba/internal/auth"
 	"github.com/empiricaly/tajriba/internal/models"
 	"github.com/empiricaly/tajriba/internal/store"
 	"github.com/empiricaly/tajriba/internal/utils/ids"
@@ -31,6 +32,40 @@ func (r *Runtime) Login(ctx context.Context, username, password string) (*models
 	}
 
 	return user, sess.Token, nil
+}
+
+func (r *Runtime) TokenLogin(ctx context.Context, token string) (*models.User, string, error) {
+	r.Lock()
+	defer r.Unlock()
+
+	a := auth.ForContext(ctx)
+
+	user, err := a.CheckPasetoToken(token)
+	if err != nil {
+		return nil, "", errors.Wrap(err, "check token")
+	}
+
+	obj, ok := r.values[user.ID]
+	if ok {
+		u, ok := obj.(*models.User)
+		if !ok {
+			return nil, "", errors.New("invalid user object")
+		}
+
+		u.Name = user.Name
+		u.Username = user.Username
+
+		user = u
+	} else if _, err = r.saveUser(ctx, user); err != nil {
+		return nil, "", errors.Wrap(err, "save user")
+	}
+
+	sess, err := r.createSession(ctx, user)
+	if err != nil {
+		return nil, "", errors.Wrap(err, "create session")
+	}
+
+	return user, sess.Token, errors.New("not implemented")
 }
 
 func (r *Runtime) FindUser(ctx context.Context, username string) (*models.User, error) {
@@ -72,13 +107,17 @@ func (r *Runtime) AddUser(ctx context.Context, username, name, password string) 
 		CreatedAt: time.Now(),
 	}
 
+	return r.saveUser(ctx, user)
+}
+
+func (r *Runtime) saveUser(ctx context.Context, user *models.User) (*models.User, error) {
 	conn := store.ForContext(ctx)
 
 	if err := conn.Save(user); err != nil {
 		return nil, errors.Wrap(err, "save user")
 	}
 
-	r.usersMap[username] = user
+	r.usersMap[user.Username] = user
 	r.users = append(r.users, user)
 	r.values[user.ID] = user
 

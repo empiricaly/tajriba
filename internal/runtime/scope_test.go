@@ -34,7 +34,7 @@ var _ = Describe("Scope", func() {
 		// SetContext sets the user on the context.
 		ctx = actor.SetContext(ctx, &models.User{ID: "user1"})
 
-		rt, err = runtime.Start(ctx)
+		rt, err = runtime.Start(ctx, nil)
 		Expect(err).To(BeNil())
 	})
 

@@ -19,15 +19,18 @@ type Config struct {
 
 	ServiceRegistrationToken string `mapstructure:"srtoken"`
 
+	Paseto *PasetoConfig `mapstructure:"paseto"`
+
 	// The Production flag is used to enable production mode. It should be
 	// propagated by the parent Config before Validate is called.
 	Production bool
 }
 
 const (
-	minPasswordSize                 = 8
 	minServiceRegistrationTokenSize = 16
-	devServiceRegistrationToken     = "__dev_service_registration_token__"
+
+	//nolint:gosec // Not an actual token.
+	devServiceRegistrationToken = "__dev_service_registration_token__"
 )
 
 // Validate configuration is ok.
@@ -37,40 +40,18 @@ func (c *Config) Validate() error {
 	}
 
 	if strings.TrimSpace(c.Username) != "" {
-		if strings.TrimSpace(c.Name) == "" {
-			return errors.New("name is required")
-		}
-
-		if strings.TrimSpace(c.Password) == "" {
-			return errors.New("password is required")
-		}
-
-		if len(strings.TrimSpace(c.Password)) < minPasswordSize {
-			return errors.Errorf("password is too small: %d chars min", minPasswordSize)
-		}
-
-		c.Users = append(c.Users, models.User{
+		u := models.User{
 			Name:     strings.TrimSpace(c.Name),
 			Username: strings.TrimSpace(c.Username),
 			Password: strings.TrimSpace(c.Password),
-		})
+		}
+
+		c.Users = append(c.Users, u)
 	}
 
 	for _, user := range c.Users {
-		if strings.TrimSpace(user.Name) == "" {
-			return errors.New("user name is required")
-		}
-
-		if strings.TrimSpace(user.Username) == "" {
-			return errors.New("user username is required")
-		}
-
-		if strings.TrimSpace(user.Password) == "" {
-			return errors.New("user password is required")
-		}
-
-		if len(strings.TrimSpace(user.Password)) < minPasswordSize {
-			return errors.Errorf("user password is too small: %d chars min", minPasswordSize)
+		if err := user.Validate(); err != nil {
+			return errors.Wrap(err, "user validation")
 		}
 	}
 
@@ -81,9 +62,13 @@ func (c *Config) Validate() error {
 	if len(c.ServiceRegistrationToken) < minServiceRegistrationTokenSize {
 		if c.Production {
 			return errors.New("srtoken should be at least 16 chars")
-		} else {
-			c.ServiceRegistrationToken = devServiceRegistrationToken
 		}
+
+		c.ServiceRegistrationToken = devServiceRegistrationToken
+	}
+
+	if err := c.Paseto.Validate(); err != nil {
+		return errors.Wrap(err, "paseto config")
 	}
 
 	return nil
@@ -119,6 +104,15 @@ func ConfigFlags(cmd *cobra.Command, prefix string) error {
 	sval = ""
 	cmd.PersistentFlags().String(flag, sval, "Password of the user to add")
 	viper.SetDefault(flag, sval)
+
+	flag = prefix + ".srtoken"
+	sval = ""
+	cmd.PersistentFlags().String(flag, sval, "Service registration token")
+	viper.SetDefault(flag, sval)
+
+	if err := PasetoConfigFlags(cmd, prefix+".paseto"); err != nil {
+		return errors.Wrap(err, "paseto config flags")
+	}
 
 	return nil
 }

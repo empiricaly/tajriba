@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/99designs/gqlgen/graphql"
-	"github.com/empiricaly/tajriba/internal/auth"
+	"github.com/empiricaly/tajriba/internal/auth/authhttp"
 	"github.com/empiricaly/tajriba/internal/server/metadata"
 	"github.com/julienschmidt/httprouter"
 	"github.com/pkg/errors"
@@ -115,7 +115,7 @@ func Enable(
 	router *httprouter.Router,
 	schema graphql.ExecutableSchema,
 ) error {
-	gqlh := requestMetadata(auth.Middleware(graphqlHandler(ctx, conf, schema), conf.Production))
+	gqlh := requestMetadata(authhttp.Middleware(graphqlHandler(ctx, conf, schema), conf.Production))
 	router.GET("/query", gqlh)
 	router.POST("/query", gqlh)
 

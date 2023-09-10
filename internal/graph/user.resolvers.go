@@ -23,3 +23,15 @@ func (r *mutationResolver) Login(ctx context.Context, input mgen.LoginInput) (*m
 
 	return &mgen.LoginPayload{User: u, SessionToken: s}, nil
 }
+
+// TokenLogin is the resolver for the tokenLogin field.
+func (r *mutationResolver) TokenLogin(ctx context.Context, input mgen.TokenLoginInput) (*mgen.LoginPayload, error) {
+	rt := runtime.ForContext(ctx)
+
+	u, s, err := rt.TokenLogin(ctx, input.Token)
+	if err != nil {
+		return nil, errs.Wrap(err, "log in user")
+	}
+
+	return &mgen.LoginPayload{User: u, SessionToken: s}, nil
+}

@@ -11,10 +11,12 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler/apollotracing"
 	"github.com/99designs/gqlgen/graphql/handler/extension"
 	"github.com/gorilla/websocket"
+	"github.com/sasha-s/go-deadlock"
 
 	"github.com/99designs/gqlgen/graphql/handler/transport"
-	"github.com/empiricaly/tajriba/internal/auth"
 	"github.com/empiricaly/tajriba/internal/auth/actor"
+	"github.com/empiricaly/tajriba/internal/auth/authhttp"
+	"github.com/empiricaly/tajriba/internal/models"
 	"github.com/empiricaly/tajriba/internal/runtime"
 	"github.com/julienschmidt/httprouter"
 	"github.com/rs/zerolog/log"
@@ -49,6 +51,10 @@ func graphqlHandler(
 ) httprouter.Handle {
 	gqlsrv := handler.New(schema)
 
+	var mut deadlock.Mutex
+	connectedUsers := map[string]struct{}{}
+	connectedParticipants := map[string]struct{}{}
+
 	gqlsrv.AddTransport(transport.Options{})
 	gqlsrv.AddTransport(transport.GET{})
 	gqlsrv.AddTransport(transport.POST{})
@@ -67,6 +73,33 @@ func graphqlHandler(
 			EnableCompression: true,
 		},
 		InitTimeout: initTimeout,
+		CloseFunc: func(ctx context.Context, closeCode int) {
+			log.Ctx(ctx).Trace().Int("code", closeCode).Msg("graphql: websocket closed")
+			user := actor.ForContext(ctx)
+
+			mut.Lock()
+			defer mut.Unlock()
+
+			if conf.MaxUsers > 0 {
+				u, isUser := user.(*models.User)
+				if isUser {
+					delete(connectedUsers, u.ID)
+				}
+			}
+
+			if conf.MaxParticipants > 0 {
+				p, isParticipant := user.(*models.Participant)
+				if isParticipant {
+					delete(connectedParticipants, p.ID)
+				}
+
+				log.Info().
+					Int("connectedParticipants", len(connectedParticipants)).
+					Uint("conf.MaxParticipants", conf.MaxParticipants).
+					Bool("ispart", isParticipant).
+					Msg("disconn")
+			}
+		},
 		InitFunc: func(ctx context.Context, initPayload transport.InitPayload) (context.Context, error) {
 			token, ok := initPayload["authToken"].(string)
 
@@ -78,19 +111,63 @@ func graphqlHandler(
 				log.Ctx(ctx).Trace().Msg("graphql: websocket ended")
 			}(ctx)
 
-			if ok {
-				user, err := auth.GetAuthentication(ctx, token, conf.Production)
-				if err != nil {
-					log.Ctx(ctx).Trace().
-						Err(err).
-						Str("token", token).
-						Msg("graphql: websocket auth failed")
+			if !ok {
+				return ctx, nil
+			}
 
-					ctx = transport.AppendCloseReason(ctx, "auth failed")
-				} else if user != nil {
-					ctx = actor.SetContext(ctx, user)
+			user, err := authhttp.GetAuthentication(ctx, token, conf.Production)
+			if err != nil || user == nil {
+				log.Ctx(ctx).Trace().
+					Err(err).
+					Str("token", token).
+					Msg("graphql: websocket auth failed")
+
+				ctx = transport.AppendCloseReason(ctx, "auth failed")
+
+				return ctx, nil
+			}
+
+			mut.Lock()
+			defer mut.Unlock()
+
+			if conf.MaxUsers > 0 {
+				u, isUser := user.(*models.User)
+
+				if isUser {
+					if uint(len(connectedUsers)) >= conf.MaxUsers {
+						ctx = transport.AppendCloseReason(ctx, "max users")
+
+						return ctx, nil
+					}
+
+					connectedUsers[u.ID] = struct{}{}
 				}
 			}
+
+			if conf.MaxParticipants > 0 {
+				log.Info().Msg("max participants check")
+
+				p, isParticipant := user.(*models.Participant)
+
+				log.Info().
+					Int("connectedParticipants", len(connectedParticipants)).
+					Uint("conf.MaxParticipants", conf.MaxParticipants).
+					Bool("ispart", isParticipant).
+					Msg("is participant?")
+
+				if isParticipant {
+					if uint(len(connectedParticipants)) >= conf.MaxParticipants {
+						log.Info().Msg("max participants check failed")
+						ctx = transport.AppendCloseReason(ctx, "max participants")
+
+						return ctx, nil
+					}
+
+					connectedParticipants[p.ID] = struct{}{}
+				}
+			}
+
+			ctx = actor.SetContext(ctx, user)
 
 			return ctx, nil
 		},
