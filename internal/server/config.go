@@ -11,6 +11,14 @@ import (
 type Config struct {
 	Addr string `mapstructure:"addr"`
 
+	// The MaxParticipants field is the maximum number of participants
+	// that can connect to the server at once. 0 means unlimited.
+	MaxParticipants uint
+
+	// The MaxUsers field is the maximum number of users that can connect
+	// to the server at once. 0 means unlimited.
+	MaxUsers uint
+
 	// The Production flag is used to enable production mode. It should be
 	// propagated by the parent Config before Validate is called.
 	Production bool
@@ -37,6 +45,17 @@ func ConfigFlags(cmd *cobra.Command, prefix string) error {
 	sval := ":4737"
 	cmd.Flags().StringP(flag, "a", sval, "Address if the server")
 	viper.SetDefault(flag, sval)
+
+	flag = prefix + ".maxParticipants"
+	uval := uint(0)
+	cmd.Flags().Uint(flag, uval,
+		"Maximum number of participants that can connect to the server at once. 0 means unlimited.")
+	viper.SetDefault(flag, uval)
+
+	flag = prefix + ".maxUsers"
+	uval = uint(0)
+	cmd.Flags().Uint(flag, uval, "Maximum number of users that can connect to the server at once. 0 means unlimited.")
+	viper.SetDefault(flag, uval)
 
 	return nil
 }
