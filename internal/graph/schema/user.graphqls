@@ -31,7 +31,19 @@ type LoginPayload {
   sessionToken: String!
 }
 
+"TokenLoginInput is the input for tokenLogin()"
+input TokenLoginInput {
+  "token is the PASETO token."
+  token: String!
+}
+
 extend type Mutation {
   "login signs in a user."
   login(input: LoginInput!): LoginPayload!
+
+  """
+  login signs in a user with a PASETO Token. This can create a
+  new user if the user ID does not exist.
+  """
+  tokenLogin(input: TokenLoginInput!): LoginPayload!
 }

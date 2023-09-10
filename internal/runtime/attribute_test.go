@@ -39,7 +39,7 @@ var _ = Describe("Attribute", func() {
 		// SetContext sets the user on the context.
 		ctx = actor.SetContext(ctx, &models.User{ID: "user1"})
 
-		rt, err = runtime.Start(ctx)
+		rt, err = runtime.Start(ctx, nil)
 		Expect(err).To(BeNil())
 	})
 
@@ -642,7 +642,7 @@ var _ = Describe("Attribute", func() {
 		// SetContext sets the user on the context.
 		ctx = actor.SetContext(ctx, &models.User{ID: "user1"})
 
-		rt, err = runtime.Start(ctx)
+		rt, err = runtime.Start(ctx, nil)
 		Expect(err).To(BeNil())
 
 		scopes := addScopes(ctx, rt, []*scopeInput{

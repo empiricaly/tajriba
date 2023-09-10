@@ -290,6 +290,12 @@ type SubAttributesPayload struct {
 	IsNew bool `json:"isNew"`
 }
 
+// TokenLoginInput is the input for tokenLogin()
+type TokenLoginInput struct {
+	// token is the PASETO token.
+	Token string `json:"token"`
+}
+
 type TransitionConnection struct {
 	TotalCount int               `json:"totalCount"`
 	PageInfo   *PageInfo         `json:"pageInfo"`

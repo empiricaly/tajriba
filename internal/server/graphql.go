@@ -13,8 +13,8 @@ import (
 	"github.com/gorilla/websocket"
 
 	"github.com/99designs/gqlgen/graphql/handler/transport"
-	"github.com/empiricaly/tajriba/internal/auth"
 	"github.com/empiricaly/tajriba/internal/auth/actor"
+	"github.com/empiricaly/tajriba/internal/auth/authhttp"
 	"github.com/empiricaly/tajriba/internal/runtime"
 	"github.com/julienschmidt/httprouter"
 	"github.com/rs/zerolog/log"
@@ -79,7 +79,7 @@ func graphqlHandler(
 			}(ctx)
 
 			if ok {
-				user, err := auth.GetAuthentication(ctx, token, conf.Production)
+				user, err := authhttp.GetAuthentication(ctx, token, conf.Production)
 				if err != nil {
 					log.Ctx(ctx).Trace().
 						Err(err).
