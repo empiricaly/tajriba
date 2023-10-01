@@ -7,7 +7,6 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/sasha-s/go-deadlock"
 
 	"github.com/empiricaly/tajriba/internal/auth/actor"
 	"github.com/empiricaly/tajriba/internal/graph/mgen"
@@ -76,18 +75,7 @@ var _ = Describe("Scope", func() {
 	})
 
 	It("should not deadlock", Serial, func() {
-		optsTimeout := deadlock.Opts.DeadlockTimeout
-		optsOnDeadlock := deadlock.Opts.OnPotentialDeadlock
-		defer func() {
-			deadlock.Opts.DeadlockTimeout = optsTimeout
-			deadlock.Opts.OnPotentialDeadlock = optsOnDeadlock
-		}()
-
-		deadlock.Opts.DeadlockTimeout = 100 * time.Millisecond
-		deadlock.Opts.OnPotentialDeadlock = func() {
-			defer GinkgoRecover()
-			Fail("potential deadlock")
-		}
+		defer setupDeadlock()()
 
 		ctx, cancel := context.WithCancel(ctx)
 		count := 0

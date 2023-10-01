@@ -10,22 +10,17 @@ import (
 	"github.com/empiricaly/tajriba/internal/server/metadata"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
-	"github.com/sasha-s/go-deadlock"
 )
 
 const eventIDLen = 16
 
-func (r *Runtime) propagateHook(ctx context.Context, eventType mgen.EventType, nodeID string, node models.Node) {
+func (r *Runtime) propagateHook(_ context.Context, eventType mgen.EventType, nodeID string, node models.Node) {
 	eventID, err := generateRandomKey(eventIDLen)
 	if err != nil {
 		log.Ctx(r.ctx).Error().Err(err).Msg("runtime: failed to generate eventID")
 
 		return
 	}
-
-	// log.Ctx(r.ctx).Info().Interface("subs", r.onEventSubs).Interface("eventType", eventType).Msg("PROPAGATUON")
-
-	// md := metadata.RequestForContext(ctx)
 
 	for _, subs := range r.onEventSubs {
 		for _, sub := range subs {
@@ -38,16 +33,14 @@ func (r *Runtime) propagateHook(ctx context.Context, eventType mgen.EventType, n
 				node = dc.DeepCopy()
 			}
 
-			sub.Lock()
-			if !sub.closed {
-				sub.c <- &mgen.OnEventPayload{
+			sub.w.Send([]*mgen.OnEventPayload{
+				{
 					EventID:   eventID,
 					EventType: eventType,
 					Node:      node,
 					Done:      true,
-				}
-			}
-			sub.Unlock()
+				},
+			})
 		}
 	}
 }
@@ -57,16 +50,10 @@ type onEventSub struct {
 	et     map[mgen.EventType]bool
 	req    *http.Request
 
-	c      chan *mgen.OnEventPayload
-	closed bool
-
-	deadlock.Mutex
+	w *WebsocketWriter[*mgen.OnEventPayload]
 }
 
-func (r *Runtime) SubOnEvent(
-	ctx context.Context,
-	input *mgen.OnEventInput,
-) (<-chan *mgen.OnEventPayload, error) {
+func (r *Runtime) SubOnEvent(ctx context.Context, input *mgen.OnEventInput) (<-chan *mgen.OnEventPayload, error) {
 	r.Lock()
 	defer r.Unlock()
 
@@ -85,115 +72,112 @@ func (r *Runtime) SubOnEvent(
 
 	actorID := actr.GetID()
 
-	pchan := make(chan *mgen.OnEventPayload)
+	w := NewWebsocketWriter[*mgen.OnEventPayload](ctx)
 
-	go func() {
-		et := make(map[mgen.EventType]bool)
+	go r.setupOnEventSub(ctx, input, actorID, w)
 
-		for _, e := range input.EventTypes {
-			et[e] = true
+	return w.outbound, nil
+}
+
+func (r *Runtime) setupOnEventSub(
+	ctx context.Context,
+	input *mgen.OnEventInput,
+	actorID string,
+	w *WebsocketWriter[*mgen.OnEventPayload],
+) {
+	et := make(map[mgen.EventType]bool)
+
+	for _, e := range input.EventTypes {
+		et[e] = true
+	}
+
+	md := metadata.RequestForContext(ctx)
+
+	c := &onEventSub{
+		w:      w,
+		et:     et,
+		req:    md.Request,
+		nodeID: input.NodeID,
+	}
+
+	r.Lock()
+
+	r.onEventSubs[actorID] = append(r.onEventSubs[actorID], c)
+
+	if et[mgen.EventTypeParticipantConnected] {
+		r.updateConnectedParticipants(w)
+	}
+
+	r.Unlock()
+
+	<-ctx.Done()
+
+	r.Lock()
+	defer r.Unlock()
+
+	n := 0
+
+	for _, cc := range r.onEventSubs[actorID] {
+		if cc != c {
+			r.onEventSubs[actorID][n] = cc
+			n++
+		}
+	}
+
+	r.onEventSubs[actorID] = r.onEventSubs[actorID][:n]
+
+	if len(r.onEventSubs[actorID]) == 0 {
+		delete(r.onEventSubs, actorID)
+	}
+}
+
+func (r *Runtime) updateConnectedParticipants(w *WebsocketWriter[*mgen.OnEventPayload]) {
+	last := len(r.changesSubs)
+	count := 0
+
+	for pID, subs := range r.changesSubs {
+		count++
+
+		if len(subs) == 0 {
+			log.Ctx(r.ctx).Warn().
+				Str("participantID", pID).
+				Msg("hooks: found change sub participant group without subs")
+
+			continue
 		}
 
-		md := metadata.RequestForContext(ctx)
+		eventID, err := generateRandomKey(eventIDLen)
+		if err != nil {
+			log.Ctx(r.ctx).Error().Err(err).Msg("runtime: failed to generate eventID")
 
-		c := &onEventSub{
-			c:      pchan,
-			et:     et,
-			req:    md.Request,
-			nodeID: input.NodeID,
+			continue
 		}
 
-		r.Lock()
+		part := subs[0].p.DeepCopy()
+		w.Send([]*mgen.OnEventPayload{
+			{
+				EventID:   eventID,
+				EventType: mgen.EventTypeParticipantConnected,
+				Node:      part,
+				Done:      count == last,
+			},
+		})
+	}
 
-		r.onEventSubs[actorID] = append(r.onEventSubs[actorID], c)
-
-		if et[mgen.EventTypeParticipantConnected] {
-			last := len(r.changesSubs)
-			count := 0
-
-			for pID, subs := range r.changesSubs {
-				count++
-
-				if len(subs) == 0 {
-					log.Ctx(r.ctx).Warn().
-						Str("participantID", pID).
-						Msg("hooks: found change sub participant group without subs")
-
-					continue
-				}
-
-				eventID, err := generateRandomKey(eventIDLen)
-				if err != nil {
-					log.Ctx(r.ctx).Error().Err(err).Msg("runtime: failed to generate eventID")
-
-					continue
-				}
-
-				part := subs[0].p.DeepCopy()
-				r.Unlock()
-				c.Lock()
-				if !c.closed {
-					c.c <- &mgen.OnEventPayload{
-						EventID:   eventID,
-						EventType: mgen.EventTypeParticipantConnected,
-						Node:      part,
-						Done:      count == last,
-					}
-				}
-				c.Unlock()
-				r.Lock()
-			}
-
-			if last == 0 {
-				eventID, err := generateRandomKey(eventIDLen)
-				if err != nil {
-					log.Ctx(r.ctx).Error().Err(err).Msg("runtime: failed to generate eventID")
-				} else {
-					r.Unlock()
-					c.Lock()
-					if !c.closed {
-						c.c <- &mgen.OnEventPayload{
-							EventID:   eventID,
-							EventType: mgen.EventTypeParticipantConnected,
-							Done:      true,
-						}
-					}
-					c.Unlock()
-					r.Lock()
-				}
-
-			}
+	if last == 0 {
+		eventID, err := generateRandomKey(eventIDLen)
+		if err != nil {
+			log.Ctx(r.ctx).Error().Err(err).Msg("runtime: failed to generate eventID")
+		} else {
+			w.Send([]*mgen.OnEventPayload{
+				{
+					EventID:   eventID,
+					EventType: mgen.EventTypeParticipantConnected,
+					Done:      true,
+				},
+			})
 		}
-
-		r.Unlock()
-
-		<-ctx.Done()
-
-		r.Lock()
-		defer r.Unlock()
-
-		c.Lock()
-		c.closed = true
-		close(c.c)
-		c.Unlock()
-
-		n := 0
-
-		for _, cc := range r.onEventSubs[actorID] {
-			if cc != c {
-				r.onEventSubs[actorID][n] = cc
-				n++
-			}
-		}
-
-		r.onEventSubs[actorID] = r.onEventSubs[actorID][:n]
-
-		if len(r.onEventSubs[actorID]) == 0 {
-			delete(r.onEventSubs, actorID)
-		}
-	}()
-
-	return pchan, nil
+	}
 }
 
 func (r *Runtime) SubOnAnyEvent(

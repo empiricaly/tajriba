@@ -9,7 +9,6 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"github.com/sasha-s/go-deadlock"
 
 	"github.com/empiricaly/tajriba/internal/auth/actor"
 	"github.com/empiricaly/tajriba/internal/models"
@@ -41,6 +40,9 @@ var _ = Describe("Attribute", func() {
 
 		rt, err = runtime.Start(ctx, nil)
 		Expect(err).To(BeNil())
+
+		noErr := ""
+		runtime.TestingSubErrors = &noErr
 	})
 
 	It("should handle vector attributes", func() {
@@ -213,8 +215,10 @@ var _ = Describe("Attribute", func() {
 			GinkgoWriter.Print(r.String())
 		}
 
-		for _, b := range res[1:] {
-			Expect(b.Comparable()).To(Equal(res[0].Comparable()))
+		for _, b := range res {
+			for _, c := range res {
+				Expect(b.Comparable()).To(Equal(c.Comparable()))
+			}
 		}
 	})
 
@@ -615,18 +619,7 @@ var _ = Describe("Attribute", func() {
 	})
 
 	It("should handle handle dead connections", NodeTimeout(10*time.Second), func(sctx SpecContext) {
-		optsTimeout := deadlock.Opts.DeadlockTimeout
-		optsOnDeadlock := deadlock.Opts.OnPotentialDeadlock
-		defer func() {
-			deadlock.Opts.DeadlockTimeout = optsTimeout
-			deadlock.Opts.OnPotentialDeadlock = optsOnDeadlock
-		}()
-
-		deadlock.Opts.DeadlockTimeout = 3500 * time.Millisecond
-		deadlock.Opts.OnPotentialDeadlock = func() {
-			defer GinkgoRecover()
-			Fail("potential deadlock")
-		}
+		defer setupDeadlock()()
 
 		logger := log.Level(zerolog.TraceLevel).Output(GinkgoWriter)
 		ctx = logger.WithContext(sctx)
@@ -660,8 +653,11 @@ var _ = Describe("Attribute", func() {
 
 		p := pool.NewWithResults[kvs]().WithContext(ctx)
 
-		runtime.MaxChangesSubBuf = 10
-		runtime.SkipWebsocketError = true
+		val := runtime.MaxWebsocketMsgBuf
+		runtime.MaxWebsocketMsgBuf = 10
+		defer func() {
+			runtime.MaxWebsocketMsgBuf = val
+		}()
 
 		p.Go(func(ctx context.Context) (kvs, error) {
 			defer GinkgoRecover()

@@ -9,6 +9,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/sasha-s/go-deadlock"
 
 	"github.com/empiricaly/tajriba/internal/auth/actor"
 	"github.com/empiricaly/tajriba/internal/graph/mgen"
@@ -123,16 +124,34 @@ func runPlayer(ctx context.Context, rt *runtime.Runtime, name string, scopeIDs [
 		receiveDelay = receiveDelays[0]
 	}
 
+	stawp := make(chan struct{})
+	finished := make(chan struct{})
 	go func() {
 		defer GinkgoRecover()
 
+		timeout := time.After(30 * time.Second)
+
 		for {
+			// fmt.Printf("LOOOPING %p \n", c)
 			select {
-			case <-ctx.Done():
-				return
+			case <-stawp:
+				GinkgoWriter.Print(name, " stawp ", time.Now().Format(time.RFC3339Nano), "\n")
+				stawp = nil
+
+				timeout = time.After(time.Second)
+			case <-timeout:
+				GinkgoWriter.Print(name, " timed out ", time.Now().Format(time.RFC3339Nano), "\n")
+				timeout = nil
+
+				cancel()
 			case s, ok := <-c:
+				// GinkgoWriter.Printf("%s receiving %s %p\n", name, time.Now().Format(time.RFC3339Nano), c)
+
 				if !ok {
+					// fmt.Printf("DONE %p \n", c)
 					GinkgoWriter.Print(name, " done ", time.Now().Format(time.RFC3339Nano), "\n")
+
+					finished <- struct{}{}
 
 					return
 				}
@@ -150,7 +169,7 @@ func runPlayer(ctx context.Context, rt *runtime.Runtime, name string, scopeIDs [
 					Vector: attrChg.Vector,
 				}
 
-				GinkgoWriter.Print(name, " newattr ", a.LookupKey(), " ", time.Now().Format(time.RFC3339Nano), "\n")
+				// GinkgoWriter.Print(name, " newattr ", a.LookupKey(), " ", time.Now().Format(time.RFC3339Nano), "\n")
 
 				res.addAttr(a)
 
@@ -162,9 +181,20 @@ func runPlayer(ctx context.Context, rt *runtime.Runtime, name string, scopeIDs [
 	}()
 
 	GinkgoWriter.Print(name, " runattr ", time.Now().Format(time.RFC3339Nano), "\n")
+
 	runAttributes(ctx, rt, input)
-	GinkgoWriter.Print(name, " cancel ", time.Now().Format(time.RFC3339Nano), "\n")
-	cancel()
+
+	var hasFinished bool
+
+	select {
+	case stawp <- struct{}{}:
+	case <-finished:
+		hasFinished = true
+	}
+
+	if !hasFinished {
+		<-finished
+	}
 
 	return res
 }
@@ -245,8 +275,7 @@ func sortedKeys(m map[string]*val) []string {
 
 func (k *kvs) Comparable() *kvs {
 	return &kvs{
-		vals:    k.vals,
-		history: k.history,
+		vals: k.vals,
 	}
 }
 
@@ -389,4 +418,21 @@ func (v *val) update(val *string, index int) {
 
 func (v *val) grow(i int) {
 	v.vector = append(v.vector, make([]string, i-len(v.vector)+1)...)
+}
+
+
+func setupDeadlock() func() {
+	optsTimeout := deadlock.Opts.DeadlockTimeout
+	optsOnDeadlock := deadlock.Opts.OnPotentialDeadlock
+
+	deadlock.Opts.DeadlockTimeout = 250 * time.Millisecond
+	deadlock.Opts.OnPotentialDeadlock = func() {
+		defer GinkgoRecover()
+		Fail("potential deadlock")
+	}
+
+	return func() {
+		deadlock.Opts.DeadlockTimeout = optsTimeout
+		deadlock.Opts.OnPotentialDeadlock = optsOnDeadlock
+	}
 }

@@ -10,7 +10,6 @@ import (
 	"github.com/empiricaly/tajriba/internal/store"
 	"github.com/empiricaly/tajriba/internal/utils/ids"
 	"github.com/pkg/errors"
-	"github.com/sasha-s/go-deadlock"
 )
 
 func (r *Runtime) AddScope(ctx context.Context, name *string, kind *string, attributes []*mgen.SetAttributeInput) (*models.Scope, error) {
@@ -63,6 +62,8 @@ func (r *Runtime) AddScope(ctx context.Context, name *string, kind *string, attr
 	r.scopesMap[s.ID] = s
 	r.values[s.ID] = s
 
+	r.propagateHook(ctx, mgen.EventTypeScopeAdd, s.ID, s)
+
 	for _, attr := range attributes {
 		attr.NodeID = &s.ID
 	}
@@ -75,8 +76,6 @@ func (r *Runtime) AddScope(ctx context.Context, name *string, kind *string, attr
 	if _, err := r.setAttributes(ctx, attr); err != nil {
 		return nil, errors.Wrap(err, "save attributes")
 	}
-
-	r.propagateHook(ctx, mgen.EventTypeScopeAdd, s.ID, s)
 
 	return s, nil
 }
@@ -218,85 +217,22 @@ type scopedAttributesSub struct {
 	inputs models.ScopedAttributesInputs
 	scopes map[string]*models.Scope
 
-	ch      chan *mgen.SubAttributesPayload
-	closing chan bool
-	closed  bool
-
-	deadlock.Mutex
+	w *WebsocketWriter[*mgen.SubAttributesPayload]
 }
 
-func newScopedAttributesSub(ctx context.Context, inputs models.ScopedAttributesInputs, c chan *mgen.SubAttributesPayload) *scopedAttributesSub {
+func newScopedAttributesSub(ctx context.Context, inputs models.ScopedAttributesInputs) (*scopedAttributesSub, chan *mgen.SubAttributesPayload) {
 	s := &scopedAttributesSub{
-		ctx:     ctx,
-		inputs:  inputs,
-		scopes:  make(map[string]*models.Scope),
-		ch:      c,
-		closing: make(chan bool),
+		ctx:    ctx,
+		inputs: inputs,
+		scopes: make(map[string]*models.Scope),
+		w:      NewWebsocketWriter[*mgen.SubAttributesPayload](ctx),
 	}
 
-	go s.wait()
-
-	return s
+	return s, s.w.outbound
 }
-
-// NOTE ABOUT CLOSING GQLGEN SUBSCRIPTION CHANNELS
-//
-// There's a concurrency issue with how gqlgen handles subscriptions. In theory,
-// when the context is Done, the channel will not longer accept new messages.
-// However, there is a window during which the context is not yet Done, but the
-// channel not longer receives messages. This is because the channel will no
-// longer received before the context is Done. This means we never know if the
-// next send will be successful or not. To work around this, we have a retry
-// loop that will try to send the message for a second before giving up and
-// checking the context. If the context is Done, we will give up. If the
-// context is not Done, we will try again.
-// To try and mitigate this without hitting the timeout, we add a buffer on the
-// channel. This means that the channel will not block up until the buffer size.
-// This is fine as long as the number of messages sent is less than the buffer
-// size. If the number of messages sent is greater than the buffer size, then
-// the channel will block and the retry loop will kick in.
-
-// gqlgenSubChannelBuffer is the size of the gqlgen outbound channel buffer.
-// This is an arbitrary number, though it's fair to expect the network to not
-// always be smooth and this can help smooth out the bumps.
-const gqlgenSubChannelBuffer = 100
-
-// gqlgenSubChannelTimeout is the amount of time to wait for a send on the
-// gqlgen outbound channel before giving up and checking the context.
-const gqlgenSubChannelTimeout = 100 * time.Millisecond
-
-// gqlgenSubChannelWait is the amount of time to wait before closing the gqlgen
-// outbound channel. It's the time we wait to make sure Send has noticed the
-// context is Done.
-const gqlgenSubChannelWait = 5 * time.Second
 
 func (s *scopedAttributesSub) Send(p []*mgen.SubAttributesPayload) {
-	if s.ctx.Err() != nil {
-		return
-	}
-
-	for _, payload := range p {
-	LOOP:
-		for {
-			select {
-			case <-time.After(gqlgenSubChannelTimeout):
-				if s.ctx.Err() != nil {
-					return
-				}
-			case s.ch <- payload:
-				break LOOP
-			}
-		}
-	}
-}
-
-func (s *scopedAttributesSub) wait() {
-	<-s.ctx.Done()
-
-	// Wait a bit to make sure the Done is noticed by Send.
-	time.Sleep(gqlgenSubChannelWait)
-
-	close(s.ch)
+	s.w.Send(p)
 }
 
 func (r *Runtime) SubScopedAttributes(
@@ -330,12 +266,10 @@ func (r *Runtime) SubScopedAttributes(
 		actorID = actr.GetID()
 	}
 
-	pchan := make(chan *mgen.SubAttributesPayload, gqlgenSubChannelBuffer)
+	c, pchan := newScopedAttributesSub(ctx, inputs)
 
 	go func() {
 		r.Lock()
-
-		c := newScopedAttributesSub(ctx, inputs, pchan)
 
 		r.sattrSubs[actorID] = append(r.sattrSubs[actorID], c)
 

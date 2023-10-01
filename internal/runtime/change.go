@@ -4,183 +4,43 @@ import (
 	"context"
 	"time"
 
-	"github.com/99designs/gqlgen/graphql/handler/transport"
 	"github.com/empiricaly/tajriba/internal/auth/actor"
 	"github.com/empiricaly/tajriba/internal/graph/mgen"
 	"github.com/empiricaly/tajriba/internal/models"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
-	"github.com/sasha-s/go-deadlock"
-	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
 type changesSub struct {
-	ctx context.Context
-	p   *models.Participant
+	ctx    context.Context
+	cancel context.CancelFunc
+	p      *models.Participant
 
 	// Map of co-participantIDs to which groupIDs they were added from.
 	// When stepIDs is empty map, participant removed change sent.
 	participants map[string]map[string]struct{}
 
-	ch      chan *models.ChangePayload
-	closing chan bool
-
-	changeBuf []*models.ChangePayload
-	bufChan   chan *models.ChangePayload
-	timingOut bool
-
-	deadConn bool
-
-	deadlock.Mutex
+	w *WebsocketWriter[*models.ChangePayload]
 }
 
+// Used for testing
 var MaxChangesSubBuf = 500
 
-func newChangesSub(ctx context.Context, p *models.Participant, ch chan *models.ChangePayload) *changesSub {
+func newChangesSub(ctx context.Context, p *models.Participant) (*changesSub, chan *models.ChangePayload) {
+	ctx, cancel := context.WithCancel(ctx)
 	s := &changesSub{
 		ctx:          ctx,
+		cancel:       cancel,
 		p:            p,
-		changeBuf:    make([]*models.ChangePayload, 0, MaxChangesSubBuf),
-		bufChan:      make(chan *models.ChangePayload),
-		ch:           ch,
-		participants: make(map[string]map[string]struct{}),
-		closing:      make(chan bool),
+		w:            NewWebsocketWriter[*models.ChangePayload](ctx),
+		participants: map[string]map[string]struct{}{},
 	}
 
-	go s.wait()
-
-	return s
+	return s, s.w.outbound
 }
-
-// If you're wondering what on earth is going here, see "NOTE ABOUT CLOSING
-// GQLGEN SUBSCRIPTION CHANNELS" in scope.go.
-
-var SkipWebsocketError = false
 
 func (s *changesSub) Send(p []*models.ChangePayload) {
-	if s.ctx.Err() != nil {
-		return
-	}
-
-	s.Lock()
-	defer s.Unlock()
-
-	if s.deadConn {
-		return
-	}
-
-	for _, payload := range p {
-		if s.timingOut {
-			s.changeBuf = append(s.changeBuf, payload)
-
-			if len(s.changeBuf) >= MaxChangesSubBuf {
-				log.Ctx(s.ctx).Warn().Msg("changes: write buffer full, abandoning connection")
-
-				s.deadConn = true
-				s.changeBuf = nil
-
-				if SkipWebsocketError {
-					log.Ctx(s.ctx).Trace().Msg("changes: (testing only) sub channel buffer full, return socket error")
-				} else {
-					transport.AddSubscriptionError(s.ctx, gqlerror.Errorf("changes sub write timeout"))
-				}
-
-				return
-			}
-
-			continue
-		}
-
-		select {
-		case <-s.ctx.Done():
-			return
-		case <-time.After(gqlgenSubChannelTimeout):
-			if s.ctx.Err() != nil {
-				return
-			}
-
-			s.timingOut = true
-			s.changeBuf = append(s.changeBuf, payload)
-
-			log.Ctx(s.ctx).Warn().Msg("changes: conn write timeout")
-
-			go s.flusher()
-		case s.ch <- payload:
-		}
-	}
-}
-
-func (s *changesSub) wait() {
-	for {
-		s.Lock()
-		if s.deadConn {
-			s.Unlock()
-			<-s.ctx.Done()
-
-			s.close()
-
-			return
-		}
-		s.Unlock()
-
-		select {
-		case <-s.ctx.Done():
-			s.close()
-
-			return
-		case <-time.After(gqlgenSubChannelTimeout):
-		case s.ch <- <-s.bufChan:
-		}
-	}
-}
-
-func (s *changesSub) close() {
-	// Wait a bit to make sure the Done is noticed by Send.
-	time.Sleep(gqlgenSubChannelWait)
-
-	close(s.ch)
-	close(s.bufChan)
-}
-
-func (s *changesSub) flusher() {
-	for {
-		s.Lock()
-		if s.deadConn {
-			s.Unlock()
-
-			return
-		}
-
-		if len(s.changeBuf) == 0 {
-			s.timingOut = false
-			s.Unlock()
-
-			return
-		}
-
-		payload := s.changeBuf[0]
-		s.Unlock()
-
-		select {
-		case <-s.ctx.Done():
-			return
-		case <-time.After(gqlgenSubChannelTimeout):
-		case s.bufChan <- payload:
-			s.Lock()
-
-			s.changeBuf = s.changeBuf[1:]
-
-			if len(s.changeBuf) == 0 {
-				s.timingOut = false
-				s.changeBuf = s.changeBuf[:0]
-				s.Unlock()
-
-				return
-			}
-
-			s.Unlock()
-		}
-	}
+	s.w.Send(p)
 }
 
 func (c *changesSub) publish(ctx context.Context, changes []*models.ChangePayload) error {
@@ -205,6 +65,7 @@ func (c *changesSub) publish(ctx context.Context, changes []*models.ChangePayloa
 				n++
 
 				c.participants[pc.ID] = map[string]struct{}{pc.NodeID: {}}
+
 				continue
 			}
 		}
@@ -216,6 +77,7 @@ func (c *changesSub) publish(ctx context.Context, changes []*models.ChangePayloa
 				n++
 
 				delete(c.participants[pc.ID], pc.NodeID)
+
 				if len(c.participants[pc.ID]) == 0 {
 					delete(c.participants, pc.ID)
 				}
@@ -241,11 +103,13 @@ func (c *changesSub) publish(ctx context.Context, changes []*models.ChangePayloa
 	l := len(changes)
 
 	chgs := make([]*models.ChangePayload, 0, len(changes))
+
 	for i, change := range changes {
 		change = change.DeepCopy()
 		change.Done = i+1 == l
 		chgs = append(chgs, change)
 	}
+
 	c.Send(chgs)
 
 	return nil
@@ -483,23 +347,21 @@ func (r *Runtime) SubChanges(ctx context.Context) (<-chan *models.ChangePayload,
 		return nil, errors.New("changes only for participants")
 	}
 
-	pchan := make(chan *models.ChangePayload, gqlgenSubChannelBuffer)
+	sub, pchan := newChangesSub(ctx, p)
 
 	go func() {
 		r.Lock()
 
 		activeLinks := activeParticipantLinks(p.Links)
 
-		c := newChangesSub(ctx, p, pchan)
-
-		r.changesSubs[p.ID] = append(r.changesSubs[p.ID], c)
+		r.changesSubs[p.ID] = append(r.changesSubs[p.ID], sub)
 
 		if len(r.changesSubs[p.ID]) == 1 {
 			r.propagateHook(ctx, mgen.EventTypeParticipantConnect, p.ID, p)
 			r.propagateHook(ctx, mgen.EventTypeParticipantConnected, p.ID, p)
 		}
 
-		err := r.pushLinks(ctx, activeLinks, c)
+		err := r.pushLinks(ctx, activeLinks, sub)
 
 		r.Unlock()
 
@@ -511,11 +373,12 @@ func (r *Runtime) SubChanges(ctx context.Context) (<-chan *models.ChangePayload,
 		}
 
 		r.Lock()
+		defer r.Unlock()
 
 		n := 0
 
 		for _, cc := range r.changesSubs[p.ID] {
-			if cc != c {
+			if cc != sub {
 				r.changesSubs[p.ID][n] = cc
 				n++
 			}
@@ -525,10 +388,7 @@ func (r *Runtime) SubChanges(ctx context.Context) (<-chan *models.ChangePayload,
 
 		if len(r.changesSubs[p.ID]) == 0 {
 			delete(r.changesSubs, p.ID)
-			r.Unlock()
 			r.propagateHook(ctx, mgen.EventTypeParticipantDisconnect, p.ID, p)
-		} else {
-			r.Unlock()
 		}
 	}()
 
