@@ -420,6 +420,14 @@ func (v *val) grow(i int) {
 	v.vector = append(v.vector, make([]string, i-len(v.vector)+1)...)
 }
 
+func startRuntime(ctx context.Context, msgBuf int32) *runtime.Runtime {
+	rt, err := runtime.Start(ctx, &runtime.Config{
+		WebsocketMsgBuf: msgBuf,
+	}, nil)
+	Expect(err).To(BeNil())
+
+	return rt
+}
 
 func setupDeadlock() func() {
 	optsTimeout := deadlock.Opts.DeadlockTimeout

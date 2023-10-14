@@ -3,6 +3,7 @@ package runtime
 import (
 	"context"
 	"sync/atomic"
+	"time"
 
 	"github.com/99designs/gqlgen/graphql/handler/transport"
 	"github.com/vektah/gqlparser/v2/gqlerror"
@@ -15,6 +16,7 @@ type WebsocketWriter[T any] struct {
 	outbound chan T
 
 	buffered atomic.Int32
+	size     atomic.Int32
 
 	open   atomic.Int32
 	closed chan struct{}
@@ -24,7 +26,7 @@ func NewWebsocketWriter[T any](ctx context.Context) *WebsocketWriter[T] {
 	w := &WebsocketWriter[T]{
 		ctx:      ctx,
 		inbound:  make(chan []T, MaxWebsocketMsgBuf),
-		outbound: make(chan T, MaxWebsocketMsgBuf),
+		outbound: make(chan T),
 		closed:   make(chan struct{}),
 	}
 
@@ -38,9 +40,22 @@ func NewWebsocketWriter[T any](ctx context.Context) *WebsocketWriter[T] {
 	return w
 }
 
-// MaxWebsocketMsgBuf is the maximum number of messages that can be buffered
-// before we close the websocket.
-var MaxWebsocketMsgBuf = 500
+// DefaultMaxWebsocketMsgBuf is the default maximum number of messages that can
+// be buffered.
+const DefaultMaxWebsocketMsgBuf = 100_000
+
+var (
+	// MaxWebsocketMsgBuf is the maximum number of messages that can be buffered.
+	MaxWebsocketMsgBuf int32 = DefaultMaxWebsocketMsgBuf
+
+	// WebsocketCheckInterval is the interval at which we check if the buffer is
+	// only growing.
+	WebsocketCheckInterval = time.Second
+
+	// WebsocketCheckThreshold is the number of times we can check the buffer
+	// before we close the connection.
+	WebsocketCheckThreshold = 10
+)
 
 func (s *WebsocketWriter[T]) Send(msgs []T) {
 	if s.open.Load() != 0 {
@@ -48,7 +63,7 @@ func (s *WebsocketWriter[T]) Send(msgs []T) {
 	}
 
 	buffered := s.buffered.Add(int32(len(msgs)))
-	if int(buffered) > MaxWebsocketMsgBuf {
+	if buffered > MaxWebsocketMsgBuf {
 		s.fail("websocket buffer full")
 
 		return
@@ -64,10 +79,34 @@ func (s *WebsocketWriter[T]) Send(msgs []T) {
 func (s *WebsocketWriter[T]) run() {
 	defer close(s.outbound)
 
+	ticker := time.NewTicker(WebsocketCheckInterval)
+	lastCount := int32(0)
+
+	var timesAbove int
+
 	for {
 		select {
 		case <-s.closed:
 			return
+		case <-ticker.C:
+			ticker = time.NewTicker(WebsocketCheckInterval)
+
+			// If for 10 seconds, we're still growing, then we're probably
+			// dealing with a laggy client. So we close the connection.
+			currentCount := s.buffered.Load()
+			if currentCount > lastCount {
+				timesAbove++
+
+				if timesAbove > WebsocketCheckThreshold {
+					s.fail("websocket buffer full")
+
+					return
+				}
+			} else {
+				timesAbove = 0
+			}
+
+			lastCount = currentCount
 		case msgs := <-s.inbound:
 			s.buffered.Add(int32(-len(msgs)))
 

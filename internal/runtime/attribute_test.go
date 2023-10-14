@@ -38,8 +38,7 @@ var _ = Describe("Attribute", func() {
 		// SetContext sets the user on the context.
 		ctx = actor.SetContext(ctx, &models.User{ID: "user1"})
 
-		rt, err = runtime.Start(ctx, nil)
-		Expect(err).To(BeNil())
+		rt = startRuntime(ctx, runtime.DefaultMaxWebsocketMsgBuf)
 
 		noErr := ""
 		runtime.TestingSubErrors = &noErr
@@ -635,8 +634,9 @@ var _ = Describe("Attribute", func() {
 		// SetContext sets the user on the context.
 		ctx = actor.SetContext(ctx, &models.User{ID: "user1"})
 
-		rt, err = runtime.Start(ctx, nil)
-		Expect(err).To(BeNil())
+		rt = startRuntime(ctx, 10)
+		// rt, err = runtime.Start(ctx, nil)
+		// Expect(err).To(BeNil())
 
 		scopes := addScopes(ctx, rt, []*scopeInput{
 			{
@@ -653,11 +653,11 @@ var _ = Describe("Attribute", func() {
 
 		p := pool.NewWithResults[kvs]().WithContext(ctx)
 
-		val := runtime.MaxWebsocketMsgBuf
-		runtime.MaxWebsocketMsgBuf = 10
-		defer func() {
-			runtime.MaxWebsocketMsgBuf = val
-		}()
+		// val := runtime.MaxWebsocketMsgBuf
+		// runtime.MaxWebsocketMsgBuf = 10
+		// defer func() {
+		// 	runtime.MaxWebsocketMsgBuf = val
+		// }()
 
 		p.Go(func(ctx context.Context) (kvs, error) {
 			defer GinkgoRecover()

@@ -12,7 +12,8 @@ import (
 )
 
 type Runtime struct {
-	ctx context.Context
+	ctx    context.Context
+	config *Config
 	*objectMap
 	stepTimers  map[string]*time.Timer
 	changesSubs map[string][]*changesSub
@@ -24,17 +25,20 @@ type Runtime struct {
 	deadlock.RWMutex
 }
 
-func Start(ctx context.Context, initialUsers []models.User) (*Runtime, error) {
+func Start(ctx context.Context, config *Config, initialUsers []models.User) (*Runtime, error) {
 	log.Ctx(ctx).Debug().Msg("runtime: started")
 
 	r := &Runtime{
 		ctx:         ctx,
+		config:      config,
 		objectMap:   newObjectMap(),
 		stepTimers:  make(map[string]*time.Timer),
 		changesSubs: make(map[string][]*changesSub),
 		onEventSubs: make(map[string][]*onEventSub),
 		sattrSubs:   make(map[string][]*scopedAttributesSub),
 	}
+
+	MaxWebsocketMsgBuf = config.WebsocketMsgBuf
 
 	if err := r.load(ctx); err != nil {
 		return nil, errors.Wrap(err, "load values")

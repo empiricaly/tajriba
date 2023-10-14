@@ -94,7 +94,7 @@ func Setup(ctx context.Context, config *Config, usingConfigFile bool) (context.C
 
 	ctx = auth.SetContext(ctx, auth.Init(ctx, config.Auth))
 
-	rt, err := runtime.Start(ctx, config.Auth.Users)
+	rt, err := runtime.Start(ctx, config.Runtime, config.Auth.Users)
 	if err != nil {
 		return ctx, nil, nil, errors.Wrap(err, "init runtime")
 	}

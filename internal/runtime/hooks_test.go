@@ -49,8 +49,7 @@ var _ = Describe("Hooks", func() {
 		// 	Actor   actor.Actor
 		// }
 
-		rt, err = runtime.Start(ctx, nil)
-		Expect(err).To(BeNil())
+		rt = startRuntime(ctx, runtime.DefaultMaxWebsocketMsgBuf)
 
 		noErr := ""
 		runtime.TestingSubErrors = &noErr
