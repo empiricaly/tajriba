@@ -72,7 +72,7 @@ func (r *Runtime) SubOnEvent(ctx context.Context, input *mgen.OnEventInput) (<-c
 
 	actorID := actr.GetID()
 
-	w := NewWebsocketWriter[*mgen.OnEventPayload](ctx)
+	w := NewWebsocketWriter[*mgen.OnEventPayload](ctx, "hooks")
 
 	go r.setupOnEventSub(ctx, input, actorID, w)
 

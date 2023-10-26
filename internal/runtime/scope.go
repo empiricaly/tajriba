@@ -225,7 +225,7 @@ func newScopedAttributesSub(ctx context.Context, inputs models.ScopedAttributesI
 		ctx:    ctx,
 		inputs: inputs,
 		scopes: make(map[string]*models.Scope),
-		w:      NewWebsocketWriter[*mgen.SubAttributesPayload](ctx),
+		w:      NewWebsocketWriter[*mgen.SubAttributesPayload](ctx, "scopedAttributes"),
 	}
 
 	return s, s.w.outbound

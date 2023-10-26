@@ -32,7 +32,7 @@ func newChangesSub(ctx context.Context, p *models.Participant) (*changesSub, cha
 		ctx:          ctx,
 		cancel:       cancel,
 		p:            p,
-		w:            NewWebsocketWriter[*models.ChangePayload](ctx),
+		w:            NewWebsocketWriter[*models.ChangePayload](ctx, "changes"),
 		participants: map[string]map[string]struct{}{},
 	}
 

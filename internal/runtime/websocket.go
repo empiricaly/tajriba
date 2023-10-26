@@ -6,11 +6,13 @@ import (
 	"time"
 
 	"github.com/99designs/gqlgen/graphql/handler/transport"
+	"github.com/rs/zerolog/log"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
 type WebsocketWriter[T any] struct {
-	ctx context.Context
+	module string
+	ctx    context.Context
 
 	inbound  chan []T
 	outbound chan T
@@ -22,8 +24,9 @@ type WebsocketWriter[T any] struct {
 	closed chan struct{}
 }
 
-func NewWebsocketWriter[T any](ctx context.Context) *WebsocketWriter[T] {
+func NewWebsocketWriter[T any](ctx context.Context, module string) *WebsocketWriter[T] {
 	w := &WebsocketWriter[T]{
+		module:   module,
 		ctx:      ctx,
 		inbound:  make(chan []T, MaxWebsocketMsgBuf),
 		outbound: make(chan T),
@@ -36,6 +39,7 @@ func NewWebsocketWriter[T any](ctx context.Context) *WebsocketWriter[T] {
 	}()
 
 	go w.run()
+	go w.check()
 
 	return w
 }
@@ -62,12 +66,18 @@ func (s *WebsocketWriter[T]) Send(msgs []T) {
 		return
 	}
 
-	buffered := s.buffered.Add(int32(len(msgs)))
-	if buffered > MaxWebsocketMsgBuf {
-		s.fail("websocket buffer full")
+	// NOTE: we allow the buffer to grow beyond the limit because we don't want
+	// to automatically kill the connection if the client is trying to catch up.
+	// But we do want to kill the connection if the client is never able to
+	// catch up and blocking everyone else (see the check in the run method
+	// below).
+	s.buffered.Add(int32(len(msgs)))
+	// buffered := s.buffered.Add(int32(len(msgs)))
+	// if buffered > MaxWebsocketMsgBuf {
+	// 	s.fail("websocket buffer full")
 
-		return
-	}
+	// 	return
+	// }
 
 	select {
 	case <-s.closed:
@@ -79,10 +89,31 @@ func (s *WebsocketWriter[T]) Send(msgs []T) {
 func (s *WebsocketWriter[T]) run() {
 	defer close(s.outbound)
 
+	for {
+		select {
+		case <-s.closed:
+			return
+		case msgs := <-s.inbound:
+			for _, msg := range msgs {
+				select {
+				case <-s.closed:
+					return
+				case s.outbound <- msg:
+				}
+				s.buffered.Add(int32(-1))
+			}
+
+			// s.buffered.Add(int32(-len(msgs)))
+		}
+	}
+}
+
+func (s *WebsocketWriter[T]) check() {
 	ticker := time.NewTicker(WebsocketCheckInterval)
 	lastCount := int32(0)
 
 	var timesAbove int
+	lastCounts := make([]int32, 0, WebsocketCheckThreshold)
 
 	for {
 		select {
@@ -94,29 +125,36 @@ func (s *WebsocketWriter[T]) run() {
 			// If for 10 seconds, we're still growing, then we're probably
 			// dealing with a laggy client. So we close the connection.
 			currentCount := s.buffered.Load()
-			if currentCount > lastCount {
+
+			if currentCount != 0 && currentCount >= lastCount {
 				timesAbove++
 
-				if timesAbove > WebsocketCheckThreshold {
-					s.fail("websocket buffer full")
+				lastCounts = append(lastCounts, currentCount)
+
+				if timesAbove >= WebsocketCheckThreshold {
+					s.fail("close on timeout")
+
+					counts := make([]int, len(lastCounts))
+
+					for i, c := range lastCounts {
+						counts[i] = int(c)
+					}
+
+					log.Warn().
+						Ints("counts", counts).
+						Str("module", s.module).
+						Int("threshold", WebsocketCheckThreshold).
+						Str("interval", WebsocketCheckInterval.String()).
+						Msg("websocket: closing connection, socket buffer size not reduced for too long")
 
 					return
 				}
 			} else {
+				lastCounts = lastCounts[:0]
 				timesAbove = 0
 			}
 
 			lastCount = currentCount
-		case msgs := <-s.inbound:
-			s.buffered.Add(int32(-len(msgs)))
-
-			for _, msg := range msgs {
-				select {
-				case <-s.closed:
-					return
-				case s.outbound <- msg:
-				}
-			}
 		}
 	}
 }

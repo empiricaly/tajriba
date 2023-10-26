@@ -430,10 +430,13 @@ func startRuntime(ctx context.Context, msgBuf int32) *runtime.Runtime {
 }
 
 func setupDeadlock() func() {
+	runtime.WebsocketCheckInterval = 50 * time.Millisecond
+	runtime.WebsocketCheckThreshold = 5
+
 	optsTimeout := deadlock.Opts.DeadlockTimeout
 	optsOnDeadlock := deadlock.Opts.OnPotentialDeadlock
 
-	deadlock.Opts.DeadlockTimeout = 250 * time.Millisecond
+	deadlock.Opts.DeadlockTimeout = 500 * time.Millisecond
 	deadlock.Opts.OnPotentialDeadlock = func() {
 		defer GinkgoRecover()
 		Fail("potential deadlock")
