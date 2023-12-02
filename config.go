@@ -2,7 +2,6 @@ package tajriba
 
 import (
 	"github.com/empiricaly/tajriba/internal/auth"
-	"github.com/empiricaly/tajriba/internal/runtime"
 	"github.com/empiricaly/tajriba/internal/server"
 	"github.com/empiricaly/tajriba/internal/store"
 	logger "github.com/empiricaly/tajriba/internal/utils/log"
@@ -13,11 +12,10 @@ import (
 
 // Config is server configuration.
 type Config struct {
-	Runtime *runtime.Config `mapstructure:"runtime"`
-	Server  *server.Config  `mapstructure:"server"`
-	Store   *store.Config   `mapstructure:"store"`
-	Auth    *auth.Config    `mapstructure:"auth"`
-	Log     *logger.Config  `mapstructure:"log"`
+	Server *server.Config `mapstructure:"server"`
+	Store  *store.Config  `mapstructure:"store"`
+	Auth   *auth.Config   `mapstructure:"auth"`
+	Log    *logger.Config `mapstructure:"log"`
 
 	Production bool `mapstructure:"production"`
 }
@@ -27,23 +25,23 @@ func (c *Config) Validate() error {
 	c.Server.Production = c.Production
 	c.Auth.Production = c.Production
 
-	if err := c.Runtime.Validate(); err != nil {
-		return errors.Wrap(err, "validate runtime configuration")
-	}
-
-	if err := c.Server.Validate(); err != nil {
+	err := c.Server.Validate()
+	if err != nil {
 		return errors.Wrap(err, "validate server configuration")
 	}
 
-	if err := c.Store.Validate(); err != nil {
+	err = c.Store.Validate()
+	if err != nil {
 		return errors.Wrap(err, "validate store configuration")
 	}
 
-	if err := c.Auth.Validate(); err != nil {
+	err = c.Auth.Validate()
+	if err != nil {
 		return errors.Wrap(err, "validate auth configuration")
 	}
 
-	if err := c.Log.Validate(); err != nil {
+	err = c.Log.Validate()
+	if err != nil {
 		return errors.Wrap(err, "validate log configuration")
 	}
 
@@ -62,23 +60,23 @@ func ConfigFlags(cmd *cobra.Command, prefix, defaultDBFile string) error {
 
 	viper.SetDefault(prefix, &Config{})
 
-	if err := runtime.ConfigFlags(cmd, prefix+"runtime"); err != nil {
-		return errors.Wrap(err, "set runtime configuration flags")
-	}
-
-	if err := server.ConfigFlags(cmd, prefix+"server"); err != nil {
+	err := server.ConfigFlags(cmd, prefix+"server")
+	if err != nil {
 		return errors.Wrap(err, "set server configuration flags")
 	}
 
-	if err := store.ConfigFlags(cmd, prefix+"store", defaultDBFile); err != nil {
+	err = store.ConfigFlags(cmd, prefix+"store", defaultDBFile)
+	if err != nil {
 		return errors.Wrap(err, "set store configuration flags")
 	}
 
-	if err := auth.ConfigFlags(cmd, prefix+"auth"); err != nil {
+	err = auth.ConfigFlags(cmd, prefix+"auth")
+	if err != nil {
 		return errors.Wrap(err, "set auth configuration flags")
 	}
 
-	if err := logger.ConfigFlags(cmd, prefix+"log", "info"); err != nil {
+	err = logger.ConfigFlags(cmd, prefix+"log", "info")
+	if err != nil {
 		return errors.Wrap(err, "set logger configuration flags")
 	}
 

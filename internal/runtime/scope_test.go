@@ -7,6 +7,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/sasha-s/go-deadlock"
 
 	"github.com/empiricaly/tajriba/internal/auth/actor"
 	"github.com/empiricaly/tajriba/internal/graph/mgen"
@@ -33,7 +34,8 @@ var _ = Describe("Scope", func() {
 		// SetContext sets the user on the context.
 		ctx = actor.SetContext(ctx, &models.User{ID: "user1"})
 
-		rt = startRuntime(ctx, runtime.DefaultMaxWebsocketMsgBuf)
+		rt, err = runtime.Start(ctx, nil)
+		Expect(err).To(BeNil())
 	})
 
 	It("should be added", func() {
@@ -74,7 +76,18 @@ var _ = Describe("Scope", func() {
 	})
 
 	It("should not deadlock", Serial, func() {
-		defer setupDeadlock()()
+		optsTimeout := deadlock.Opts.DeadlockTimeout
+		optsOnDeadlock := deadlock.Opts.OnPotentialDeadlock
+		defer func() {
+			deadlock.Opts.DeadlockTimeout = optsTimeout
+			deadlock.Opts.OnPotentialDeadlock = optsOnDeadlock
+		}()
+
+		deadlock.Opts.DeadlockTimeout = 100 * time.Millisecond
+		deadlock.Opts.OnPotentialDeadlock = func() {
+			defer GinkgoRecover()
+			Fail("potential deadlock")
+		}
 
 		ctx, cancel := context.WithCancel(ctx)
 		count := 0
