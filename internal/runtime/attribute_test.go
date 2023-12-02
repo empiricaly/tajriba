@@ -9,6 +9,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"github.com/sasha-s/go-deadlock"
 
 	"github.com/empiricaly/tajriba/internal/auth/actor"
 	"github.com/empiricaly/tajriba/internal/models"
@@ -38,10 +39,8 @@ var _ = Describe("Attribute", func() {
 		// SetContext sets the user on the context.
 		ctx = actor.SetContext(ctx, &models.User{ID: "user1"})
 
-		rt = startRuntime(ctx, runtime.DefaultMaxWebsocketMsgBuf)
-
-		noErr := ""
-		runtime.TestingSubErrors = &noErr
+		rt, err = runtime.Start(ctx, nil)
+		Expect(err).To(BeNil())
 	})
 
 	It("should handle vector attributes", func() {
@@ -214,10 +213,8 @@ var _ = Describe("Attribute", func() {
 			GinkgoWriter.Print(r.String())
 		}
 
-		for _, b := range res {
-			for _, c := range res {
-				Expect(b.Comparable()).To(Equal(c.Comparable()))
-			}
+		for _, b := range res[1:] {
+			Expect(b.Comparable()).To(Equal(res[0].Comparable()))
 		}
 	})
 
@@ -618,7 +615,18 @@ var _ = Describe("Attribute", func() {
 	})
 
 	It("should handle handle dead connections", NodeTimeout(10*time.Second), func(sctx SpecContext) {
-		defer setupDeadlock()()
+		optsTimeout := deadlock.Opts.DeadlockTimeout
+		optsOnDeadlock := deadlock.Opts.OnPotentialDeadlock
+		defer func() {
+			deadlock.Opts.DeadlockTimeout = optsTimeout
+			deadlock.Opts.OnPotentialDeadlock = optsOnDeadlock
+		}()
+
+		deadlock.Opts.DeadlockTimeout = 3500 * time.Millisecond
+		deadlock.Opts.OnPotentialDeadlock = func() {
+			defer GinkgoRecover()
+			Fail("potential deadlock")
+		}
 
 		logger := log.Level(zerolog.TraceLevel).Output(GinkgoWriter)
 		ctx = logger.WithContext(sctx)
@@ -634,9 +642,8 @@ var _ = Describe("Attribute", func() {
 		// SetContext sets the user on the context.
 		ctx = actor.SetContext(ctx, &models.User{ID: "user1"})
 
-		rt = startRuntime(ctx, 10)
-		// rt, err = runtime.Start(ctx, nil)
-		// Expect(err).To(BeNil())
+		rt, err = runtime.Start(ctx, nil)
+		Expect(err).To(BeNil())
 
 		scopes := addScopes(ctx, rt, []*scopeInput{
 			{
@@ -653,11 +660,8 @@ var _ = Describe("Attribute", func() {
 
 		p := pool.NewWithResults[kvs]().WithContext(ctx)
 
-		// val := runtime.MaxWebsocketMsgBuf
-		// runtime.MaxWebsocketMsgBuf = 10
-		// defer func() {
-		// 	runtime.MaxWebsocketMsgBuf = val
-		// }()
+		runtime.MaxChangesSubBuf = 10
+		runtime.SkipWebsocketError = true
 
 		p.Go(func(ctx context.Context) (kvs, error) {
 			defer GinkgoRecover()
