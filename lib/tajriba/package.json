@@ -74,7 +74,7 @@
   },
   "dependencies": {
     "@urql/core": "2.5.0",
-    "graphql": "16.5.0",
+    "graphql": "16.8.1",
     "graphql-tag": "2.12.6",
     "graphql-ws": "5.9.0",
     "isomorphic-ws": "5.0.0",
