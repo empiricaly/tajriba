@@ -168,11 +168,14 @@ func (s *changesSub) flusher() {
 		case s.bufChan <- payload:
 			s.Lock()
 
-			s.changeBuf = s.changeBuf[1:]
+			if len(s.changeBuf) == 0 {
+				s.changeBuf = s.changeBuf[:0]
+			} else {
+				s.changeBuf = s.changeBuf[1:]
+			}
 
 			if len(s.changeBuf) == 0 {
 				s.timingOut = false
-				s.changeBuf = s.changeBuf[:0]
 				s.Unlock()
 
 				return
