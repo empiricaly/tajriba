@@ -1,11 +1,17 @@
 import { TypedDocumentNode } from "@graphql-typed-document-node/core";
-import { Client, createClient, subscriptionExchange } from "@urql/core";
-import EventEmitter from "./events";
+import {
+  Client,
+  createClient,
+  fetchExchange,
+  subscriptionExchange,
+} from "@urql/core";
 import { Client as WSClient, createClient as createWSClient } from "graphql-ws";
+import fetch from "cross-fetch";
 import WebSocket from "isomorphic-ws";
 import { Observable } from "rxjs";
 import TypedEmitter from "typed-emitter";
 import { pipe, subscribe } from "wonka";
+import EventEmitter from "./events";
 import {
   AddGroupInput,
   AddGroupsDocument,
@@ -60,6 +66,7 @@ export type TajribaEvents = {
 
 export class Tajriba extends (EventEmitter as new () => TypedEmitter<TajribaEvents>) {
   public userAgent = "Tajriba.js";
+  public useHTTP = false;
 
   private _connected = false;
   private _client?: Client;
@@ -128,6 +135,7 @@ export class Tajriba extends (EventEmitter as new () => TypedEmitter<TajribaEven
 
   async sessionAdmin(sessionToken: string) {
     const t = new TajribaAdmin(this.url, sessionToken);
+    t.useHTTP = this.useHTTP;
 
     const p = t.connectionStatus();
     t.connect();
@@ -151,6 +159,7 @@ export class Tajriba extends (EventEmitter as new () => TypedEmitter<TajribaEven
     }
 
     const t = new TajribaParticipant(this.url, sessionToken, participant);
+    t.useHTTP = this.useHTTP;
 
     const p = t.connectionStatus();
     t.connect();
@@ -217,11 +226,13 @@ export class Tajriba extends (EventEmitter as new () => TypedEmitter<TajribaEven
     const rs = res.data?.registerService;
 
     if (!rs) {
+      console.error(res);
       throw "Failed service registration";
     }
 
     const { sessionToken } = rs;
     if (!sessionToken) {
+      console.error(res);
       throw "Authentication failed";
     }
 
@@ -351,9 +362,11 @@ export class Tajriba extends (EventEmitter as new () => TypedEmitter<TajribaEven
 
     this._client = createClient({
       url: this.url,
+      fetch: fetch,
       exchanges: [
+        fetchExchange,
         subscriptionExchange({
-          enableAllOperations: true,
+          enableAllOperations: !this.useHTTP,
           forwardSubscription: (operation) => {
             return {
               subscribe: (sink) => {
