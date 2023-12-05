@@ -6,7 +6,7 @@ import {
   subscriptionExchange,
 } from "@urql/core";
 import { Client as WSClient, createClient as createWSClient } from "graphql-ws";
-import { fetch } from "cross-fetch";
+import "cross-fetch/polyfill";
 import WebSocket from "isomorphic-ws";
 import { Observable } from "rxjs";
 import TypedEmitter from "typed-emitter";
@@ -362,7 +362,7 @@ export class Tajriba extends (EventEmitter as new () => TypedEmitter<TajribaEven
 
     this._client = createClient({
       url: this.url,
-      fetch: fetch,
+      // fetch: fetch,
       exchanges: [
         fetchExchange,
         subscriptionExchange({
