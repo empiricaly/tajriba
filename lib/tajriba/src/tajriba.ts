@@ -362,7 +362,6 @@ export class Tajriba extends (EventEmitter as new () => TypedEmitter<TajribaEven
 
     this._client = createClient({
       url: this.url,
-      // fetch: fetch,
       exchanges: [
         fetchExchange,
         subscriptionExchange({

@@ -86,11 +86,11 @@ func (r *Runtime) Transition(ctx context.Context, stepID string, from, to models
 
 	if len(step.Transitions) == 0 {
 		if t.From != models.StateCreated {
-			return nil, ErrInvalidState
+			return nil, errors.New("invalid start state: not created")
 		}
 
 		if t.To == models.StatePaused {
-			return nil, ErrInvalidState
+			return nil, errors.New("invalid start state: cannot pause")
 		}
 
 		conn := store.ForContext(ctx)
@@ -109,11 +109,11 @@ func (r *Runtime) Transition(ctx context.Context, stepID string, from, to models
 		last := step.Transitions[len(step.Transitions)-1]
 
 		if last.To != t.From {
-			return nil, ErrInvalidState
+			return nil, errors.New("invalid transition: from state mismatch with previous state")
 		}
 
 		if t.To == t.From {
-			return nil, ErrInvalidState
+			return nil, errors.New("invalid transition: from state is same as to state")
 		}
 
 		switch t.From {
@@ -126,12 +126,12 @@ func (r *Runtime) Transition(ctx context.Context, stepID string, from, to models
 			return nil, ErrServerError
 		case models.StateRunning, models.StatePaused:
 			if t.To == models.StateCreated {
-				return nil, ErrInvalidState
+				return nil, errors.New("invalid transition: cannot go back to created")
 			}
 
 			step.EndedAt = &now
 		case models.StateEnded, models.StateTerminated, models.StateFailed:
-			return nil, ErrInvalidState
+			return nil, errors.New("invalid transition: already done")
 		default:
 			log.Ctx(r.ctx).Error().
 				Str("stepID", step.ID).
@@ -167,8 +167,8 @@ func (r *Runtime) Transition(ctx context.Context, stepID string, from, to models
 		}
 	case models.StateCreated:
 		log.Ctx(r.ctx).Error().
-			Msg("runtime: create transition ErrInvalidState")
-		return nil, ErrInvalidState
+			Msg("runtime: transition with to state created")
+		return nil, errors.New("transition with to state created")
 	default:
 		log.Ctx(r.ctx).Error().
 			Str("stepID", step.ID).
@@ -191,12 +191,12 @@ func (r *Runtime) Transition(ctx context.Context, stepID string, from, to models
 
 func (r *Runtime) startStep(ctx context.Context, s *models.Step) error {
 	if len(s.Transitions) == 0 {
-		return errors.New("runtime: invalid start state: no transitions")
+		return errors.New("invalid start state: no transitions")
 	}
 
 	last := s.Transitions[len(s.Transitions)-1]
 	if last.To != models.StateRunning {
-		return errors.New("runtime: invalid start state: not running")
+		return errors.New("invalid start state: not running")
 	}
 
 	var (
@@ -210,34 +210,34 @@ func (r *Runtime) startStep(ctx context.Context, s *models.Step) error {
 			lastStarted = &t.CreatedAt
 		case models.StatePaused:
 			if lastStarted == nil {
-				return errors.New("runtime: invalid transitions: pause before running")
+				return errors.New("invalid transition: pause before running")
 			}
 
 			e := t.CreatedAt.Sub(*lastStarted)
 			if e < 0 {
-				return errors.New("runtime: invalid transitions: pause before running")
+				return errors.New("invalid transition: pause before running")
 			}
 
 			elapsed += e
 			lastStarted = nil
 		case models.StateCreated:
-			return errors.New("runtime: invalid start state: bot started yet")
+			return errors.New("invalid start state: not started yet")
 		case models.StateEnded, models.StateFailed, models.StateTerminated:
-			return errors.New("runtime: invalid start state: already done")
+			return errors.New("invalid start state: already done")
 		default:
-			return errors.New("runtime: invalid start state: unknown")
+			return errors.New("invalid start state: unknown")
 		}
 	}
 
 	remaining := time.Second*time.Duration(s.Duration) - elapsed
 	if remaining <= 0 {
-		return errors.New("runtime: invalid start state: duration exhausted")
+		return errors.New("invalid start state: duration exhausted")
 	}
 
 	// log.Ctx(r.ctx).Info().Str("id", s.ID).Msg("STARTING STEP")
 
 	if _, ok := r.stepTimers[s.ID]; ok {
-		return errors.New("runtime: step already started")
+		return errors.New("step already started")
 	}
 
 	last.Remaining = remaining
