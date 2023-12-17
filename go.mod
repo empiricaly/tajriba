@@ -38,6 +38,7 @@ require (
 	github.com/kr/text v0.2.0 // indirect
 	github.com/magiconair/properties v1.8.1 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
+	github.com/orcaman/concurrent-map/v2 v2.0.1 // indirect
 	github.com/pelletier/go-toml v1.2.0 // indirect
 	github.com/petermattis/goid v0.0.0-20180202154549-b0b1615b78e5 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect

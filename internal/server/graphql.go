@@ -28,9 +28,9 @@ const (
 	initTimeout  = 5 * time.Second
 )
 
-// func init() {
-// 	deadlock.Opts.DeadlockTimeout = 3 * time.Second
-// }
+func init() {
+	deadlock.Opts.DeadlockTimeout = 60 * time.Second
+}
 
 type lockedMarshaller struct {
 	rt *runtime.Runtime

@@ -2,9 +2,11 @@ package runtime
 
 import (
 	"context"
+	"crypto/sha1"
+	"encoding/base64"
+	"sort"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/empiricaly/tajriba/internal/auth/actor"
 	"github.com/empiricaly/tajriba/internal/graph/mgen"
 	"github.com/empiricaly/tajriba/internal/models"
@@ -14,8 +16,34 @@ import (
 )
 
 func (r *Runtime) Link(ctx context.Context, input mgen.LinkInput) (*mgen.LinkPayload, error) {
+	startAt := time.Now()
+	defer func() {
+		sort.StringSlice(input.NodeIDs).Sort()
+
+		h := sha1.New()
+		for _, id := range input.NodeIDs {
+			h.Write([]byte(id))
+		}
+
+		log.Ctx(ctx).Info().
+			Str("took", time.Since(startAt).String()).
+			Str("hash", base64.StdEncoding.EncodeToString(h.Sum(nil))).
+			Int("nodeIDs", len(input.NodeIDs)).
+			Int("participantIDs", len(input.ParticipantIDs)).
+			Msg("runtime: Link")
+	}()
+
 	r.Lock()
 	defer r.Unlock()
+
+	startActualAt := time.Now()
+	defer func() {
+		log.Ctx(ctx).Info().
+			Str("took", time.Since(startActualAt).String()).
+			Int("nodeIDs", len(input.NodeIDs)).
+			Int("participantIDs", len(input.ParticipantIDs)).
+			Msg("runtime: Link inner")
+	}()
 
 	if !input.Link {
 		log.Ctx(r.ctx).Debug().Msg("runtime: unlinking is untested")
@@ -31,9 +59,6 @@ func (r *Runtime) Link(ctx context.Context, input mgen.LinkInput) (*mgen.LinkPay
 	for i, nodeID := range input.NodeIDs {
 		v, ok := r.values[nodeID]
 		if !ok {
-			spew.Dump("=======================")
-			spew.Dump(input)
-			spew.Dump("=======================")
 			return nil, ErrNotFound
 		}
 
@@ -70,6 +95,7 @@ func (r *Runtime) Link(ctx context.Context, input mgen.LinkInput) (*mgen.LinkPay
 
 	links := make([]*models.Link, 0, len(nodes)*len(participants))
 
+	pushingAt := time.Now()
 	for _, participant := range participants {
 	LOOP:
 		for i, node := range nodes {
@@ -104,7 +130,9 @@ func (r *Runtime) Link(ctx context.Context, input mgen.LinkInput) (*mgen.LinkPay
 			participant.Links = append(participant.Links, link)
 		}
 	}
+	log.Ctx(r.ctx).Info().Str("took", time.Since(pushingAt).String()).Msg("links: find links")
 
+	pushingAt = time.Now()
 	for _, link := range links {
 		err := conn.Save(link)
 		if err != nil {
@@ -127,10 +155,13 @@ func (r *Runtime) Link(ctx context.Context, input mgen.LinkInput) (*mgen.LinkPay
 			v.Links = append(v.Links, link)
 		}
 	}
+	log.Ctx(r.ctx).Info().Str("took", time.Since(pushingAt).String()).Msg("links: propagate hooks")
 
+	pushingAt = time.Now()
 	if err := r.pushLinks(ctx, links, nil); err != nil {
 		log.Ctx(r.ctx).Error().Err(err).Msg("runtime: failed to push new links to participant")
 	}
+	log.Ctx(r.ctx).Info().Str("took", time.Since(pushingAt).String()).Msg("links: push to participants")
 
 	return &mgen.LinkPayload{
 		Nodes:        nodes,

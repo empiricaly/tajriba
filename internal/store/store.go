@@ -29,7 +29,7 @@ type Conn struct {
 	deadlock.Mutex
 }
 
-const fbuffer = 100000
+const fbuffer = 1000000
 
 // Connect creates a connection to a messaging service with the given config.
 func Connect(ctx context.Context, config *Config) (*Conn, error) {
