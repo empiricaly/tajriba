@@ -149,6 +149,11 @@ func (r *Runtime) prepAttributes(
 		last := scope.AttributesMap[a.LookupKey()]
 
 		if last != nil {
+			// If the value is the same, don't update
+			if last.Val == a.Val || (last.Val != nil && a.Val != nil && *last.Val == *a.Val) {
+				continue
+			}
+
 			if last.Immutable {
 				return nil, ErrImmutable
 			}

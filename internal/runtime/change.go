@@ -176,6 +176,7 @@ func (s *changesSub) flusher() {
 
 			if len(s.changeBuf) == 0 {
 				s.timingOut = false
+				log.Ctx(s.ctx).Info().Msg("changes: conn write caught up")
 				s.Unlock()
 
 				return
