@@ -245,7 +245,10 @@ func (r *Runtime) startStep(ctx context.Context, s *models.Step) error {
 
 	ctxStop := metadata.SetRequestForContext(ctx, nil)
 	r.stepTimers[s.ID] = time.AfterFunc(remaining, func() {
+		r.Lock()
 		delete(r.stepTimers, s.ID)
+		r.Unlock()
+
 		_, err := r.Transition(ctxStop, s.ID, models.StateRunning, models.StateEnded, nil)
 		if err != nil {
 			log.Ctx(r.ctx).Error().Err(err).Str("stepID", s.ID).Msg("runtime: failed scheduled step stop")

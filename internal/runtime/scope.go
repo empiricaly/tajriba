@@ -259,7 +259,7 @@ func newScopedAttributesSub(ctx context.Context, inputs models.ScopedAttributesI
 // gqlgenSubChannelBuffer is the size of the gqlgen outbound channel buffer.
 // This is an arbitrary number, though it's fair to expect the network to not
 // always be smooth and this can help smooth out the bumps.
-const gqlgenSubChannelBuffer = 100
+const gqlgenSubChannelBuffer = 10
 
 // gqlgenSubChannelTimeout is the amount of time to wait for a send on the
 // gqlgen outbound channel before giving up and checking the context.
@@ -336,6 +336,7 @@ func (r *Runtime) SubScopedAttributes(
 		r.Lock()
 
 		c := newScopedAttributesSub(ctx, inputs, pchan)
+		c.Lock()
 
 		r.sattrSubs[actorID] = append(r.sattrSubs[actorID], c)
 
@@ -387,6 +388,8 @@ func (r *Runtime) SubScopedAttributes(
 			})
 		}
 
+		c.Unlock()
+
 		c.Send(pls)
 
 		<-ctx.Done()
@@ -429,6 +432,7 @@ func (r *Runtime) pushAttributesForScopedAttributes(ctx context.Context, attrs [
 
 	for _, subs := range r.sattrSubs {
 		for _, sub := range subs {
+			sub.Lock()
 			for sID, as := range attrsPerScope {
 				if _, ok := sub.scopes[sID]; ok {
 					for _, attr := range as {
@@ -436,11 +440,13 @@ func (r *Runtime) pushAttributesForScopedAttributes(ctx context.Context, attrs [
 					}
 				}
 			}
+			sub.Unlock()
 		}
 	}
 
 	for _, subs := range r.sattrSubs {
 		for _, sub := range subs {
+			sub.Lock()
 			for _, s := range r.scopes {
 				if sub.inputs.Match(s) {
 					if _, ok := sub.scopes[s.ID]; !ok {
@@ -452,11 +458,24 @@ func (r *Runtime) pushAttributesForScopedAttributes(ctx context.Context, attrs [
 					}
 				}
 			}
+			sub.Unlock()
 		}
 	}
 
 	for sub, attrs := range sasubs {
 		l := len(attrs)
+
+		if l == 0 {
+			sub.Send([]*mgen.SubAttributesPayload{
+				{
+					Done: true,
+				},
+			})
+
+			continue
+		}
+
+		sub.Lock()
 
 		var pls []*mgen.SubAttributesPayload
 
@@ -477,6 +496,7 @@ func (r *Runtime) pushAttributesForScopedAttributes(ctx context.Context, attrs [
 
 			pls = append(pls, p)
 		}
+		sub.Unlock()
 
 		sub.Send(pls)
 	}
