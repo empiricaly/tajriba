@@ -175,7 +175,10 @@ func graphqlHandler(
 
 	if !conf.Production {
 		gqlsrv.Use(extension.Introspection{})
-		gqlsrv.Use(apollotracing.Tracer{})
+
+		if conf.EnableTracer {
+			gqlsrv.Use(apollotracing.Tracer{})
+		}
 	}
 
 	gqlsrv.AroundOperations(func(ctx context.Context, next graphql.OperationHandler) graphql.ResponseHandler {
