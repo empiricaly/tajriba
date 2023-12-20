@@ -22,15 +22,6 @@ func (r *Runtime) AddScope(ctx context.Context, name *string, kind *string, attr
 		return nil, ErrNotAuthorized
 	}
 
-	// var ki, na string
-	// if kind != nil {
-	// 	ki = *kind
-	// }
-	// if name != nil {
-	// 	na = *name
-	// }
-	// spew.Dump("NEW SCOPE", ki, na, attributes)
-
 	if name != nil {
 		for _, s := range r.scopes {
 			if s.Name != nil && *s.Name == *name {

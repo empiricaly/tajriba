@@ -80,14 +80,6 @@ func (b *SendBuffer[T]) process() {
 			case b.outputChan <- item: // Send the item to the output channel
 			}
 		}
-
-		// // Send the first item in the buffer
-		// item := b.buffer[0]
-		// b.buffer = b.buffer[1:]
-
-		// b.mu.Unlock()
-
-		// b.outputChan <- item // Send the item to the output channel
 	}
 }
 
