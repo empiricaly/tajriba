@@ -369,7 +369,11 @@ export type Mutation = {
   login: LoginPayload;
   /** registerService registers a new Service. */
   registerService: RegisterServicePayload;
-  /** Create or update an Attribute on a Node. */
+  /**
+   * Create or update an Attribute on a Node. If the Attribute exists and the value
+   * is the same, the Attribute is not updated and the attribute will not be
+   * returned in the response.
+   */
   setAttributes: Array<SetAttributePayload>;
   /**
    * login signs in a user with a PASETO Token. This can create a
