@@ -22,6 +22,9 @@ type Config struct {
 	// The Production flag is used to enable production mode. It should be
 	// propagated by the parent Config before Validate is called.
 	Production bool
+
+	// The EnableTracer flag is used to enable the GraphQL Apollo tracer.
+	EnableTracer bool `mapstructure:"enableTracer"`
 }
 
 // Validate configuration is ok.
@@ -45,6 +48,11 @@ func ConfigFlags(cmd *cobra.Command, prefix string) error {
 	sval := ":4737"
 	cmd.Flags().StringP(flag, "a", sval, "Address if the server")
 	viper.SetDefault(flag, sval)
+
+	flag = prefix + ".enableTracer"
+	bval := false
+	cmd.Flags().Bool(flag, bval, "Enable GraphQL tracer")
+	viper.SetDefault(flag, bval)
 
 	flag = prefix + ".maxParticipants"
 	uval := uint(0)

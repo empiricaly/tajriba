@@ -4,14 +4,11 @@ import (
 	"context"
 	"time"
 
-	"github.com/99designs/gqlgen/graphql/handler/transport"
 	"github.com/empiricaly/tajriba/internal/auth/actor"
 	"github.com/empiricaly/tajriba/internal/graph/mgen"
 	"github.com/empiricaly/tajriba/internal/models"
 	"github.com/pkg/errors"
-	"github.com/rs/zerolog/log"
 	"github.com/sasha-s/go-deadlock"
-	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
 type changesSub struct {
@@ -22,32 +19,27 @@ type changesSub struct {
 	// When stepIDs is empty map, participant removed change sent.
 	participants map[string]map[string]struct{}
 
-	ch      chan *models.ChangePayload
-	closing chan bool
+	sendBuf *SendBuffer[*models.ChangePayload]
 
 	changeBuf []*models.ChangePayload
-	bufChan   chan *models.ChangePayload
-	timingOut bool
-
-	deadConn bool
 
 	deadlock.Mutex
 }
 
 var MaxChangesSubBuf = 500
 
-func newChangesSub(ctx context.Context, p *models.Participant, ch chan *models.ChangePayload) *changesSub {
+func newChangesSub(ctx context.Context, p *models.Participant) *changesSub {
 	s := &changesSub{
 		ctx:          ctx,
 		p:            p,
-		changeBuf:    make([]*models.ChangePayload, 0, MaxChangesSubBuf),
-		bufChan:      make(chan *models.ChangePayload),
-		ch:           ch,
 		participants: make(map[string]map[string]struct{}),
-		closing:      make(chan bool),
+		sendBuf:      NewSendBuffer[*models.ChangePayload](),
 	}
 
-	go s.wait()
+	go func() {
+		<-ctx.Done()
+		s.sendBuf.Close()
+	}()
 
 	return s
 }
@@ -58,132 +50,7 @@ func newChangesSub(ctx context.Context, p *models.Participant, ch chan *models.C
 var SkipWebsocketError = false
 
 func (s *changesSub) Send(p []*models.ChangePayload) {
-	if s.ctx.Err() != nil {
-		return
-	}
-
-	s.Lock()
-	defer s.Unlock()
-
-	if s.deadConn {
-		return
-	}
-
-	for _, payload := range p {
-		if s.timingOut {
-			s.changeBuf = append(s.changeBuf, payload)
-
-			if len(s.changeBuf) >= MaxChangesSubBuf {
-				log.Ctx(s.ctx).Warn().Msg("changes: write buffer full, abandoning connection")
-
-				s.deadConn = true
-				s.changeBuf = nil
-
-				if SkipWebsocketError {
-					log.Ctx(s.ctx).Trace().Msg("changes: (testing only) sub channel buffer full, return socket error")
-				} else {
-					transport.AddSubscriptionError(s.ctx, gqlerror.Errorf("changes sub write timeout"))
-				}
-
-				return
-			}
-
-			continue
-		}
-
-		select {
-		case <-s.ctx.Done():
-			return
-		case <-time.After(gqlgenSubChannelTimeout):
-			if s.ctx.Err() != nil {
-				return
-			}
-
-			s.timingOut = true
-			s.changeBuf = append(s.changeBuf, payload)
-
-			log.Ctx(s.ctx).Warn().Msg("changes: conn write timeout")
-
-			go s.flusher()
-		case s.ch <- payload:
-		}
-	}
-}
-
-func (s *changesSub) wait() {
-	for {
-		s.Lock()
-		if s.deadConn {
-			s.Unlock()
-			<-s.ctx.Done()
-
-			s.close()
-
-			return
-		}
-		s.Unlock()
-
-		select {
-		case <-s.ctx.Done():
-			s.close()
-
-			return
-		case <-time.After(gqlgenSubChannelTimeout):
-		case s.ch <- <-s.bufChan:
-		}
-	}
-}
-
-func (s *changesSub) close() {
-	// Wait a bit to make sure the Done is noticed by Send.
-	time.Sleep(gqlgenSubChannelWait)
-
-	close(s.ch)
-	close(s.bufChan)
-}
-
-func (s *changesSub) flusher() {
-	for {
-		s.Lock()
-		if s.deadConn {
-			s.Unlock()
-
-			return
-		}
-
-		if len(s.changeBuf) == 0 {
-			s.timingOut = false
-			s.Unlock()
-
-			return
-		}
-
-		payload := s.changeBuf[0]
-		s.Unlock()
-
-		select {
-		case <-s.ctx.Done():
-			return
-		case <-time.After(gqlgenSubChannelTimeout):
-		case s.bufChan <- payload:
-			s.Lock()
-
-			if len(s.changeBuf) == 0 {
-				s.changeBuf = s.changeBuf[:0]
-			} else {
-				s.changeBuf = s.changeBuf[1:]
-			}
-
-			if len(s.changeBuf) == 0 {
-				s.timingOut = false
-				s.Unlock()
-
-				return
-			}
-
-			s.Unlock()
-		}
-	}
+	s.sendBuf.Send(p)
 }
 
 func (c *changesSub) publish(ctx context.Context, changes []*models.ChangePayload) error {
@@ -486,34 +353,27 @@ func (r *Runtime) SubChanges(ctx context.Context) (<-chan *models.ChangePayload,
 		return nil, errors.New("changes only for participants")
 	}
 
-	pchan := make(chan *models.ChangePayload, gqlgenSubChannelBuffer)
+	c := newChangesSub(ctx, p)
+
+	activeLinks := activeParticipantLinks(p.Links)
+
+	r.changesSubs[p.ID] = append(r.changesSubs[p.ID], c)
+
+	if len(r.changesSubs[p.ID]) == 1 {
+		r.propagateHook(ctx, mgen.EventTypeParticipantConnect, p.ID, p)
+		r.propagateHook(ctx, mgen.EventTypeParticipantConnected, p.ID, p)
+	}
+
+	err := r.pushLinks(ctx, activeLinks, c)
+	if err != nil {
+		return nil, errors.Wrap(err, "initial push links")
+	}
 
 	go func() {
-		r.Lock()
-
-		activeLinks := activeParticipantLinks(p.Links)
-
-		c := newChangesSub(ctx, p, pchan)
-
-		r.changesSubs[p.ID] = append(r.changesSubs[p.ID], c)
-
-		if len(r.changesSubs[p.ID]) == 1 {
-			r.propagateHook(ctx, mgen.EventTypeParticipantConnect, p.ID, p)
-			r.propagateHook(ctx, mgen.EventTypeParticipantConnected, p.ID, p)
-		}
-
-		err := r.pushLinks(ctx, activeLinks, c)
-
-		r.Unlock()
-
-		if err != nil {
-			log.Ctx(r.ctx).Error().Err(err).Str("participantId", p.ID).Msg("runtime: failed initial push")
-		} else {
-			// Wait for end of connection
-			<-ctx.Done()
-		}
+		<-ctx.Done()
 
 		r.Lock()
+		defer r.Unlock()
 
 		n := 0
 
@@ -528,12 +388,9 @@ func (r *Runtime) SubChanges(ctx context.Context) (<-chan *models.ChangePayload,
 
 		if len(r.changesSubs[p.ID]) == 0 {
 			delete(r.changesSubs, p.ID)
-			r.Unlock()
 			r.propagateHook(ctx, mgen.EventTypeParticipantDisconnect, p.ID, p)
-		} else {
-			r.Unlock()
 		}
 	}()
 
-	return pchan, nil
+	return c.sendBuf.Out(), nil
 }

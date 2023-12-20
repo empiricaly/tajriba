@@ -150,7 +150,9 @@ extend type Query {
 
 extend type Mutation {
   """
-  Create or update an Attribute on a Node.
+  Create or update an Attribute on a Node. If the Attribute exists and the value
+  is the same, the Attribute is not updated and the attribute will not be
+  returned in the response.
   """
   setAttributes(input: [SetAttributeInput!]!): [SetAttributePayload!]!
 }

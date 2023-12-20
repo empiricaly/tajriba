@@ -9,8 +9,8 @@ import (
 	"github.com/empiricaly/tajriba/internal/models"
 	"github.com/empiricaly/tajriba/internal/store"
 	"github.com/empiricaly/tajriba/internal/utils/ids"
+	concmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"
-	"github.com/sasha-s/go-deadlock"
 )
 
 func (r *Runtime) AddScope(ctx context.Context, name *string, kind *string, attributes []*mgen.SetAttributeInput) (*models.Scope, error) {
@@ -21,15 +21,6 @@ func (r *Runtime) AddScope(ctx context.Context, name *string, kind *string, attr
 	if actr == nil {
 		return nil, ErrNotAuthorized
 	}
-
-	// var ki, na string
-	// if kind != nil {
-	// 	ki = *kind
-	// }
-	// if name != nil {
-	// 	na = *name
-	// }
-	// spew.Dump("NEW SCOPE", ki, na, attributes)
 
 	if name != nil {
 		for _, s := range r.scopes {
@@ -214,27 +205,24 @@ func (r *Runtime) ScopeLinks(
 }
 
 type scopedAttributesSub struct {
-	ctx    context.Context
-	inputs models.ScopedAttributesInputs
-	scopes map[string]*models.Scope
-
-	ch      chan *mgen.SubAttributesPayload
-	closing chan bool
-	closed  bool
-
-	deadlock.Mutex
+	ctx     context.Context
+	inputs  models.ScopedAttributesInputs
+	scopes  concmap.ConcurrentMap[string, *models.Scope]
+	sendBuf *SendBuffer[*mgen.SubAttributesPayload]
 }
 
-func newScopedAttributesSub(ctx context.Context, inputs models.ScopedAttributesInputs, c chan *mgen.SubAttributesPayload) *scopedAttributesSub {
+func newScopedAttributesSub(ctx context.Context, inputs models.ScopedAttributesInputs) *scopedAttributesSub {
 	s := &scopedAttributesSub{
 		ctx:     ctx,
 		inputs:  inputs,
-		scopes:  make(map[string]*models.Scope),
-		ch:      c,
-		closing: make(chan bool),
+		scopes:  concmap.New[*models.Scope](),
+		sendBuf: NewSendBuffer[*mgen.SubAttributesPayload](),
 	}
 
-	go s.wait()
+	go func() {
+		<-s.ctx.Done()
+		s.sendBuf.Close()
+	}()
 
 	return s
 }
@@ -259,7 +247,7 @@ func newScopedAttributesSub(ctx context.Context, inputs models.ScopedAttributesI
 // gqlgenSubChannelBuffer is the size of the gqlgen outbound channel buffer.
 // This is an arbitrary number, though it's fair to expect the network to not
 // always be smooth and this can help smooth out the bumps.
-const gqlgenSubChannelBuffer = 100
+const gqlgenSubChannelBuffer = 10
 
 // gqlgenSubChannelTimeout is the amount of time to wait for a send on the
 // gqlgen outbound channel before giving up and checking the context.
@@ -271,32 +259,7 @@ const gqlgenSubChannelTimeout = 100 * time.Millisecond
 const gqlgenSubChannelWait = 5 * time.Second
 
 func (s *scopedAttributesSub) Send(p []*mgen.SubAttributesPayload) {
-	if s.ctx.Err() != nil {
-		return
-	}
-
-	for _, payload := range p {
-	LOOP:
-		for {
-			select {
-			case <-time.After(gqlgenSubChannelTimeout):
-				if s.ctx.Err() != nil {
-					return
-				}
-			case s.ch <- payload:
-				break LOOP
-			}
-		}
-	}
-}
-
-func (s *scopedAttributesSub) wait() {
-	<-s.ctx.Done()
-
-	// Wait a bit to make sure the Done is noticed by Send.
-	time.Sleep(gqlgenSubChannelWait)
-
-	close(s.ch)
+	s.sendBuf.Send(p)
 }
 
 func (r *Runtime) SubScopedAttributes(
@@ -307,6 +270,9 @@ func (r *Runtime) SubScopedAttributes(
 	<-chan *mgen.SubAttributesPayload,
 	error,
 ) {
+	r.Lock()
+	defer r.Unlock()
+
 	if err := inputs.Validate(false); err != nil {
 		return nil, errors.Wrap(err, "validate filter")
 	}
@@ -330,65 +296,60 @@ func (r *Runtime) SubScopedAttributes(
 		actorID = actr.GetID()
 	}
 
-	pchan := make(chan *mgen.SubAttributesPayload, gqlgenSubChannelBuffer)
+	c := newScopedAttributesSub(ctx, inputs)
 
-	go func() {
-		r.Lock()
+	for _, s := range r.scopes {
+		if c.inputs.Match(s) {
+			c.scopes.Set(s.ID, s)
+		}
+	}
 
-		c := newScopedAttributesSub(ctx, inputs, pchan)
+	attrs := make([]*models.Attribute, 0)
 
-		r.sattrSubs[actorID] = append(r.sattrSubs[actorID], c)
+	c.scopes.IterCb(func(_ string, s *models.Scope) {
+		for _, a := range s.AttributesMap {
+			attrs = append(attrs, a.DeepCopy())
+		}
+	})
 
-		for _, s := range r.scopes {
-			if c.inputs.Match(s) {
-				c.scopes[s.ID] = s
-			}
+	l := len(attrs)
+
+	var pls []*mgen.SubAttributesPayload
+
+	for i, attr := range attrs {
+		done := l == i+1
+		p := &mgen.SubAttributesPayload{
+			Attribute: attr,
+			Done:      done,
 		}
 
-		attrs := make([]*models.Attribute, 0)
-
-		for _, s := range c.scopes {
-			for _, a := range s.AttributesMap {
-				attrs = append(attrs, a.DeepCopy())
-			}
-		}
-
-		l := len(attrs)
-		r.Unlock()
-
-		var pls []*mgen.SubAttributesPayload
-
-		for i, attr := range attrs {
-			done := l == i+1
-			p := &mgen.SubAttributesPayload{
-				Attribute: attr,
-				Done:      done,
-			}
-
-			if done {
-				p.ScopesUpdated = make([]string, 0, len(c.scopes))
-				for id := range c.scopes {
-					p.ScopesUpdated = append(p.ScopesUpdated, id)
-				}
-			}
-
-			pls = append(pls, p)
-		}
-
-		if len(attrs) == 0 {
-			scopesUpdated := make([]string, 0, len(c.scopes))
-			for id := range c.scopes {
-				scopesUpdated = append(scopesUpdated, id)
-			}
-
-			pls = append(pls, &mgen.SubAttributesPayload{
-				Done:          true,
-				ScopesUpdated: scopesUpdated,
+		if done {
+			p.ScopesUpdated = make([]string, 0, c.scopes.Count())
+			c.scopes.IterCb(func(id string, _ *models.Scope) {
+				p.ScopesUpdated = append(p.ScopesUpdated, id)
 			})
 		}
 
-		c.Send(pls)
+		pls = append(pls, p)
+	}
 
+	if len(attrs) == 0 {
+		scopesUpdated := make([]string, 0, c.scopes.Count())
+		c.scopes.IterCb(func(id string, _ *models.Scope) {
+			scopesUpdated = append(scopesUpdated, id)
+		})
+
+		pls = append(pls, &mgen.SubAttributesPayload{
+			Done:          true,
+			ScopesUpdated: scopesUpdated,
+		})
+	}
+
+	r.sattrSubs[actorID] = append(r.sattrSubs[actorID], c)
+
+	c.Send(pls)
+
+	go func() {
 		<-ctx.Done()
 
 		r.Lock()
@@ -410,7 +371,7 @@ func (r *Runtime) SubScopedAttributes(
 		}
 	}()
 
-	return pchan, nil
+	return c.sendBuf.Out(), nil
 }
 
 func (r *Runtime) pushAttributesForScopedAttributes(ctx context.Context, attrs []*models.Attribute) error {
@@ -430,7 +391,7 @@ func (r *Runtime) pushAttributesForScopedAttributes(ctx context.Context, attrs [
 	for _, subs := range r.sattrSubs {
 		for _, sub := range subs {
 			for sID, as := range attrsPerScope {
-				if _, ok := sub.scopes[sID]; ok {
+				if _, ok := sub.scopes.Get(sID); ok {
 					for _, attr := range as {
 						sasubs[sub] = append(sasubs[sub], attr.DeepCopy())
 					}
@@ -443,12 +404,12 @@ func (r *Runtime) pushAttributesForScopedAttributes(ctx context.Context, attrs [
 		for _, sub := range subs {
 			for _, s := range r.scopes {
 				if sub.inputs.Match(s) {
-					if _, ok := sub.scopes[s.ID]; !ok {
+					if _, ok := sub.scopes.Get(s.ID); !ok {
 						for _, attr := range s.AttributesMap {
 							sasubs[sub] = append(sasubs[sub], attr)
 						}
 
-						sub.scopes[s.ID] = s
+						sub.scopes.Set(s.ID, s)
 					}
 				}
 			}
@@ -457,6 +418,16 @@ func (r *Runtime) pushAttributesForScopedAttributes(ctx context.Context, attrs [
 
 	for sub, attrs := range sasubs {
 		l := len(attrs)
+
+		if l == 0 {
+			sub.Send([]*mgen.SubAttributesPayload{
+				{
+					Done: true,
+				},
+			})
+
+			continue
+		}
 
 		var pls []*mgen.SubAttributesPayload
 
@@ -469,10 +440,10 @@ func (r *Runtime) pushAttributesForScopedAttributes(ctx context.Context, attrs [
 			}
 
 			if done {
-				p.ScopesUpdated = make([]string, 0, len(sub.scopes))
-				for id := range sub.scopes {
+				p.ScopesUpdated = make([]string, 0, sub.scopes.Count())
+				sub.scopes.IterCb(func(id string, _ *models.Scope) {
 					p.ScopesUpdated = append(p.ScopesUpdated, id)
-				}
+				})
 			}
 
 			pls = append(pls, p)

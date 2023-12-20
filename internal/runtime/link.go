@@ -4,18 +4,44 @@ import (
 	"context"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/empiricaly/tajriba/internal/auth/actor"
 	"github.com/empiricaly/tajriba/internal/graph/mgen"
 	"github.com/empiricaly/tajriba/internal/models"
 	"github.com/empiricaly/tajriba/internal/store"
 	"github.com/empiricaly/tajriba/internal/utils/ids"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 )
 
 func (r *Runtime) Link(ctx context.Context, input mgen.LinkInput) (*mgen.LinkPayload, error) {
+	// startAt := time.Now()
+	// defer func() {
+	// 	sort.StringSlice(input.NodeIDs).Sort()
+
+	// 	h := sha1.New()
+	// 	for _, id := range input.NodeIDs {
+	// 		h.Write([]byte(id))
+	// 	}
+
+	// 	log.Ctx(ctx).Info().
+	// 		Str("took", time.Since(startAt).String()).
+	// 		Str("hash", base64.StdEncoding.EncodeToString(h.Sum(nil))).
+	// 		Int("nodeIDs", len(input.NodeIDs)).
+	// 		Int("participantIDs", len(input.ParticipantIDs)).
+	// 		Msg("runtime: Link")
+	// }()
+
 	r.Lock()
 	defer r.Unlock()
+
+	// startActualAt := time.Now()
+	// defer func() {
+	// 	log.Ctx(ctx).Info().
+	// 		Str("took", time.Since(startActualAt).String()).
+	// 		Int("nodeIDs", len(input.NodeIDs)).
+	// 		Int("participantIDs", len(input.ParticipantIDs)).
+	// 		Msg("runtime: Link inner")
+	// }()
 
 	if !input.Link {
 		log.Ctx(r.ctx).Debug().Msg("runtime: unlinking is untested")
@@ -27,13 +53,16 @@ func (r *Runtime) Link(ctx context.Context, input mgen.LinkInput) (*mgen.LinkPay
 	}
 
 	nodes := make([]models.Node, len(input.NodeIDs))
+	nodesDups := make(map[string]struct{}, len(input.NodeIDs))
 
 	for i, nodeID := range input.NodeIDs {
+		if _, ok := nodesDups[nodeID]; ok {
+			return nil, errors.New("duplicate node id")
+		}
+		nodesDups[nodeID] = struct{}{}
+
 		v, ok := r.values[nodeID]
 		if !ok {
-			spew.Dump("=======================")
-			spew.Dump(input)
-			spew.Dump("=======================")
 			return nil, ErrNotFound
 		}
 
@@ -70,11 +99,12 @@ func (r *Runtime) Link(ctx context.Context, input mgen.LinkInput) (*mgen.LinkPay
 
 	links := make([]*models.Link, 0, len(nodes)*len(participants))
 
+	// pushingAt := time.Now()
 	for _, participant := range participants {
+		active := activeParticipantLinks(participant.Links)
+
 	LOOP:
 		for i, node := range nodes {
-
-			active := activeParticipantLinks(participant.Links)
 
 			for _, link := range active {
 				if link.NodeID == input.NodeIDs[i] && link.Link == input.Link {
@@ -104,7 +134,9 @@ func (r *Runtime) Link(ctx context.Context, input mgen.LinkInput) (*mgen.LinkPay
 			participant.Links = append(participant.Links, link)
 		}
 	}
+	// log.Ctx(r.ctx).Info().Str("took", time.Since(pushingAt).String()).Msg("links: find links")
 
+	// pushingAt = time.Now()
 	for _, link := range links {
 		err := conn.Save(link)
 		if err != nil {
@@ -127,10 +159,13 @@ func (r *Runtime) Link(ctx context.Context, input mgen.LinkInput) (*mgen.LinkPay
 			v.Links = append(v.Links, link)
 		}
 	}
+	// log.Ctx(r.ctx).Info().Str("took", time.Since(pushingAt).String()).Msg("links: propagate hooks")
 
+	// pushingAt = time.Now()
 	if err := r.pushLinks(ctx, links, nil); err != nil {
 		log.Ctx(r.ctx).Error().Err(err).Msg("runtime: failed to push new links to participant")
 	}
+	// log.Ctx(r.ctx).Info().Str("took", time.Since(pushingAt).String()).Msg("links: push to participants")
 
 	return &mgen.LinkPayload{
 		Nodes:        nodes,

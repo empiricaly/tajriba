@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"io"
 	"net/http"
 	"time"
 
@@ -17,8 +16,8 @@ import (
 	"github.com/empiricaly/tajriba/internal/auth/actor"
 	"github.com/empiricaly/tajriba/internal/auth/authhttp"
 	"github.com/empiricaly/tajriba/internal/models"
-	"github.com/empiricaly/tajriba/internal/runtime"
 	"github.com/julienschmidt/httprouter"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
@@ -28,19 +27,8 @@ const (
 	initTimeout  = 5 * time.Second
 )
 
-// func init() {
-// 	deadlock.Opts.DeadlockTimeout = 3 * time.Second
-// }
-
-type lockedMarshaller struct {
-	rt *runtime.Runtime
-	m  graphql.Marshaler
-}
-
-func (m *lockedMarshaller) MarshalGQL(w io.Writer) {
-	m.rt.RLock()
-	m.m.MarshalGQL(w)
-	m.rt.RUnlock()
+func init() {
+	deadlock.Opts.DeadlockTimeout = 60 * time.Second
 }
 
 // Defining the Graphql handler.
@@ -52,6 +40,7 @@ func graphqlHandler(
 	gqlsrv := handler.New(schema)
 
 	var mut deadlock.Mutex
+
 	connectedUsers := map[string]struct{}{}
 	connectedParticipants := map[string]struct{}{}
 
@@ -175,76 +164,65 @@ func graphqlHandler(
 
 	if !conf.Production {
 		gqlsrv.Use(extension.Introspection{})
-		gqlsrv.Use(apollotracing.Tracer{})
+
+		if conf.EnableTracer {
+			gqlsrv.Use(apollotracing.Tracer{})
+		}
 	}
 
-	gqlsrv.AroundOperations(func(ctx context.Context, next graphql.OperationHandler) graphql.ResponseHandler {
-		oc := graphql.GetOperationContext(ctx)
+	if zerolog.GlobalLevel() == zerolog.TraceLevel {
+		gqlsrv.AroundOperations(func(ctx context.Context, next graphql.OperationHandler) graphql.ResponseHandler {
+			oc := graphql.GetOperationContext(ctx)
 
-		// Add .Str("query", oc.RawQuery) to get query
-		log.Ctx(ctx).Trace().
-			Str("name", oc.OperationName).
-			Interface("vars", oc.Variables).
-			Msg("graphql: request")
-
-		defer log.Ctx(ctx).Trace().
-			Str("name", oc.OperationName).
-			Interface("vars", oc.Variables).
-			Msg("graphql: request end")
-
-		return next(ctx)
-	})
-
-	// gqlsrv.AroundRootFields(func(ctx context.Context, next graphql.RootResolver) graphql.Marshaler {
-	// 	return &lockedMarshaller{m: next(ctx), rt: runtime.ForContext(ctx)}
-	// })
-
-	gqlsrv.AroundResponses(func(ctx context.Context, next graphql.ResponseHandler) *graphql.Response {
-		oc := graphql.GetOperationContext(ctx)
-		if oc.OperationName == "IntrospectionQuery" {
-			return next(ctx)
-		}
-
-		// skipLock := oc.Operation == nil || oc.Operation.Operation == ast.Subscription
-
-		// var rt *runtime.Runtime
-		// if !skipLock {
-		// 	rt = runtime.ForContext(ctx)
-		// 	rt.RLock()
-		// }
-
-		t := time.Now()
-		resp := next(ctx)
-		d := time.Since(t).String()
-
-		// if !skipLock {
-		// 	rt.RUnlock()
-		// }
-
-		if resp != nil {
-			var op string
-			if oc.Operation != nil {
-				op = string(oc.Operation.Operation)
-			}
-
-			l := log.Ctx(ctx).Trace().
-				Str("op", op).
-				Str("took", d)
-
-			if len(resp.Data) > 0 {
-				l = l.RawJSON("json", resp.Data)
-			}
-
-			l.Msg("graphql: response")
-		} else {
+			// Add .Str("query", oc.RawQuery) to get query
 			log.Ctx(ctx).Trace().
-				Str("op", string(oc.Operation.Operation)).
-				Str("took", d).
-				Msg("graphql: no response")
-		}
+				Str("name", oc.OperationName).
+				Interface("vars", oc.Variables).
+				Msg("graphql: request")
 
-		return resp
-	})
+			defer log.Ctx(ctx).Trace().
+				Str("name", oc.OperationName).
+				Interface("vars", oc.Variables).
+				Msg("graphql: request end")
+
+			return next(ctx)
+		})
+
+		gqlsrv.AroundResponses(func(ctx context.Context, next graphql.ResponseHandler) *graphql.Response {
+			oc := graphql.GetOperationContext(ctx)
+			if oc.OperationName == "IntrospectionQuery" {
+				return next(ctx)
+			}
+
+			t := time.Now()
+			resp := next(ctx)
+			d := time.Since(t).String()
+
+			if resp != nil {
+				var op string
+				if oc.Operation != nil {
+					op = string(oc.Operation.Operation)
+				}
+
+				l := log.Ctx(ctx).Trace().
+					Str("op", op).
+					Str("took", d)
+
+				if len(resp.Data) > 0 {
+					l = l.RawJSON("json", resp.Data)
+				}
+
+				l.Msg("graphql: response")
+			} else {
+				log.Ctx(ctx).Trace().
+					Str("op", string(oc.Operation.Operation)).
+					Str("took", d).
+					Msg("graphql: no response")
+			}
+
+			return resp
+		})
+	}
 
 	return func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		t := time.Now()
