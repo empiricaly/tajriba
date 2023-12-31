@@ -14,37 +14,12 @@ import (
 )
 
 func (r *Runtime) Link(ctx context.Context, input mgen.LinkInput) (*mgen.LinkPayload, error) {
-	// startAt := time.Now()
-	// defer func() {
-	// 	sort.StringSlice(input.NodeIDs).Sort()
-
-	// 	h := sha1.New()
-	// 	for _, id := range input.NodeIDs {
-	// 		h.Write([]byte(id))
-	// 	}
-
-	// 	log.Ctx(ctx).Info().
-	// 		Str("took", time.Since(startAt).String()).
-	// 		Str("hash", base64.StdEncoding.EncodeToString(h.Sum(nil))).
-	// 		Int("nodeIDs", len(input.NodeIDs)).
-	// 		Int("participantIDs", len(input.ParticipantIDs)).
-	// 		Msg("runtime: Link")
-	// }()
-
 	r.Lock()
 	defer r.Unlock()
 
-	// startActualAt := time.Now()
-	// defer func() {
-	// 	log.Ctx(ctx).Info().
-	// 		Str("took", time.Since(startActualAt).String()).
-	// 		Int("nodeIDs", len(input.NodeIDs)).
-	// 		Int("participantIDs", len(input.ParticipantIDs)).
-	// 		Msg("runtime: Link inner")
-	// }()
-
 	if !input.Link {
-		log.Ctx(r.ctx).Debug().Msg("runtime: unlinking is untested")
+		log.Ctx(r.ctx).Debug().
+			Msg("runtime: unlinking is untested")
 	}
 
 	actr := actor.ForContext(ctx)
@@ -52,45 +27,14 @@ func (r *Runtime) Link(ctx context.Context, input mgen.LinkInput) (*mgen.LinkPay
 		return nil, ErrNotAuthorized
 	}
 
-	nodes := make([]models.Node, len(input.NodeIDs))
-	nodesDups := make(map[string]struct{}, len(input.NodeIDs))
-
-	for i, nodeID := range input.NodeIDs {
-		if _, ok := nodesDups[nodeID]; ok {
-			return nil, errors.New("duplicate node id")
-		}
-		nodesDups[nodeID] = struct{}{}
-
-		v, ok := r.values[nodeID]
-		if !ok {
-			return nil, ErrNotFound
-		}
-
-		node, ok := v.(models.Node)
-		if !ok {
-			return nil, ErrInvalidNode
-		}
-
-		switch node.(type) {
-		case *models.Step, *models.Scope, *models.Group:
-			// Noop
-		default:
-			return nil, ErrInvalidNode
-		}
-
-		nodes[i] = node
+	nodes, nodeIDs, err := inputLinkNodes(r, input)
+	if err != nil {
+		return nil, errors.Wrap(err, "get unique input nodes")
 	}
 
-	participants := make([]*models.Participant, len(input.ParticipantIDs))
-
-	for i, participantID := range input.ParticipantIDs {
-		v, ok := r.participantsMap[participantID]
-		if !ok {
-			log.Ctx(r.ctx).Info().Interface("participantsMap", r.participantsMap).Interface("input", input).Msg("-----------------------")
-			return nil, ErrNotFound
-		}
-
-		participants[i] = v
+	participants, err := inputLinkParticipants(r, input)
+	if err != nil {
+		return nil, errors.Wrap(err, "get unique input participants")
 	}
 
 	now := time.Now()
@@ -99,25 +43,16 @@ func (r *Runtime) Link(ctx context.Context, input mgen.LinkInput) (*mgen.LinkPay
 
 	links := make([]*models.Link, 0, len(nodes)*len(participants))
 
-	// pushingAt := time.Now()
 	for _, participant := range participants {
 		active := activeParticipantLinks(participant.Links)
 
 	LOOP:
 		for i, node := range nodes {
-
 			for _, link := range active {
-				if link.NodeID == input.NodeIDs[i] && link.Link == input.Link {
+				if link.NodeID == nodeIDs[i] && link.Link == input.Link {
 					continue LOOP
-					// return nil, ErrAlreadyExists
 				}
 			}
-
-			// for _, l := range participant.Links {
-			// 	if l.NodeID == input.NodeIDs[i] {
-			// 		return nil, ErrAlreadyExists
-			// 	}
-			// }
 
 			link := &models.Link{
 				ID:            ids.ID(ctx),
@@ -127,16 +62,14 @@ func (r *Runtime) Link(ctx context.Context, input mgen.LinkInput) (*mgen.LinkPay
 				Link:          input.Link,
 				ParticipantID: participant.ID,
 				Participant:   participant,
-				NodeID:        input.NodeIDs[i],
+				NodeID:        nodeIDs[i],
 				Node:          node,
 			}
 			links = append(links, link)
 			participant.Links = append(participant.Links, link)
 		}
 	}
-	// log.Ctx(r.ctx).Info().Str("took", time.Since(pushingAt).String()).Msg("links: find links")
 
-	// pushingAt = time.Now()
 	for _, link := range links {
 		err := conn.Save(link)
 		if err != nil {
@@ -159,18 +92,91 @@ func (r *Runtime) Link(ctx context.Context, input mgen.LinkInput) (*mgen.LinkPay
 			v.Links = append(v.Links, link)
 		}
 	}
-	// log.Ctx(r.ctx).Info().Str("took", time.Since(pushingAt).String()).Msg("links: propagate hooks")
 
-	// pushingAt = time.Now()
 	if err := r.pushLinks(ctx, links, nil); err != nil {
-		log.Ctx(r.ctx).Error().Err(err).Msg("runtime: failed to push new links to participant")
+		log.Ctx(r.ctx).Error().
+			Err(err).
+			Msg("runtime: failed to push new links to participant")
 	}
-	// log.Ctx(r.ctx).Info().Str("took", time.Since(pushingAt).String()).Msg("links: push to participants")
 
 	return &mgen.LinkPayload{
 		Nodes:        nodes,
 		Participants: participants,
 	}, nil
+}
+
+func inputLinkParticipants(r *Runtime, input mgen.LinkInput) ([]*models.Participant, error) {
+	participants := make([]*models.Participant, len(input.ParticipantIDs))
+	partDups := make(map[string]struct{}, len(input.NodeIDs))
+
+	for i, participantID := range input.ParticipantIDs {
+		if _, ok := partDups[participantID]; ok {
+			log.Ctx(r.ctx).Debug().
+				Str("participantID", participantID).
+				Interface("link", input).
+				Msg("runtime: duplicate participant id")
+
+			continue
+		}
+
+		partDups[participantID] = struct{}{}
+
+		v, ok := r.participantsMap[participantID]
+		if !ok {
+			log.Ctx(r.ctx).
+				Error().
+				Interface("participantsMap", r.participantsMap).
+				Interface("input", input).
+				Msg("-----------------------")
+
+			return nil, ErrNotFound
+		}
+
+		participants[i] = v
+	}
+
+	return participants, nil
+}
+
+func inputLinkNodes(r *Runtime, input mgen.LinkInput) ([]models.Node, []string, error) {
+	nodes := make([]models.Node, 0, len(input.NodeIDs))
+	nodeIDs := make([]string, 0, len(input.NodeIDs))
+	nodesDups := make(map[string]struct{}, len(input.NodeIDs))
+
+	for _, nodeID := range input.NodeIDs {
+		if _, ok := nodesDups[nodeID]; ok {
+			log.Ctx(r.ctx).Debug().
+				Str("nodeID", nodeID).
+				Interface("link", input).
+				Msg("runtime: duplicate node id")
+
+			continue
+		}
+
+		nodesDups[nodeID] = struct{}{}
+
+		v, ok := r.values[nodeID]
+		if !ok {
+			return nil, nil, ErrNotFound
+		}
+
+		node, ok := v.(models.Node)
+		if !ok {
+			return nil, nil, ErrInvalidNode
+		}
+
+		switch node.(type) {
+		case *models.Step, *models.Scope, *models.Group:
+			// Noop
+		default:
+			return nil, nil, ErrInvalidNode
+		}
+
+		nodes = append(nodes, node)
+		nodeIDs = append(nodeIDs, nodeID)
+	}
+
+	return nodes, nodeIDs, nil
 }
 
 func activeNodeLinks(links []*models.Link) []*models.Link {
