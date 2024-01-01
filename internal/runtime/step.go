@@ -14,6 +14,8 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+var errInvalidFromState = errors.New("invalid transition: from state mismatch with previous state")
+
 func (r *Runtime) AddStep(ctx context.Context, duration int) (*models.Step, error) {
 	r.Lock()
 	defer r.Unlock()
@@ -109,7 +111,7 @@ func (r *Runtime) Transition(ctx context.Context, stepID string, from, to models
 		last := step.Transitions[len(step.Transitions)-1]
 
 		if last.To != t.From {
-			return nil, errors.New("invalid transition: from state mismatch with previous state")
+			return nil, errInvalidFromState
 		}
 
 		if t.To == t.From {
@@ -251,7 +253,20 @@ func (r *Runtime) startStep(ctx context.Context, s *models.Step) error {
 
 		_, err := r.Transition(ctxStop, s.ID, models.StateRunning, models.StateEnded, nil)
 		if err != nil {
-			log.Ctx(r.ctx).Error().Err(err).Str("stepID", s.ID).Msg("runtime: failed scheduled step stop")
+			logger := log.Ctx(r.ctx).Error()
+
+			// No need to log "invalid from state" as an Error. The only reason
+			// this would fail is if the step was transitioned to a different
+			// state before the timer fired, and ther was a race condition
+			// between this timer and the concurrent transition.
+			// Maybe we could try to stop the timer before doing the
+			// transition and checking whether the timer had already triggered,
+			// and reconcile the state of the Transition. TBD.
+			if errors.Is(err, errInvalidFromState) {
+				logger = log.Ctx(r.ctx).Debug()
+			}
+
+			logger.Err(err).Str("stepID", s.ID).Msg("runtime: failed scheduled step stop")
 		}
 	})
 
