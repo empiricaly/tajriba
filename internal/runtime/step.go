@@ -274,12 +274,17 @@ func (r *Runtime) startStep(ctx context.Context, s *models.Step) error {
 }
 
 func (r *Runtime) stopStep(ctx context.Context, stepID string) error {
-	// log.Ctx(r.ctx).Info().Str("id", stepID).Msg("step: stopping")
 	if t, ok := r.stepTimers[stepID]; ok {
 		if !t.Stop() {
-			<-t.C
+			// The timer can have already fired between the call to Stop and
+			// the <-t.C. In which case <-t.C will block forever. In that case,
+			// we timeout quickly to avoid blocking the runtime.
+			select {
+			case <-t.C:
+			case <-time.After(time.Second):
+				log.Ctx(r.ctx).Debug().Str("id", stepID).Msg("step: stopped timer did not stop in time")
+			}
 		}
-		// log.Ctx(r.ctx).Info().Str("id", stepID).Msg("step: stopped")
 	}
 
 	return nil
