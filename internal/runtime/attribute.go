@@ -73,7 +73,7 @@ func (r *Runtime) prepAttributes(
 
 		index := input.Index
 
-		var vector, private, protected, immutable bool
+		var vector, private, protected, immutable, ephemeral bool
 
 		if input.Append != nil && *input.Append {
 			vector = true
@@ -129,6 +129,10 @@ func (r *Runtime) prepAttributes(
 			immutable = true
 		}
 
+		if input.Ephemeral != nil && *input.Ephemeral {
+			ephemeral = true
+		}
+
 		a := &models.Attribute{
 			ID:          ids.ID(ctx),
 			CreatedAt:   now,
@@ -144,6 +148,7 @@ func (r *Runtime) prepAttributes(
 			Private:     private,
 			Protected:   protected,
 			Immutable:   immutable,
+			Ephemeral:   ephemeral,
 		}
 
 		last := scope.AttributesMap[a.LookupKey()]
@@ -156,6 +161,14 @@ func (r *Runtime) prepAttributes(
 
 			if last.Immutable {
 				return nil, ErrImmutable
+			}
+
+			if last.Ephemeral && !a.Ephemeral {
+				return nil, ErrEphemeral
+			}
+
+			if !last.Ephemeral && a.Ephemeral {
+				return nil, ErrNotEphemeral
 			}
 
 			if (a.Vector && !last.Vector) || !a.Vector && last.Vector {
@@ -194,12 +207,15 @@ func (r *Runtime) setAttributes(
 	attrs []*models.Attribute,
 ) (attributes []*models.Attribute, err error) {
 	conn := store.ForContext(ctx)
-	for _, attr := range attrs {
-		err = conn.Save(attr)
-		if err != nil {
-			log.Ctx(r.ctx).Error().Err(err).Msg("runtime: failed to save attribute")
 
-			continue
+	for _, attr := range attrs {
+		if !attr.Ephemeral {
+			err = conn.Save(attr)
+			if err != nil {
+				log.Ctx(r.ctx).Error().Err(err).Msg("runtime: failed to save attribute")
+
+				continue
+			}
 		}
 
 		scope, _ := attr.Node.(*models.Scope)

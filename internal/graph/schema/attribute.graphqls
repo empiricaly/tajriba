@@ -35,6 +35,14 @@ type Attribute implements Node {
   immutable: Boolean!
 
   """
+  ephemeral indicates the Attribute should not be persisted. Ephemeral
+  Attributes are not stored in the database and are only synced to the
+  connected clients. An ephemeral Attribute cannot become non-ephemeral and vice
+  versa.
+  """
+  ephemeral: Boolean!
+
+  """
   deletedAt is the time when the Attribute was deleted. If null, the Attribute
   was not deleted.
   """
@@ -122,6 +130,15 @@ input SetAttributeInput {
   Defaults to false and does need to be sent on subsequent updates.
   """
   immutable: Boolean
+
+  """
+  ephemeral indicates the Attribute should not be persisted. Ephemeral
+  Attributes are not stored in the database and are only synced to the
+  connected clients.
+  Defaults to false and does need to be sent on subsequent updates. An ephemeral
+  Attribute cannot become non-ephemeral and vice versa.
+  """
+  ephemeral: Boolean
 
   """
   ID of object on which to update the value. NodeID is required if attribute is

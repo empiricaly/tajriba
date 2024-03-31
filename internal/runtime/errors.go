@@ -8,6 +8,8 @@ var (
 	ErrCursorNotFound       = errors.New("cursor not found")
 	ErrLengthInvalid        = errors.New("invalid pagination length")
 	ErrImmutable            = errors.New("record is immutable")
+	ErrEphemeral            = errors.New("record is ephemeral")
+	ErrNotEphemeral         = errors.New("record is not ephemeral")
 	ErrInvalidNode          = errors.New("invalid node")
 	ErrNotAuthorized        = errors.New("not authorized")
 	ErrAuthenticationFailed = errors.New("authentication failed")

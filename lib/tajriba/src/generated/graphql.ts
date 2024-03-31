@@ -109,6 +109,13 @@ export type Attribute = Node & {
    * was not deleted.
    */
   deletedAt?: Maybe<Scalars["DateTime"]>;
+  /**
+   * ephemeral indicates the Attribute should not be persisted. Ephemeral
+   * Attributes are not stored in the database and are only synced to the
+   * connected clients. An ephemeral Attribute cannot become non-ephemeral and vice
+   * versa.
+   */
+  ephemeral: Scalars["Boolean"];
   /** id is the unique globally identifier for the record. */
   id: Scalars["ID"];
   /**
@@ -701,6 +708,14 @@ export type SetAttributeInput = {
    */
   append?: InputMaybe<Scalars["Boolean"]>;
   /**
+   * ephemeral indicates the Attribute should not be persisted. Ephemeral
+   * Attributes are not stored in the database and are only synced to the
+   * connected clients.
+   * Defaults to false and does need to be sent on subsequent updates. An ephemeral
+   * Attribute cannot become non-ephemeral and vice versa.
+   */
+  ephemeral?: InputMaybe<Scalars["Boolean"]>;
+  /**
    * immutable indicates the Attribute can never be changed by any Actor.
    * immutable must be set on the Attribute at creation.
    * Defaults to false and does need to be sent on subsequent updates.
@@ -1018,6 +1033,7 @@ export type AttributesQuery = {
         private: boolean;
         protected: boolean;
         immutable: boolean;
+        ephemeral: boolean;
         deletedAt?: any | null;
         key: string;
         val?: string | null;
@@ -1074,6 +1090,7 @@ export type SetAttributesMutation = {
       private: boolean;
       protected: boolean;
       immutable: boolean;
+      ephemeral: boolean;
       deletedAt?: any | null;
       key: string;
       val?: string | null;
@@ -1231,6 +1248,7 @@ export type OnEventSubscription = {
           private: boolean;
           protected: boolean;
           immutable: boolean;
+          ephemeral: boolean;
           deletedAt?: any | null;
           key: string;
           val?: string | null;
@@ -1387,6 +1405,7 @@ export type OnEventSubscription = {
                 private: boolean;
                 protected: boolean;
                 immutable: boolean;
+                ephemeral: boolean;
                 deletedAt?: any | null;
                 key: string;
                 val?: string | null;
@@ -1585,6 +1604,7 @@ export type OnAnyEventSubscription = {
           private: boolean;
           protected: boolean;
           immutable: boolean;
+          ephemeral: boolean;
           deletedAt?: any | null;
           key: string;
           val?: string | null;
@@ -1741,6 +1761,7 @@ export type OnAnyEventSubscription = {
                 private: boolean;
                 protected: boolean;
                 immutable: boolean;
+                ephemeral: boolean;
                 deletedAt?: any | null;
                 key: string;
                 val?: string | null;
@@ -2041,6 +2062,7 @@ export type AddScopesMutation = {
             private: boolean;
             protected: boolean;
             immutable: boolean;
+            ephemeral: boolean;
             deletedAt?: any | null;
             key: string;
             val?: string | null;
@@ -2145,6 +2167,7 @@ export type ScopesQuery = {
               private: boolean;
               protected: boolean;
               immutable: boolean;
+              ephemeral: boolean;
               deletedAt?: any | null;
               key: string;
               val?: string | null;
@@ -2219,6 +2242,7 @@ export type ScopedAttributesSubscription = {
       private: boolean;
       protected: boolean;
       immutable: boolean;
+      ephemeral: boolean;
       deletedAt?: any | null;
       key: string;
       val?: string | null;
@@ -2276,6 +2300,7 @@ export type GlobalAttributesSubscription = {
       private: boolean;
       protected: boolean;
       immutable: boolean;
+      ephemeral: boolean;
       deletedAt?: any | null;
       key: string;
       val?: string | null;
@@ -2888,6 +2913,10 @@ export const AttributesDocument = {
                             },
                             {
                               kind: "Field",
+                              name: { kind: "Name", value: "ephemeral" },
+                            },
+                            {
+                              kind: "Field",
                               name: { kind: "Name", value: "deletedAt" },
                             },
                             {
@@ -3128,6 +3157,10 @@ export const SetAttributesDocument = {
                       {
                         kind: "Field",
                         name: { kind: "Name", value: "immutable" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "ephemeral" },
                       },
                       {
                         kind: "Field",
@@ -3883,6 +3916,10 @@ export const OnEventDocument = {
                             },
                             {
                               kind: "Field",
+                              name: { kind: "Name", value: "ephemeral" },
+                            },
+                            {
+                              kind: "Field",
                               name: { kind: "Name", value: "deletedAt" },
                             },
                             {
@@ -4882,6 +4919,13 @@ export const OnEventDocument = {
                                                 name: {
                                                   kind: "Name",
                                                   value: "immutable",
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "ephemeral",
                                                 },
                                               },
                                               {
@@ -5554,6 +5598,10 @@ export const OnAnyEventDocument = {
                             },
                             {
                               kind: "Field",
+                              name: { kind: "Name", value: "ephemeral" },
+                            },
+                            {
+                              kind: "Field",
                               name: { kind: "Name", value: "deletedAt" },
                             },
                             {
@@ -6553,6 +6601,13 @@ export const OnAnyEventDocument = {
                                                 name: {
                                                   kind: "Name",
                                                   value: "immutable",
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "ephemeral",
                                                 },
                                               },
                                               {
@@ -7706,6 +7761,13 @@ export const AddScopesDocument = {
                                           kind: "Field",
                                           name: {
                                             kind: "Name",
+                                            value: "ephemeral",
+                                          },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: {
+                                            kind: "Name",
                                             value: "deletedAt",
                                           },
                                         },
@@ -8305,6 +8367,13 @@ export const ScopesDocument = {
                                                 kind: "Field",
                                                 name: {
                                                   kind: "Name",
+                                                  value: "ephemeral",
+                                                },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: {
+                                                  kind: "Name",
                                                   value: "deletedAt",
                                                 },
                                               },
@@ -8623,6 +8692,10 @@ export const ScopedAttributesDocument = {
                       },
                       {
                         kind: "Field",
+                        name: { kind: "Name", value: "ephemeral" },
+                      },
+                      {
+                        kind: "Field",
                         name: { kind: "Name", value: "deletedAt" },
                       },
                       { kind: "Field", name: { kind: "Name", value: "key" } },
@@ -8824,6 +8897,10 @@ export const GlobalAttributesDocument = {
                       {
                         kind: "Field",
                         name: { kind: "Name", value: "immutable" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "ephemeral" },
                       },
                       {
                         kind: "Field",
@@ -10487,6 +10564,7 @@ export function SetAttributeInputSchema(): z.ZodObject<
 > {
   return z.object({
     append: z.boolean().nullish(),
+    ephemeral: z.boolean().nullish(),
     immutable: z.boolean().nullish(),
     index: z.number().nullish(),
     key: z.string(),

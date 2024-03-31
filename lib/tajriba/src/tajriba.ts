@@ -5,8 +5,8 @@ import {
   fetchExchange,
   subscriptionExchange,
 } from "@urql/core";
-import { Client as WSClient, createClient as createWSClient } from "graphql-ws";
 import "cross-fetch/polyfill";
+import { Client as WSClient, createClient as createWSClient } from "graphql-ws";
 import WebSocket from "isomorphic-ws";
 import { Observable } from "rxjs";
 import TypedEmitter from "typed-emitter";

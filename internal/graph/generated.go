@@ -78,6 +78,7 @@ type ComplexityRoot struct {
 		CreatedBy func(childComplexity int) int
 		Current   func(childComplexity int) int
 		DeletedAt func(childComplexity int) int
+		Ephemeral func(childComplexity int) int
 		ID        func(childComplexity int) int
 		Immutable func(childComplexity int) int
 		Index     func(childComplexity int) int
@@ -469,6 +470,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Attribute.DeletedAt(childComplexity), true
+
+	case "Attribute.ephemeral":
+		if e.complexity.Attribute.Ephemeral == nil {
+			break
+		}
+
+		return e.complexity.Attribute.Ephemeral(childComplexity), true
 
 	case "Attribute.id":
 		if e.complexity.Attribute.ID == nil {
@@ -3162,6 +3170,50 @@ func (ec *executionContext) fieldContext_Attribute_immutable(ctx context.Context
 	return fc, nil
 }
 
+func (ec *executionContext) _Attribute_ephemeral(ctx context.Context, field graphql.CollectedField, obj *models.Attribute) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Attribute_ephemeral(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Ephemeral, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Attribute_ephemeral(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Attribute",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Attribute_deletedAt(ctx context.Context, field graphql.CollectedField, obj *models.Attribute) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Attribute_deletedAt(ctx, field)
 	if err != nil {
@@ -4198,6 +4250,8 @@ func (ec *executionContext) fieldContext_AttributeEdge_node(ctx context.Context,
 				return ec.fieldContext_Attribute_protected(ctx, field)
 			case "immutable":
 				return ec.fieldContext_Attribute_immutable(ctx, field)
+			case "ephemeral":
+				return ec.fieldContext_Attribute_ephemeral(ctx, field)
 			case "deletedAt":
 				return ec.fieldContext_Attribute_deletedAt(ctx, field)
 			case "key":
@@ -8663,6 +8717,8 @@ func (ec *executionContext) fieldContext_SetAttributePayload_attribute(ctx conte
 				return ec.fieldContext_Attribute_protected(ctx, field)
 			case "immutable":
 				return ec.fieldContext_Attribute_immutable(ctx, field)
+			case "ephemeral":
+				return ec.fieldContext_Attribute_ephemeral(ctx, field)
 			case "deletedAt":
 				return ec.fieldContext_Attribute_deletedAt(ctx, field)
 			case "key":
@@ -9675,6 +9731,8 @@ func (ec *executionContext) fieldContext_SubAttributesPayload_attribute(ctx cont
 				return ec.fieldContext_Attribute_protected(ctx, field)
 			case "immutable":
 				return ec.fieldContext_Attribute_immutable(ctx, field)
+			case "ephemeral":
+				return ec.fieldContext_Attribute_ephemeral(ctx, field)
 			case "deletedAt":
 				return ec.fieldContext_Attribute_deletedAt(ctx, field)
 			case "key":
@@ -13269,7 +13327,7 @@ func (ec *executionContext) unmarshalInputSetAttributeInput(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"key", "val", "index", "append", "private", "protected", "immutable", "nodeID"}
+	fieldsInOrder := [...]string{"key", "val", "index", "append", "private", "protected", "immutable", "ephemeral", "nodeID"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -13339,6 +13397,15 @@ func (ec *executionContext) unmarshalInputSetAttributeInput(ctx context.Context,
 				return it, err
 			}
 			it.Immutable = data
+		case "ephemeral":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("ephemeral"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Ephemeral = data
 		case "nodeID":
 			var err error
 
@@ -13825,6 +13892,11 @@ func (ec *executionContext) _Attribute(ctx context.Context, sel ast.SelectionSet
 			}
 		case "immutable":
 			out.Values[i] = ec._Attribute_immutable(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "ephemeral":
+			out.Values[i] = ec._Attribute_ephemeral(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}

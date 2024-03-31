@@ -245,6 +245,12 @@ type SetAttributeInput struct {
 	// immutable must be set on the Attribute at creation.
 	// Defaults to false and does need to be sent on subsequent updates.
 	Immutable *bool `json:"immutable,omitempty"`
+	// ephemeral indicates the Attribute should not be persisted. Ephemeral
+	// Attributes are not stored in the database and are only synced to the
+	// connected clients.
+	// Defaults to false and does need to be sent on subsequent updates. An ephemeral
+	// Attribute cannot become non-ephemeral and vice versa.
+	Ephemeral *bool `json:"ephemeral,omitempty"`
 	// ID of object on which to update the value. NodeID is required if attribute is
 	// not created with addScope().
 	NodeID *string `json:"nodeID,omitempty"`

@@ -40,6 +40,10 @@ type Attribute struct {
 	Versions []*Attribute `json:"-"`
 	// version is the version number of this Attribute, starting at 1.
 	Version int `json:"-"`
+	// ephemeral indicates the Attribute should not be persisted. Ephemeral
+	// Attributes are not stored in the database and are only synced to the
+	// connected clients.
+	Ephemeral bool `json:"-"`
 	// private indicates whether the Attribute shouldn't be visible to Participants
 	// in the scope.
 	// private must be set on the Attribute at creation.
