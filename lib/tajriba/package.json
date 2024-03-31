@@ -1,6 +1,6 @@
 {
   "name": "@empirica/tajriba",
-  "version": "1.6.1",
+  "version": "1.7.0",
   "description": "Tajriba client",
   "source": "src/index.ts",
   "main": "dist/index.js",
