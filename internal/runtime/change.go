@@ -341,15 +341,18 @@ func (r *Runtime) pushLinks(ctx context.Context, links []*models.Link, initParti
 
 func (r *Runtime) SubChanges(ctx context.Context) (<-chan *models.ChangePayload, error) {
 	r.Lock()
-	defer r.Unlock()
 
 	actr := actor.ForContext(ctx)
 	if actr == nil {
+		r.Unlock()
+
 		return nil, ErrNotAuthorized
 	}
 
 	p, ok := actr.(*models.Participant)
 	if !ok {
+		r.Unlock()
+
 		return nil, errors.New("changes only for participants")
 	}
 
@@ -359,12 +362,16 @@ func (r *Runtime) SubChanges(ctx context.Context) (<-chan *models.ChangePayload,
 
 	r.changesSubs[p.ID] = append(r.changesSubs[p.ID], c)
 
+	r.Unlock()
+
+	r.RLock()
 	if len(r.changesSubs[p.ID]) == 1 {
 		r.propagateHook(ctx, mgen.EventTypeParticipantConnect, p.ID, p)
 		r.propagateHook(ctx, mgen.EventTypeParticipantConnected, p.ID, p)
 	}
 
 	err := r.pushLinks(ctx, activeLinks, c)
+	r.RUnlock()
 	if err != nil {
 		return nil, errors.Wrap(err, "initial push links")
 	}
@@ -373,7 +380,6 @@ func (r *Runtime) SubChanges(ctx context.Context) (<-chan *models.ChangePayload,
 		<-ctx.Done()
 
 		r.Lock()
-		defer r.Unlock()
 
 		n := 0
 
@@ -388,7 +394,12 @@ func (r *Runtime) SubChanges(ctx context.Context) (<-chan *models.ChangePayload,
 
 		if len(r.changesSubs[p.ID]) == 0 {
 			delete(r.changesSubs, p.ID)
+			r.Unlock()
+			r.RLock()
 			r.propagateHook(ctx, mgen.EventTypeParticipantDisconnect, p.ID, p)
+			r.RUnlock()
+		} else {
+			r.Unlock()
 		}
 	}()
 
