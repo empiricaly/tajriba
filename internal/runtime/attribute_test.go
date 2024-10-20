@@ -661,7 +661,6 @@ var _ = Describe("Attribute", func() {
 		p := pool.NewWithResults[kvs]().WithContext(ctx)
 
 		runtime.MaxChangesSubBuf = 10
-		runtime.SkipWebsocketError = true
 
 		p.Go(func(ctx context.Context) (kvs, error) {
 			defer GinkgoRecover()

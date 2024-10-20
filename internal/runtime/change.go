@@ -21,8 +21,6 @@ type changesSub struct {
 
 	sendBuf *SendBuffer[*models.ChangePayload]
 
-	changeBuf []*models.ChangePayload
-
 	deadlock.Mutex
 }
 
@@ -47,13 +45,14 @@ func newChangesSub(ctx context.Context, p *models.Participant) *changesSub {
 // If you're wondering what on earth is going here, see "NOTE ABOUT CLOSING
 // GQLGEN SUBSCRIPTION CHANNELS" in scope.go.
 
-var SkipWebsocketError = false
-
 func (s *changesSub) Send(p []*models.ChangePayload) {
 	s.sendBuf.Send(p)
 }
 
-func (c *changesSub) publish(ctx context.Context, changes []*models.ChangePayload) error {
+func (c *changesSub) publish(_ context.Context, changes []*models.ChangePayload) error {
+	c.Lock()
+	defer c.Unlock()
+
 	n := 0
 
 	// Tracking participant changes
@@ -70,13 +69,14 @@ func (c *changesSub) publish(ctx context.Context, changes []*models.ChangePayloa
 		if !ok {
 			if change.Removed {
 				continue
-			} else {
-				changes[n] = change
-				n++
-
-				c.participants[pc.ID] = map[string]struct{}{pc.NodeID: {}}
-				continue
 			}
+
+			changes[n] = change
+			n++
+
+			c.participants[pc.ID] = map[string]struct{}{pc.NodeID: {}}
+
+			continue
 		}
 
 		_, exist := gs[pc.NodeID]
@@ -86,6 +86,7 @@ func (c *changesSub) publish(ctx context.Context, changes []*models.ChangePayloa
 				n++
 
 				delete(c.participants[pc.ID], pc.NodeID)
+
 				if len(c.participants[pc.ID]) == 0 {
 					delete(c.participants, pc.ID)
 				}
@@ -111,17 +112,19 @@ func (c *changesSub) publish(ctx context.Context, changes []*models.ChangePayloa
 	l := len(changes)
 
 	chgs := make([]*models.ChangePayload, 0, len(changes))
+
 	for i, change := range changes {
 		change = change.DeepCopy()
 		change.Done = i+1 == l
 		chgs = append(chgs, change)
 	}
+
 	c.Send(chgs)
 
 	return nil
 }
 
-func (r *Runtime) pushStep(ctx context.Context, step *models.Step) error {
+func (r *Runtime) pushStep(_ context.Context, step *models.Step) error {
 	if len(step.Transitions) == 0 {
 		return errors.New("invalid step transitions")
 	}
@@ -157,6 +160,7 @@ func (r *Runtime) pushStep(ctx context.Context, step *models.Step) error {
 
 	uniquePart := make(map[string]struct{})
 	active := activeNodeLinks(step.Links)
+
 	for _, link := range active {
 		if _, ok := uniquePart[link.ParticipantID]; ok {
 			continue
@@ -292,10 +296,6 @@ func (r *Runtime) pushLinks(ctx context.Context, links []*models.Link, initParti
 			active := activeNodeLinks(v.Links)
 
 			for _, link := range active {
-				// if link.ParticipantID == pID {
-				// 	continue
-				// }
-
 				changes[pID] = append(changes[pID], &models.ChangePayload{
 					Removed: removed,
 					Change: &models.ParticipantChange{
@@ -372,6 +372,7 @@ func (r *Runtime) SubChanges(ctx context.Context) (<-chan *models.ChangePayload,
 
 	err := r.pushLinks(ctx, activeLinks, c)
 	r.RUnlock()
+
 	if err != nil {
 		return nil, errors.Wrap(err, "initial push links")
 	}
