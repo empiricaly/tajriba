@@ -247,6 +247,11 @@ func (r *Runtime) startStep(ctx context.Context, s *models.Step) error {
 
 	ctxStop := metadata.SetRequestForContext(ctx, nil)
 	r.stepTimers[s.ID] = time.AfterFunc(remaining, func() {
+		log.Ctx(r.ctx).Debug().
+			Str("stepID", s.ID).
+			Str("remaining", remaining.String()).
+			Msg("runtime: step timer fired")
+
 		r.Lock()
 		delete(r.stepTimers, s.ID)
 		r.Unlock()
@@ -270,21 +275,43 @@ func (r *Runtime) startStep(ctx context.Context, s *models.Step) error {
 		}
 	})
 
+	log.Ctx(r.ctx).Debug().
+		Str("stepID", s.ID).
+		Str("remaining", remaining.String()).
+		Int("activeTimers", len(r.stepTimers)).
+		Msg("runtime: step timer created")
+
 	return nil
 }
 
 func (r *Runtime) stopStep(ctx context.Context, stepID string) error {
 	if t, ok := r.stepTimers[stepID]; ok {
+		log.Ctx(r.ctx).Debug().
+			Str("stepID", stepID).
+			Msg("runtime: stopping step timer")
+
 		if !t.Stop() {
 			// The timer can have already fired between the call to Stop and
 			// the <-t.C. In which case <-t.C will block forever. In that case,
 			// we timeout quickly to avoid blocking the runtime.
 			select {
 			case <-t.C:
+				log.Ctx(r.ctx).Debug().Str("stepID", stepID).Msg("runtime: drained fired timer")
 			case <-time.After(time.Second):
-				log.Ctx(r.ctx).Debug().Str("id", stepID).Msg("step: stopped timer did not stop in time")
+				log.Ctx(r.ctx).Debug().Str("stepID", stepID).Msg("runtime: timer cleanup timeout")
 			}
 		}
+
+		delete(r.stepTimers, stepID)
+
+		log.Ctx(r.ctx).Debug().
+			Str("stepID", stepID).
+			Int("activeTimers", len(r.stepTimers)).
+			Msg("runtime: step timer stopped")
+	} else {
+		log.Ctx(r.ctx).Debug().
+			Str("stepID", stepID).
+			Msg("runtime: no timer found to stop")
 	}
 
 	return nil

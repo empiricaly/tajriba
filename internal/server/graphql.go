@@ -24,7 +24,7 @@ import (
 // pingInterval is the interval at which a ping is sent to client.
 const (
 	pingInterval = 5 * time.Second
-	initTimeout  = 5 * time.Second
+	initTimeout  = 30 * time.Second
 )
 
 func init() {
@@ -60,6 +60,8 @@ func graphqlHandler(
 				return true
 			},
 			EnableCompression: true,
+			ReadBufferSize:    4096,
+			WriteBufferSize:   4096,
 		},
 		InitTimeout: initTimeout,
 		CloseFunc: func(ctx context.Context, closeCode int) {
@@ -96,7 +98,7 @@ func graphqlHandler(
 			ctx2, cancel := context.WithCancel(ctx)
 			go func(ctx context.Context) {
 				defer cancel()
-				<-ctx2.Done()
+				<-ctx.Done()
 				log.Ctx(ctx).Trace().Msg("graphql: websocket ended")
 			}(ctx)
 
@@ -156,7 +158,7 @@ func graphqlHandler(
 				}
 			}
 
-			ctx = actor.SetContext(ctx, user)
+			ctx = actor.SetContext(ctx2, user)
 
 			return ctx, nil
 		},

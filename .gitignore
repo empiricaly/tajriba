@@ -3,5 +3,6 @@
 .tajriba.yaml
 .tajriba.toml
 .tajriba.json
+tajriba.json
 internal/vendored/transport
 go.work

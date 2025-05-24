@@ -1,6 +1,8 @@
 package tajriba
 
 import (
+	"time"
+
 	"github.com/empiricaly/tajriba/internal/auth"
 	"github.com/empiricaly/tajriba/internal/server"
 	"github.com/empiricaly/tajriba/internal/store"
@@ -17,7 +19,26 @@ type Config struct {
 	Auth   *auth.Config   `mapstructure:"auth"`
 	Log    *logger.Config `mapstructure:"log"`
 
-	Production bool `mapstructure:"production"`
+	Production bool             `mapstructure:"production"`
+	MemProfile MemProfileConfig `mapstructure:"memprofile"`
+}
+
+// MemProfileConfig holds configuration for memory profiling
+type MemProfileConfig struct {
+	// Enable memory profiling
+	Enabled bool `mapstructure:"enabled"`
+
+	// Directory to write memory profiles (default: current directory)
+	Dir string `mapstructure:"dir"`
+
+	// Interval for writing memory profiles (default: 5 minutes)
+	Interval time.Duration `mapstructure:"interval"`
+
+	// Enable HTTP pprof endpoints
+	HTTPEnabled bool `mapstructure:"http_enabled"`
+
+	// HTTP port for pprof endpoints (default: 6060)
+	HTTPPort int `mapstructure:"http_port"`
 }
 
 // Validate configuration is ok.
@@ -84,6 +105,22 @@ func ConfigFlags(cmd *cobra.Command, prefix, defaultDBFile string) error {
 	bval := true
 	cmd.Flags().Bool(flag, bval, "Run in production mode (e.g. enforce admin authenticate)")
 	viper.SetDefault(flag, bval)
+
+	// Memory profiling flags
+	cmd.Flags().Bool(prefix+"memprofile.enabled", false, "Enable memory profiling")
+	viper.SetDefault(prefix+"memprofile.enabled", false)
+
+	cmd.Flags().String(prefix+"memprofile.dir", ".", "Directory to write memory profiles")
+	viper.SetDefault(prefix+"memprofile.dir", ".")
+
+	cmd.Flags().Duration(prefix+"memprofile.interval", 5*time.Minute, "Interval for writing memory profiles")
+	viper.SetDefault(prefix+"memprofile.interval", 5*time.Minute)
+
+	cmd.Flags().Bool(prefix+"memprofile.http_enabled", false, "Enable HTTP pprof endpoints")
+	viper.SetDefault(prefix+"memprofile.http_enabled", false)
+
+	cmd.Flags().Int(prefix+"memprofile.http_port", 6060, "HTTP port for pprof endpoints")
+	viper.SetDefault(prefix+"memprofile.http_port", 6060)
 
 	return nil
 }

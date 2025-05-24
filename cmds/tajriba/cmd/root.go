@@ -50,6 +50,21 @@ func root(_ *cobra.Command, _ []string, usingConfigFile bool) {
 		log.Fatal().Err(err).Msg("failed starting tajriba")
 	}
 
+	// Add signal handler for SIGUSR1 to trigger memory profiling
+	go func() {
+		s := make(chan os.Signal, 1)
+		signal.Notify(s, syscall.SIGUSR1)
+		for {
+			select {
+			case <-s:
+				log.Info().Msg("Received SIGUSR1, triggering memory profile")
+				t.ForceMemoryProfile()
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
 	log.Info().Msg("tajriba: started")
 
 	<-ctx.Done()

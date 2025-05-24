@@ -64,7 +64,7 @@ const defaultFilePerm = 0o666
 
 const (
 	defaultScannerBufSize = 64 * 1024
-	maxScannerBufSize     = 1024 * 1024
+	maxScannerBufSize     = 10 * 1024 * 1024
 )
 
 func (c *Conn) openFile() error {
