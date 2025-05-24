@@ -56,10 +56,10 @@ func Start(
 	srv := &http.Server{
 		Handler:           cors.Default().Handler(router),
 		BaseContext:       func(_ net.Listener) context.Context { return ctx },
-		ReadHeaderTimeout: 10 * time.Second,
+		ReadHeaderTimeout: 30 * time.Second,
 		ReadTimeout:       30 * time.Second,
-		WriteTimeout:      2 * time.Minute,
-		IdleTimeout:       5 * time.Minute,
+		WriteTimeout:      5 * time.Minute,
+		IdleTimeout:       90 * time.Second,
 	}
 
 	s.wg.Add(1)

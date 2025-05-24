@@ -69,7 +69,7 @@ func (b *SendBuffer[T]) process() {
 
 		items := make([]T, len(b.buffer))
 		copy(items, b.buffer)
-		b.buffer = b.buffer[:0]
+		b.buffer = make([]T, 0)
 
 		b.mu.Unlock()
 

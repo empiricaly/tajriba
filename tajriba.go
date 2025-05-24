@@ -6,6 +6,7 @@ import (
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/empiricaly/tajriba/internal/auth"
 	"github.com/empiricaly/tajriba/internal/graph"
+	"github.com/empiricaly/tajriba/internal/memprofile"
 	"github.com/empiricaly/tajriba/internal/runtime"
 
 	// "github.com/empiricaly/tajriba/internal/runtime".
@@ -21,24 +22,40 @@ import (
 
 // Runner manages Tajriba's running state.
 type Runner struct {
-	ctx     context.Context
-	conn    *store.Conn
-	config  *Config
-	server  *server.Server
-	runtime *runtime.Runtime
+	ctx      context.Context
+	conn     *store.Conn
+	config   *Config
+	server   *server.Server
+	runtime  *runtime.Runtime
+	profiler *memprofile.Profiler
 }
 
 // Close waits for Tajriba to be done.
 func (r *Runner) Close() {
-	err := r.conn.Close()
-	if err != nil {
-		log.Ctx(r.ctx).Error().Err(err).Msg("Closing store error")
+	if r.conn != nil {
+		err := r.conn.Close()
+		if err != nil {
+			log.Error().Err(err).Msg("close conn")
+		}
 	}
 
-	r.runtime.Stop()
+	if r.runtime != nil {
+		r.runtime.Stop()
+	}
+
+	if r.profiler != nil {
+		r.profiler.Stop()
+	}
 
 	if r.server != nil {
 		r.server.Close()
+	}
+}
+
+// ForceMemoryProfile triggers an immediate memory profile write
+func (r *Runner) ForceMemoryProfile() {
+	if r.profiler != nil {
+		r.profiler.ForceProfile()
 	}
 }
 
@@ -101,7 +118,34 @@ func Setup(ctx context.Context, config *Config, usingConfigFile bool) (context.C
 
 	ctx = runtime.SetContext(ctx, rt)
 
-	r := &Runner{ctx: ctx, conn: conn, config: config, runtime: rt}
+	// Initialize memory profiler
+	profilerConfig := memprofile.Config{
+		Enabled:     config.MemProfile.Enabled,
+		Dir:         config.MemProfile.Dir,
+		Interval:    config.MemProfile.Interval,
+		HTTPEnabled: config.MemProfile.HTTPEnabled,
+		HTTPPort:    config.MemProfile.HTTPPort,
+	}
+
+	profiler, err := memprofile.Start(ctx, profilerConfig)
+	if err != nil {
+		return ctx, nil, nil, errors.Wrap(err, "init memory profiler")
+	}
+
+	r := &Runner{
+		ctx:      ctx,
+		conn:     conn,
+		config:   config,
+		runtime:  rt,
+		profiler: profiler,
+	}
+
+	// Set runtime stats callback for memory profiler
+	if profiler != nil {
+		profiler.SetRuntimeStatsCallback(func(context string) {
+			rt.LogStats(context)
+		})
+	}
 
 	schema := graph.NewSchema(ctx, config.Auth.ServiceRegistrationToken)
 
